@@ -189,6 +189,44 @@ button:disabled {
   flex: 0 0 auto;
 }
 
+.lang-select {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 38px;
+  padding: 0 16px 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 11px;
+  background-color: rgba(13, 19, 38, 0.62);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%239aa6c5' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  color: #cdd5ee;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-align: center;
+  outline: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.lang-select:hover {
+  background-color: rgba(139, 92, 255, 0.16);
+  border-color: rgba(139, 92, 255, 0.38);
+}
+
+.lang-select:focus-visible {
+  border-color: rgba(139, 92, 255, 0.62);
+  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.12);
+}
+
+.lang-select option {
+  background: #0d1326;
+  color: #f2f5ff;
+}
+
 .icon-btn {
   width: 38px;
   height: 38px;
@@ -697,7 +735,7 @@ button:disabled {
   transform: translateY(1px) scale(0.995);
 }
 
-.primary-btn span {
+.primary-btn .key-hint {
   display: inline-block;
   margin-left: 8px;
   padding: 2px 6px;
@@ -1048,6 +1086,13 @@ button:disabled {
   .stat-label { font-size: 7px; }
   .stat strong { font-size: 13px; }
   .icon-btn { width: 34px; height: 34px; border-radius: 9px; }
+  .lang-select {
+    width: 44px;
+    height: 34px;
+    padding-right: 14px;
+    background-position: right 5px center;
+    font-size: 10px;
+  }
   .field { border-radius: 18px; }
   .panel { border-radius: 21px; }
   .danger-line span { display: none; }
@@ -1083,9 +1128,29 @@ button:disabled {
   .combo-stat { min-width: 42px; }
   .stat { padding: 4px 6px; }
   .icon-btn { width: 31px; height: 31px; }
+  .lang-select { width: 42px; height: 31px; font-size: 10px; }
   .tools { gap: 4px; }
   .brand-text { font-size: 16px; }
   .send-btn { display: none; }
+}
+
+@media (max-width: 360px) {
+  .brand-text { display: none; }
+  .brand-mark {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  .topbar { gap: 6px; }
+  .hud { gap: 3px; }
+  .stat { min-width: 40px; }
+  .panel { padding: 18px 14px; }
+  .panel h1 { font-size: 48px; }
+  .steps { gap: 6px; margin: 14px 0 12px; }
+  .step { padding: 7px 9px; }
+  .rule { margin-bottom: 16px; font-size: 10.5px; line-height: 1.65; }
 }
 
 @media (max-height: 560px) {

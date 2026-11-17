@@ -17,32 +17,40 @@
         <span class="brand-text">Piu<span>Piu</span></span>
       </div>
 
-      <div class="hud" aria-label="游戏数据">
+      <div class="hud" aria-label="游戏数据" data-i18n-aria="hud.aria">
         <div class="stat score-stat">
-          <span class="stat-label">得分</span>
+          <span class="stat-label" data-i18n="hud.score">得分</span>
           <strong id="score">0</strong>
         </div>
         <div class="stat combo-stat" id="comboStat">
-          <span class="stat-label">连击</span>
+          <span class="stat-label" data-i18n="hud.combo">连击</span>
           <strong id="combo">×0</strong>
         </div>
         <div class="stat level-stat">
-          <span class="stat-label">等级</span>
+          <span class="stat-label" data-i18n="hud.level">等级</span>
           <strong id="level">1</strong>
         </div>
         <div class="stat pile-stat" id="pileStat">
-          <span class="stat-label">堆积</span>
+          <span class="stat-label" data-i18n="hud.pile">堆积</span>
           <strong id="pile">0%</strong>
         </div>
         <div class="stat time-stat">
-          <span class="stat-label">时间</span>
+          <span class="stat-label" data-i18n="hud.time">时间</span>
           <strong id="time">0:00</strong>
         </div>
       </div>
 
       <div class="tools">
-        <button id="muteBtn" class="icon-btn" type="button" title="音效开关" aria-label="音效开关" aria-pressed="false">🔊</button>
-        <button id="pauseBtn" class="icon-btn" type="button" title="暂停 (Esc)" aria-label="暂停" disabled>❚❚</button>
+        <select id="langSelect" class="lang-select" aria-label="界面语言"
+                data-i18n-aria="lang.aria" title="切换语言" data-i18n-title="lang.title">
+          <option value="zh" lang="zh">中文</option>
+          <option value="fr" lang="fr">FR</option>
+          <option value="en" lang="en">EN</option>
+        </select>
+        <button id="muteBtn" class="icon-btn" type="button" title="音效开关"
+                data-i18n-title="mute.title" aria-label="音效开关" data-i18n-aria="mute.off" aria-pressed="false">🔊</button>
+        <button id="pauseBtn" class="icon-btn" type="button" title="暂停 (Esc)" data-i18n-title="pause.pauseTitle"
+                aria-label="暂停" data-i18n-aria="pause.pause" disabled>❚❚</button>
       </div>
     </header>
 
@@ -51,10 +59,12 @@
       <div class="field-grid" aria-hidden="true"></div>
       <div class="field-floor" aria-hidden="true"></div>
 
-      <div id="dangerLine" class="danger-line" aria-hidden="true"><span>危险线</span></div>
+      <div id="dangerLine" class="danger-line" aria-hidden="true">
+        <span data-i18n="danger.line">危险线</span>
+      </div>
 
       <div class="pile-gauge" aria-hidden="true">
-        <span class="gauge-label">堆积</span>
+        <span class="gauge-label" data-i18n="gauge.label">堆积</span>
         <div class="gauge-track"><div id="pileFill" class="gauge-fill"></div></div>
       </div>
 
@@ -66,69 +76,78 @@
 
       <div id="overlay" class="overlay">
         <section id="startPanel" class="panel" aria-labelledby="gameTitle">
-          <p class="eyebrow">ENGLISH WORD BLAST</p>
+          <p class="eyebrow" data-i18n="start.eyebrow">英语单词爆破</p>
           <h1 id="gameTitle">Piu<span>Piu</span></h1>
-          <p class="tagline">读出来，让它爆炸。</p>
+          <p class="tagline" data-i18n="start.tagline">读出来，让它爆炸。</p>
 
           <div class="steps">
-            <div class="step"><span>01</span><p>单词从屏幕顶部随机落下</p></div>
-            <div class="step"><span>02</span><p>对着麦克风大声读出这个单词</p></div>
-            <div class="step"><span>03</span><p>读对立即爆破，没接住就会堆在底部</p></div>
+            <div class="step"><span>01</span><p data-i18n="start.step1">单词从屏幕顶部随机落下</p></div>
+            <div class="step"><span>02</span><p data-i18n="start.step2">对着麦克风大声读出这个英语单词</p></div>
+            <div class="step"><span>03</span><p data-i18n="start.step3">读对立即爆破，没接住就会堆在底部</p></div>
           </div>
 
-          <p class="rule">单词堆到屏幕顶端，游戏结束。<br>500 个常用名词 / 动词 · 没有麦克风也能直接打字。</p>
+          <p class="rule">
+            <span data-i18n="start.rule1">单词堆到屏幕顶端，游戏结束。</span><br>
+            <span data-i18n="start.rule2">500 个常用名词 / 动词 · 没有麦克风也能直接打字。</span>
+          </p>
 
-          <button id="startBtn" class="primary-btn" type="button">开始游戏 <span>⏎</span></button>
+          <button id="startBtn" class="primary-btn" type="button">
+            <span data-i18n="start.cta">开始游戏</span>
+            <span class="key-hint">⏎</span>
+          </button>
           <p id="bestLine" class="best">最高分：0</p>
-          <p id="speechNote" class="fineprint">语音识别需要 Chrome / Edge / Safari，并允许麦克风权限。</p>
+          <p id="speechNote" class="fineprint" data-i18n="speech.note.initial">语音识别需要 Chrome / Edge / Safari，并允许麦克风权限。</p>
         </section>
 
         <section id="pausePanel" class="panel hidden" aria-labelledby="pauseTitle">
-          <p class="eyebrow">TAKE A BREATH</p>
-          <h2 id="pauseTitle">已暂停</h2>
-          <p class="tagline">单词们正在半空中等你。</p>
-          <button id="resumeBtn" class="primary-btn" type="button">继续游戏</button>
-          <button id="quitBtn" class="ghost-btn" type="button">结束本局</button>
+          <p class="eyebrow" data-i18n="pause.eyebrow">休息一下</p>
+          <h2 id="pauseTitle" data-i18n="pause.title">已暂停</h2>
+          <p class="tagline" data-i18n="pause.tagline">单词们正在半空中等你。</p>
+          <button id="resumeBtn" class="primary-btn" type="button" data-i18n="pause.cta">继续游戏</button>
+          <button id="quitBtn" class="ghost-btn" type="button" data-i18n="pause.quit">结束本局</button>
         </section>
 
         <section id="overPanel" class="panel hidden" aria-labelledby="overTitle">
-          <p class="eyebrow">THE PILE IS FULL</p>
-          <h2 id="overTitle">游戏结束</h2>
-          <p class="tagline">单词堆到屏幕顶端了。</p>
+          <p class="eyebrow" data-i18n="over.eyebrow">堆积到顶了</p>
+          <h2 id="overTitle" data-i18n="over.title">游戏结束</h2>
+          <p class="tagline" data-i18n="over.tagline">单词堆到屏幕顶端了。</p>
 
           <div class="result-grid">
-            <div><span>得分</span><strong id="finalScore">0</strong></div>
-            <div><span>爆破</span><strong id="finalCleared">0</strong></div>
-            <div><span>最高连击</span><strong id="finalCombo">×0</strong></div>
-            <div><span>坚持</span><strong id="finalTime">0:00</strong></div>
+            <div><span data-i18n="over.score">得分</span><strong id="finalScore">0</strong></div>
+            <div><span data-i18n="over.cleared">爆破</span><strong id="finalCleared">0</strong></div>
+            <div><span data-i18n="over.combo">最高连击</span><strong id="finalCombo">×0</strong></div>
+            <div><span data-i18n="over.time">坚持</span><strong id="finalTime">0:00</strong></div>
           </div>
 
-          <p class="missed-title">漏掉的单词</p>
+          <p class="missed-title" data-i18n="over.missedTitle">漏掉的单词</p>
           <div id="missedList" class="missed-list"></div>
           <p id="recordLine" class="record"></p>
 
-          <button id="restartBtn" class="primary-btn" type="button">再来一局</button>
-          <button id="homeBtn" class="ghost-btn" type="button">回到主页</button>
+          <button id="restartBtn" class="primary-btn" type="button" data-i18n="over.cta">再来一局</button>
+          <button id="homeBtn" class="ghost-btn" type="button" data-i18n="over.home">回到主页</button>
         </section>
       </div>
     </main>
 
     <footer class="controls">
-      <button id="micBtn" class="mic-btn" type="button" aria-pressed="false" title="麦克风开关">
+      <button id="micBtn" class="mic-btn" type="button" aria-pressed="false" title="麦克风开关"
+              data-i18n-title="mic.toggle">
         <span class="mic-dot" aria-hidden="true"></span>
-        <span id="micLabel">语音识别</span>
+        <span id="micLabel" data-i18n="mic.ready">语音就绪</span>
       </button>
 
       <form id="typeForm" class="type-form" autocomplete="off">
         <input id="typeInput" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false"
-               placeholder="也可以输入单词，按 Enter 爆破…" aria-label="输入单词">
-        <button type="submit" class="send-btn">发射</button>
+               placeholder="也可以输入单词，按 Enter 爆破…" data-i18n-placeholder="footer.placeholder"
+               aria-label="输入单词" data-i18n-aria="footer.inputAria">
+        <button type="submit" class="send-btn" data-i18n="footer.send">发射</button>
       </form>
 
-      <p class="foot-hint">读出单词 · 读对即爆破</p>
+      <p class="foot-hint" data-i18n="footer.hint">读出单词 · 读对即爆破</p>
     </footer>
   </div>
 
+  <script src="js/i18n.js"></script>
   <script src="js/words.js"></script>
   <script src="js/game.js"></script>
 </body>

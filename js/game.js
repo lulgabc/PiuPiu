@@ -58,6 +58,14 @@
 
   const $ = (id) => document.getElementById(id);
 
+  const i18n = window.PiuI18n;
+  const tr = (key, vars) => (i18n && typeof i18n.t === "function" ? i18n.t(key, vars) : key);
+  const locale = () => {
+    const lang = i18n && typeof i18n.getLang === "function" ? i18n.getLang() : "zh";
+    return lang === "fr" ? "fr-FR" : lang === "zh" ? "zh-CN" : "en-US";
+  };
+  const formatNumber = (value) => Number(value).toLocaleString(locale());
+
   const els = {
     field: $("field"),
     wordLayer: $("wordLayer"),
@@ -109,6 +117,7 @@
     cleared: 0,
     missed: 0,
     missedWords: [],
+    newRecord: false,
     elapsed: 0,
     level: 1,
     spawnTimer: 0.8,
@@ -290,6 +299,7 @@
     state.cleared = 0;
     state.missed = 0;
     state.missedWords = [];
+    state.newRecord = false;
     state.elapsed = 0;
     state.level = 1;
     state.spawnTimer = 0.85;
@@ -310,14 +320,13 @@
     state.phase = "playing";
     hideOverlay();
     els.pauseBtn.disabled = false;
-    els.pauseBtn.textContent = "❚❚";
-    els.pauseBtn.setAttribute("aria-label", "暂停");
+    updatePauseButton();
     state.lastFrame = 0;
     state.raf = requestAnimationFrame(frame);
     if (state.micEnabled) startSpeech();
     updateMicUI();
     els.typeInput.blur();
-    toast("大声读出下落的单词！");
+    toast(tr("toast.start"));
   }
 
   function frame(timestamp) {
@@ -353,7 +362,7 @@
 
   function onLevelUp() {
     playLevel();
-    toast(`等级 ${state.level} · 单词下落加速`);
+    toast(tr("toast.levelUp", { level: state.level }));
   }
 
   function spawnWord() {
@@ -456,9 +465,10 @@
     cancelAnimationFrame(state.raf);
     state.raf = 0;
     els.pauseBtn.disabled = true;
-    els.pauseBtn.textContent = "❚❚";
+    updatePauseButton();
 
     const isRecord = state.score > state.highScore;
+    state.newRecord = isRecord;
     if (isRecord) {
       state.highScore = state.score;
       try {
@@ -466,31 +476,8 @@
       } catch {}
     }
 
-    setText(els.finalScore, state.score.toLocaleString("en-US"));
-    setText(els.finalCleared, String(state.cleared));
-    setText(els.finalCombo, `×${state.bestCombo}`);
-    setText(els.finalTime, formatTime(state.elapsed));
-
-    const uniqueMissed = [...new Set(state.missedWords)].slice(0, 18);
-    els.missedList.replaceChildren();
-    if (!uniqueMissed.length) {
-      const chip = document.createElement("span");
-      chip.className = "empty";
-      chip.textContent = "一个都没漏掉，漂亮！";
-      els.missedList.appendChild(chip);
-    } else {
-      for (const miss of uniqueMissed) {
-        const chip = document.createElement("span");
-        chip.textContent = miss;
-        els.missedList.appendChild(chip);
-      }
-    }
-
-    els.recordLine.classList.toggle("new", isRecord);
-    els.recordLine.textContent = isRecord
-      ? "🏆 新纪录！"
-      : `最高分：${state.highScore.toLocaleString("en-US")}`;
-
+    renderOverPanel();
+    renderBestLine();
     updateHUD(true);
     updateMicUI();
     showPanel(els.overPanel);
@@ -503,8 +490,7 @@
     cancelAnimationFrame(state.raf);
     state.raf = 0;
     stopSpeech();
-    els.pauseBtn.textContent = "▶";
-    els.pauseBtn.setAttribute("aria-label", "继续");
+    updatePauseButton();
     updateMicUI();
     showPanel(els.pausePanel);
   }
@@ -513,8 +499,7 @@
     if (state.phase !== "paused") return;
     state.phase = "playing";
     hideOverlay();
-    els.pauseBtn.textContent = "❚❚";
-    els.pauseBtn.setAttribute("aria-label", "暂停");
+    updatePauseButton();
     state.lastFrame = 0;
     state.raf = requestAnimationFrame(frame);
     if (state.micEnabled) startSpeech();
@@ -527,8 +512,8 @@
     stopSpeech();
     resetGame();
     els.pauseBtn.disabled = true;
-    els.pauseBtn.textContent = "❚❚";
-    els.bestLine.textContent = `最高分：${state.highScore.toLocaleString("en-US")}`;
+    updatePauseButton();
+    renderBestLine();
     updateMicUI();
     showPanel(els.startPanel);
   }
@@ -538,7 +523,7 @@
   /* ------------------------------------------------------------------ */
 
   function updateHUD(force = false) {
-    setText(els.score, state.score.toLocaleString("en-US"));
+    setText(els.score, formatNumber(state.score));
     setText(els.combo, `×${state.combo}`);
     setText(els.level, String(state.level));
     setText(els.time, formatTime(state.elapsed));
@@ -573,6 +558,71 @@
     void els.comboStat.offsetWidth;
     els.comboStat.classList.add("pop");
     window.setTimeout(() => els.comboStat.classList.remove("pop"), 350);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* localized dynamic UI                                                */
+  /* ------------------------------------------------------------------ */
+
+  function renderBestLine() {
+    setText(els.bestLine, tr("start.best", { score: formatNumber(state.highScore) }));
+  }
+
+  function renderMissedList() {
+    const uniqueMissed = [...new Set(state.missedWords)].slice(0, 18);
+    els.missedList.replaceChildren();
+    if (!uniqueMissed.length) {
+      const chip = document.createElement("span");
+      chip.className = "empty";
+      chip.textContent = tr("over.emptyMissed");
+      els.missedList.appendChild(chip);
+      return;
+    }
+    for (const miss of uniqueMissed) {
+      const chip = document.createElement("span");
+      chip.textContent = miss;
+      els.missedList.appendChild(chip);
+    }
+  }
+
+  function renderOverPanel() {
+    setText(els.finalScore, formatNumber(state.score));
+    setText(els.finalCleared, String(state.cleared));
+    setText(els.finalCombo, `×${state.bestCombo}`);
+    setText(els.finalTime, formatTime(state.elapsed));
+    renderMissedList();
+    els.recordLine.classList.toggle("new", state.newRecord);
+    els.recordLine.textContent = state.newRecord
+      ? tr("over.record")
+      : tr("over.best", { score: formatNumber(state.highScore) });
+  }
+
+  function updatePauseButton() {
+    const paused = state.phase === "paused";
+    els.pauseBtn.textContent = paused ? "▶" : "❚❚";
+    els.pauseBtn.title = paused ? tr("pause.resumeTitle") : tr("pause.pauseTitle");
+    els.pauseBtn.setAttribute("aria-label", paused ? tr("pause.resume") : tr("pause.pause"));
+  }
+
+  function updateMuteUI() {
+    els.muteBtn.textContent = state.muted ? "🔇" : "🔊";
+    els.muteBtn.setAttribute("aria-pressed", String(state.muted));
+    els.muteBtn.title = tr("mute.title");
+    els.muteBtn.setAttribute("aria-label", state.muted ? tr("mute.on") : tr("mute.off"));
+  }
+
+  function refreshLanguage() {
+    updateHUD(true);
+    updateMicUI();
+    updatePauseButton();
+    updateMuteUI();
+    renderBestLine();
+    els.speechNote.textContent = SpeechRec
+      ? tr("speech.note.ok")
+      : tr("speech.note.unsupported");
+    if (state.phase === "over") renderOverPanel();
+    hideHeard();
+    hideToast();
   }
 
   /* ------------------------------------------------------------------ */
@@ -631,7 +681,7 @@
     return null;
   }
 
-  function explodeWord(word, source = "voice", transcript = "") {
+  function explodeWord(word) {
     const index = state.words.indexOf(word);
     if (index === -1) return;
     state.words.splice(index, 1);
@@ -663,9 +713,7 @@
     playPop();
     pulseCombo();
     updateHUD(true);
-
-    if (source === "type") showHeard(`✓ ${word.word}`);
-    else showHeard(`✓ ${word.word}${transcript && transcript.toLowerCase() !== word.word ? "  ·  " + transcript : ""}`);
+    showHeard(tr("heard.correct", { word: word.word }));
   }
 
   function burst(el, rel, hue) {
@@ -779,11 +827,11 @@
           latest = transcript;
           const hit = findMatch(transcript);
           if (hit) {
-            explodeWord(hit, "voice", transcript);
+            explodeWord(hit);
             return;
           }
         }
-        if (latest) showHeard(`听到：${latest}`);
+        if (latest) showHeard(tr("heard.prefix", { text: latest }));
       };
 
       recognition.onerror = (event) => {
@@ -848,7 +896,7 @@
       state.listening = false;
       state.speechError = true;
       updateMicUI();
-      toast("麦克风未授权 · 可以直接输入单词来玩", "warn");
+      toast(tr("toast.micDenied"), "warn");
       return;
     }
     if (code === "audio-capture") {
@@ -856,7 +904,7 @@
       state.listening = false;
       state.speechError = true;
       updateMicUI();
-      toast("没有找到麦克风 · 已切换到键盘模式", "warn");
+      toast(tr("toast.noMic"), "warn");
       return;
     }
     if (code === "network") {
@@ -865,9 +913,9 @@
         state.micEnabled = false;
         state.speechError = true;
         stopSpeech();
-        toast("语音服务连接失败 · 已切换到键盘模式", "warn");
+        toast(tr("toast.speechOffline"), "warn");
       } else {
-        toast("语音服务不稳定，正在重连…", "warn");
+        toast(tr("toast.speechNetwork"), "warn");
       }
       return;
     }
@@ -879,7 +927,7 @@
       els.micBtn.disabled = true;
       els.micBtn.classList.add("off");
       els.micBtn.classList.remove("listening", "error");
-      els.micLabel.textContent = "键盘模式";
+      els.micLabel.textContent = tr("mic.keyboard");
       els.micBtn.setAttribute("aria-pressed", "false");
       return;
     }
@@ -891,15 +939,15 @@
     els.micBtn.setAttribute("aria-pressed", String(state.micEnabled));
 
     if (!state.micEnabled) {
-      els.micLabel.textContent = state.speechError ? "麦克风不可用" : "语音已关";
+      els.micLabel.textContent = state.speechError ? tr("mic.error") : tr("mic.off");
     } else if (state.phase === "paused") {
-      els.micLabel.textContent = "语音已暂停";
+      els.micLabel.textContent = tr("mic.paused");
     } else if (active) {
-      els.micLabel.textContent = "聆听中…";
+      els.micLabel.textContent = tr("mic.listening");
     } else if (state.phase === "playing") {
-      els.micLabel.textContent = "语音连接中";
+      els.micLabel.textContent = tr("mic.connecting");
     } else {
-      els.micLabel.textContent = "语音就绪";
+      els.micLabel.textContent = tr("mic.ready");
     }
   }
 
@@ -920,6 +968,7 @@
   function hideToast() {
     clearTimeout(state.toastTimer);
     els.toast.classList.remove("show");
+    setText(els.toast, "");
   }
 
   function showHeard(message) {
@@ -949,43 +998,43 @@
     if (state.phase !== "playing") {
       const message =
         state.phase === "paused"
-          ? "先继续游戏，再输入单词"
+          ? tr("toast.continueFirst")
           : state.phase === "over"
-            ? "本局已结束，点「再来一局」重新开始"
-            : "先按「开始游戏」";
+            ? tr("toast.gameOverFirst")
+            : tr("toast.startFirst");
       toast(message, "warn");
       return;
     }
     const hit = findMatch(value);
     if (hit) {
       els.typeInput.value = "";
-      explodeWord(hit, "type", value);
+      explodeWord(hit);
     } else {
       els.typeInput.classList.remove("wrong");
       void els.typeInput.offsetWidth;
       els.typeInput.classList.add("wrong");
-      showHeard(`屏幕上没有 “${value}”`);
+      showHeard(tr("toast.notOnScreen", { word: value }));
       window.setTimeout(() => els.typeInput.classList.remove("wrong"), 320);
     }
   }
 
   function toggleMic() {
     if (!SpeechRec) {
-      toast("当前浏览器不支持语音识别 · 请直接输入单词", "warn");
+      toast(tr("toast.unsupported"), "warn");
       return;
     }
     if (state.micEnabled) {
       state.micEnabled = false;
       state.speechError = false;
       stopSpeech();
-      toast("语音已关闭 · 现在可以用键盘输入");
+      toast(tr("toast.speechOff"));
     } else {
       state.micEnabled = true;
       state.speechError = false;
       state.speechNetworkErrors = 0;
       updateMicUI();
       if (state.phase === "playing") startSpeech();
-      toast("语音识别已开启");
+      toast(tr("toast.speechOn"));
     }
   }
 
@@ -994,9 +1043,7 @@
     try {
       localStorage.setItem(MUTE_KEY, state.muted ? "1" : "0");
     } catch {}
-    els.muteBtn.textContent = state.muted ? "🔇" : "🔊";
-    els.muteBtn.setAttribute("aria-pressed", String(state.muted));
-    els.muteBtn.setAttribute("aria-label", state.muted ? "开启音效" : "关闭音效");
+    updateMuteUI();
     if (!state.muted) tone(760, 0.09, "triangle", 0.03);
   }
 
@@ -1034,6 +1081,8 @@
     if (document.hidden && state.phase === "playing") pauseGame();
   });
 
+  document.addEventListener("piupiu:langchange", refreshLanguage);
+
   window.addEventListener("beforeunload", stopSpeech);
 
   window.addEventListener("resize", () => {
@@ -1068,28 +1117,30 @@
   /* ------------------------------------------------------------------ */
 
   function init() {
+    renderBestLine();
+    updateMuteUI();
+
     if (!WORD_BANK.length) {
       console.error("PiuPiu: word bank failed to load");
-      toast("单词库加载失败", "warn");
+      toast(tr("toast.wordBank"), "warn");
+      updateMicUI();
+      updatePauseButton();
       return;
     }
 
-    els.bestLine.textContent = `最高分：${state.highScore.toLocaleString("en-US")}`;
-    els.muteBtn.textContent = state.muted ? "🔇" : "🔊";
-    els.muteBtn.setAttribute("aria-pressed", String(state.muted));
-
     if (SpeechRec) {
       setupSpeech();
-      els.speechNote.textContent = "语音识别需要允许麦克风权限；也可以随时改用下方输入框。";
+      els.speechNote.textContent = tr("speech.note.ok");
     } else {
       state.micEnabled = false;
-      els.speechNote.textContent = "当前浏览器不支持语音识别，请直接输入单词来玩。推荐 Chrome / Edge / Safari。";
+      els.speechNote.textContent = tr("speech.note.unsupported");
     }
 
     state.lastFieldW = els.field.clientWidth;
     state.lastFieldH = els.field.clientHeight;
     updateHUD(true);
     updateMicUI();
+    updatePauseButton();
   }
 
   /* Debug helpers, available with ?debug=1 for automated checks. */
@@ -1105,6 +1156,7 @@
       explodeWord,
       findMatch,
       goHome,
+      refreshLanguage,
       getFalling: () =>
         state.words.map((w) => ({ word: w.word, x: w.x, y: w.y, w: w.w, h: w.h })),
       getSettled: () =>
