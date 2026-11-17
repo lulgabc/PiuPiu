@@ -258,16 +258,17 @@ body::before {
 }
 
 .dock {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   flex: 1 1 auto;
-  flex-wrap: wrap;
 }
 
 .scene-btn {
   --c: #8b5cff;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 9px;
   padding: 9px 14px;
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -375,6 +376,10 @@ body::before {
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {
+  .dock {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .demo-shell {
     width: calc(100vw - 28px);
     padding-top: 18px;
