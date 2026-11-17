@@ -1981,8 +1981,8 @@ button:disabled {
 }
 
 @keyframes ambientBob {
-  from { transform: translate3d(0, -7%, 0) rotate(-4deg); }
-  to { transform: translate3d(0, 7%, 0) rotate(4deg); }
+  from { transform: translate3d(0, -7%, 0) rotate(-4deg) scaleX(var(--flip, 1)); }
+  to { transform: translate3d(0, 7%, 0) rotate(4deg) scaleX(var(--flip, 1)); }
 }
 
 @keyframes ambientHover {

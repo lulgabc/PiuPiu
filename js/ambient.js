@@ -229,6 +229,7 @@
       const face = document.createElement("span");
       face.className = "ambient-bob";
       face.textContent = element.emoji;
+      if (options.flip) face.style.setProperty("--flip", "-1");
       node.appendChild(face);
     }
     addAmbientNode(node);
@@ -295,6 +296,7 @@
         delay: Math.random() * 1.1,
         startX,
         endX,
+        flip: direction > 0,
       });
     }
   }
