@@ -659,6 +659,7 @@
     state.pool = getSelectedPool();
     resetGame();
     state.phase = "playing";
+    window.dispatchEvent(new CustomEvent("piupiu:roundstart"));
     hideOverlay();
     els.pauseBtn.disabled = false;
     updatePauseButton();

@@ -112,7 +112,8 @@
   let grain = null;
   let current = null;
   let currentKey = null;
-  let autoOn = !REDUCED;
+  let autoOn = false;
+  let roundsStarted = 0;
   let autoTimer = 0;
   let copyTimer = 0;
 
@@ -2120,6 +2121,19 @@
     destroyScene(scene);
   }
 
+  function pickSceneForRound() {
+    const pool = ORDER.filter((key) => key !== currentKey);
+    if (!pool.length) return ORDER[0];
+    return pool[randInt(0, pool.length - 1)];
+  }
+
+  function handleRoundStart() {
+    if (IS_DEMO || REDUCED) return;
+    roundsStarted += 1;
+    if (roundsStarted === 1) return;
+    switchScene(pickSceneForRound(), true);
+  }
+
   function switchScene(key, instant) {
     if (!SCENES[key] || key === currentKey) return;
     for (const scene of alive.slice()) {
@@ -2228,7 +2242,7 @@
 
   function scheduleAuto() {
     window.clearTimeout(autoTimer);
-    if (!autoOn || REDUCED) return;
+    if (!IS_DEMO || !autoOn || REDUCED) return;
     autoTimer = window.setTimeout(() => {
       const index = ORDER.indexOf(currentKey);
       switchScene(ORDER[(index + 1) % ORDER.length], false);
@@ -2287,6 +2301,7 @@
         ? "spring"
         : seasonForMonth();
     switchScene(initial, true);
+    if (!IS_DEMO) window.addEventListener("piupiu:roundstart", handleRoundStart);
 
     if (DEBUG) {
       if (IS_DEMO) {
