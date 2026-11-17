@@ -185,6 +185,17 @@ button:disabled {
   color: var(--pink);
 }
 
+.correct-stat.reward {
+  border-color: rgba(255, 214, 90, 0.7);
+  box-shadow: 0 0 18px rgba(255, 214, 90, 0.28);
+}
+
+.correct-stat.reward strong {
+  color: #ffe28a;
+  text-shadow: 0 0 12px rgba(255, 214, 90, 0.65);
+  animation: rewardPulse 0.9s cubic-bezier(0.2, 1.2, 0.3, 1);
+}
+
 .tools {
   display: flex;
   gap: 6px;
@@ -578,6 +589,45 @@ button:disabled {
 }
 
 /* ---------- playful effects ---------- */
+
+.reward-beam {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 252, 210, 0) 0%,
+    rgba(255, 240, 150, 0.36) 12%,
+    rgba(255, 214, 90, 0.14) 60%,
+    rgba(255, 214, 90, 0) 100%
+  );
+  border-left: 1px solid rgba(255, 240, 160, 0.65);
+  border-right: 1px solid rgba(255, 240, 160, 0.65);
+  box-shadow:
+    0 0 38px rgba(255, 214, 90, 0.45),
+    inset 0 0 30px rgba(255, 240, 150, 0.2);
+  transform-origin: top center;
+  mix-blend-mode: screen;
+  animation: beamSweep 0.85s cubic-bezier(0.16, 0.8, 0.3, 1) forwards;
+}
+
+.reward-label {
+  position: absolute;
+  z-index: 2;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 230, 150, 0.6);
+  border-radius: 999px;
+  background: rgba(255, 220, 90, 0.18);
+  color: #fff3b0;
+  font-size: 17px;
+  font-weight: 900;
+  white-space: nowrap;
+  text-shadow: 0 0 18px rgba(255, 214, 90, 0.8);
+  transform: translate(-50%, -50%);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  animation: rewardLabel 1.25s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
 
 .fx-face {
   position: absolute;
@@ -1288,6 +1338,26 @@ button:disabled {
   to { transform: translate(-50%, -6px) scale(1.06); }
 }
 
+@keyframes beamSweep {
+  0% { opacity: 0; transform: scaleY(0.02); }
+  15% { opacity: 1; }
+  70% { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(1); }
+}
+
+@keyframes rewardLabel {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.7); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -90%) scale(1); }
+}
+
+@keyframes rewardPulse {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
 @keyframes brandBounce {
   0%, 100% { transform: translateY(0) rotate(0); }
   50% { transform: translateY(-2px) rotate(5deg); }
@@ -1500,6 +1570,7 @@ button:disabled {
 
 @media (max-width: 400px) {
   .score-stat { min-width: 42px; }
+  .correct-stat { min-width: 42px; }
   .combo-stat { min-width: 42px; }
   .stat { padding: 4px 6px; }
   .icon-btn { width: 31px; height: 31px; }
@@ -1513,6 +1584,7 @@ button:disabled {
 
 @media (max-width: 360px) {
   .brand-text { display: none; }
+  .combo-stat { display: none; }
   .brand-mark {
     display: grid;
     width: 26px;
@@ -1569,5 +1641,8 @@ button:disabled {
   .fx-emoji,
   .fx-star,
   .fx-streak,
-  .fx-flash { animation-duration: 0.01ms; transition-duration: 0.01ms; }
+  .fx-flash,
+  .reward-beam,
+  .reward-label,
+  .correct-stat.reward strong { animation-duration: 0.01ms; transition-duration: 0.01ms; }
 }

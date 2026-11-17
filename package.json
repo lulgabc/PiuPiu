@@ -1,8 +1,8 @@
 {
   "name": "piupiu",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
-  "description": "PiuPiu — a child-friendly falling-word English pronunciation game with emoji faces, playful effects, spoken hints, themed packs, K-12 reading lists, BNC/COCA word families, and Chinese, French and English UI.",
+  "description": "PiuPiu — a child-friendly falling-word English pronunciation game with emoji faces, playful effects, spoken hints, star-beam rewards, themed packs, K-12 reading lists, BNC/COCA word families, and Chinese, French and English UI.",
   "scripts": {
     "start": "python3 -m http.server 4173",
     "test": "node tests/verify-words.cjs && node tests/verify-lexicon.cjs && node tests/verify-education.cjs && node tests/verify-families.cjs && node tests/verify-emojis.cjs && node tests/verify-i18n.cjs"

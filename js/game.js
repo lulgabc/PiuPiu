@@ -100,6 +100,8 @@
     levelSelect: $("levelSelect"),
     packCount: $("packCount"),
     score: $("score"),
+    correct: $("correct"),
+    correctStat: $("correctStat"),
     combo: $("combo"),
     comboStat: $("comboStat"),
     level: $("level"),
@@ -590,6 +592,15 @@
     else playPop();
   }
 
+  function playRewardClear() {
+    whoosh(0.55, 160, 3200, 0.045);
+    tone(523.25, 0.12, "triangle", 0.035, 0.02);
+    tone(783.99, 0.13, "triangle", 0.035, 0.12);
+    tone(1046.5, 0.16, "triangle", 0.032, 0.24);
+    tone(1567.98, 0.3, "sine", 0.025, 0.38);
+    noiseBurst(0.22, 0.025, 0.12);
+  }
+
   function playLevel() {
     tone(620, 0.1, "triangle", 0.03);
     tone(930, 0.14, "triangle", 0.03, 0.09);
@@ -639,6 +650,7 @@
     els.field.classList.remove("danger", "shake");
     els.typeInput.value = "";
     els.typeInput.classList.remove("wrong");
+    els.correctStat.classList.remove("reward");
     updateHUD(true);
   }
 
@@ -900,6 +912,7 @@
 
   function updateHUD(force = false) {
     setText(els.score, formatNumber(state.score));
+    setText(els.correct, String(state.cleared));
     setText(els.combo, `×${state.combo}`);
     setText(els.level, String(state.level));
     setText(els.time, formatTime(state.elapsed));
@@ -1213,6 +1226,58 @@
     spawnEmojiBurst(word, cx, cy);
   }
 
+  function triggerRewardClear(rel) {
+    const fieldH = els.field.clientHeight || 1;
+    const cx = rel.left + rel.width / 2;
+    const width = Math.max(rel.width + 36, 110);
+    const left = cx - width / 2;
+    const right = cx + width / 2;
+    const top = Math.max(8, rel.top + rel.height / 2);
+
+    const targets = state.settled.filter((settled) => {
+      const sx = settled.x + settled.w / 2;
+      const sy = settled.y + settled.h / 2;
+      return sx >= left && sx <= right && sy >= top;
+    });
+    const targetSet = new Set(targets);
+
+    for (const target of targets) {
+      spawnStars(target.x + target.w / 2, target.y + target.h / 2, 48, 5);
+      target.el.remove();
+    }
+    if (targets.length) {
+      state.settled = state.settled.filter((settled) => !targetSet.has(settled));
+    }
+
+    const beam = document.createElement("div");
+    beam.className = "reward-beam";
+    beam.style.left = `${left}px`;
+    beam.style.top = `${top}px`;
+    beam.style.width = `${width}px`;
+    beam.style.height = `${Math.max(60, fieldH - top)}px`;
+    addFx(beam);
+
+    spawnStars(cx, top + 24, 48, 18);
+    createFlash(cx, top + 24, 48);
+
+    const label = document.createElement("div");
+    label.className = "reward-label";
+    label.textContent =
+      targets.length > 0
+        ? tr("reward.clearCount", { count: targets.length })
+        : tr("reward.clear");
+    label.style.left = `${cx}px`;
+    label.style.top = `${Math.min(fieldH - 26, top + 52)}px`;
+    addFx(label);
+
+    playRewardClear();
+    els.correctStat.classList.remove("reward");
+    void els.correctStat.offsetWidth;
+    els.correctStat.classList.add("reward");
+    window.setTimeout(() => els.correctStat.classList.remove("reward"), 1200);
+    updateHUD(true);
+  }
+
   function explodeWord(word) {
     const index = state.words.indexOf(word);
     if (index === -1) return;
@@ -1257,6 +1322,7 @@
     updateHUD(true);
     showHeard(tr("heard.correct", { word: word.word }));
     showPraise();
+    if (state.cleared % 5 === 0) triggerRewardClear(rel);
   }
 
   function burst(el, rel, hue) {
