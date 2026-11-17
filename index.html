@@ -89,7 +89,7 @@
 
           <p class="rule">
             <span data-i18n="start.rule1">单词堆到屏幕顶端，游戏结束。</span><br>
-            <span data-i18n="start.rule2">20 个主题词库 × 3 级难度 · 500 个核心词 · 没有麦克风也能打字。</span>
+            <span data-i18n="start.rule2">20 个主题词库 + Dolch / Fry / Dale-Chall 教育词表 · 500 个核心词 · 没有麦克风也能打字。</span>
           </p>
 
           <div class="pack-picker">
@@ -107,6 +107,7 @@
                 <button type="button" class="diff-btn" data-level="2" data-i18n="difficulty.2" aria-pressed="false">中级</button>
                 <button type="button" class="diff-btn" data-level="3" data-i18n="difficulty.3" aria-pressed="false">高级</button>
               </div>
+              <select id="levelSelect" class="pack-select level-select is-hidden" aria-label="级别" data-i18n-aria="pack.band"></select>
             </div>
           </div>
 
@@ -171,6 +172,7 @@
   <script src="js/i18n.js"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
+  <script src="js/education.js"></script>
   <script src="js/emojis.js"></script>
   <script src="js/game.js"></script>
 </body>

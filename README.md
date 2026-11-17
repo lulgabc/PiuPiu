@@ -6,7 +6,7 @@
 
 单词从屏幕顶部随机落下。你对着麦克风正确读出单词，它就会带着不同颜色和动画效果消失；如果一直没读对，单词会落到底部并不断堆积。单词堆到屏幕顶端时，本轮结束。
 
-内置 **500 个核心英语名词与动词** + **20 个主题词库**，不包含 `the / and / an / of / to` 等虚词。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
+内置 **500 个核心英语名词与动词**、**20 个主题词库**和 **3 套 K-12 阅读词表**（Dolch / Fry / Dale-Chall）。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
 
 ## 运行
 
@@ -42,12 +42,28 @@ npm start
 - **综合词库**：500 个核心词，按词长分为初级 / 中级 / 高级；选择「全部」使用完整 500 词。
 - **20 个主题词库**：食物、水果、蔬菜、饮品、动物、身体、家庭、服饰、家居、学校、职业、运动、音乐、旅行、交通、自然、天气、科技、情感、地点。
 - 每个主题包含 30 个词，分为初级 / 中级 / 高级，每级 10 个词；选择「全部」会混合三个等级。
+- **教育词表**：Dolch、Fry、Dale-Chall 三套公开阅读词表，位于词库下拉框的「K-12 阅读词表」分组。
 - 当前选择会保存到 `localStorage`，刷新或下次打开时保持。
 - 开始按钮上方会显示当前词库包含的单词数量。
 
+## K-12 阅读词表
+
+| 词表 | 分级 | 词数 | 说明 |
+| --- | --- | --- | --- |
+| **Dolch Sight Words** | Pre-K、Kindergarten、Grade 1、Grade 2、Grade 3、Nouns | 315 | 220 个服务词 + 95 个名词，Edward W. Dolch 1936/1948，公共领域 |
+| **Fry Sight Words** | First 100 – Tenth 100 | 1000 | Edward B. Fry 的 1000 Instant Words，每 100 词一组，广泛用于北美小学 |
+| **Dale-Chall Word List** | 全部词表 | 2940 | New Dale-Chall 可读性公式的熟悉词基准，公开可读性词表 |
+
+- Dolch 和 Fry 选中后会显示单独的**级别下拉框**；Dale-Chall 作为单一词表使用。
+- 这些教育词表**按原词表保留功能词**（如 `the / and / a`）和缩写，因为它们是阅读高频词的一部分。
+- 单词匹配不区分大小写，并兼容省略撇号的识别结果（`dont` ↔ `don't`、`im` ↔ `I'm`）。
+- 数据规范化：`good-bye → goodbye`、`Santa Claus → Santa`；Dale-Chall 中的连字符/缩写词规范为单 token（如 `mr. → mr`）。
+- 数据来源均为公开词表：Dolch 为公共领域；Fry 为公开教育词表；Dale-Chall 使用 textstat 的公开 `easy_words.txt` 数据。
+- 参考来源：Dolch 官方分组词表（sightwords.com / 公共领域版本）、Edward Fry 1000 Instant Words、[textstat/textstat](https://github.com/textstat/textstat)。
+
 ## 表情与儿童化
 
-- 653 个可玩单词配有 emoji；下落时单词卡会**每 1 秒在 emoji 和文字之间轮换**，没有 emoji 的单词保持文字。
+- 755 个可玩单词配有 emoji；下落时单词卡会**每 1 秒在 emoji 和文字之间轮换**，没有 emoji 的单词保持文字。
 - 读对后会随机触发 5 种效果之一：**爆炸、裂开、飞走、快速坠落、旋转消失**。
 - 每种效果有不同颜色闪光、星星/火花粒子、飘分颜色和 Web Audio 合成音效。
 - 每次成功会出现本地化鼓励语（⭐ 太棒了 / Bravo / Great!）。
@@ -73,7 +89,7 @@ npm start
 
 | 操作 | 说明 |
 | --- | --- |
-| 词库 / 难度选择 | 选择主题词库与初级、中级、高级或全部 |
+| 词库 / 级别选择 | 选择主题词库、教育词表及其等级/年级分组 |
 | 读出单词 | 主要玩法，支持连续识别与自动重连 |
 | `Space` / 点击游戏区域 | 听最靠下单词的读音并聚焦该单词 |
 | 输入 + Enter | 键盘兜底模式 |
@@ -92,9 +108,9 @@ npm start
 
 ## 单词库
 
-`js/words.js` 提供 500 个核心词；`js/lexicon.js` 提供 20 个主题词库，共 600 个主题词条（572 个跨类别唯一词），每个类别三个等级、每级 10 词。
+`js/words.js` 提供 500 个核心词；`js/lexicon.js` 提供 20 个主题词库，共 600 个主题词条（572 个跨类别唯一词）；`js/education.js` 提供 Dolch 315、Fry 1000、Dale-Chall 2940 个教育词条。
 
-`js/emojis.js` 为 766 个词提供 emoji 映射，其中 653 个词出现在当前可玩词库中。
+`js/emojis.js` 为 766 个词提供 emoji 映射，覆盖核心、主题和教育词表中的大量单词。
 
 核心词示例：
 
@@ -112,9 +128,11 @@ PiuPiu/
 ├── js/game.js                # 游戏循环、词库池、emoji 轮换、随机特效、语音识别
 ├── js/words.js               # 500 个核心名词 / 动词
 ├── js/lexicon.js             # 20 个主题词库 × 3 个难度等级
+├── js/education.js           # Dolch / Fry / Dale-Chall 教育词表
 ├── js/emojis.js              # 单词 → emoji 映射
 ├── tests/verify-words.cjs    # 核心词库校验
 ├── tests/verify-lexicon.cjs  # 类别、等级、重复词与主题名翻译校验
+├── tests/verify-education.cjs # Dolch、Fry、Dale-Chall 词数与分级校验
 ├── tests/verify-emojis.cjs   # emoji 映射、覆盖率和重复键校验
 ├── tests/verify-i18n.cjs     # 三语翻译完整性与插值占位符校验
 └── package.json
@@ -128,7 +146,7 @@ PiuPiu/
 npm test
 ```
 
-检查核心词数量、主题词库类别数、每级词数、类别内重复、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。
+检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。
 
 ## 调试
 

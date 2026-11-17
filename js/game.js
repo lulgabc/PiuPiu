@@ -3,6 +3,7 @@
 
   const WORD_BANK = Array.isArray(window.PIU_WORDS) ? window.PIU_WORDS.slice() : [];
   const LEXICON = Array.isArray(window.PIU_LEXICON) ? window.PIU_LEXICON.slice() : [];
+  const EDUCATION = Array.isArray(window.PIU_EDUCATION) ? window.PIU_EDUCATION.slice() : [];
   const EMOJI =
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
   const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
@@ -12,6 +13,7 @@
   const MUTE_KEY = "piupiu.muted";
   const PACK_KEY = "piupiu.pack";
   const LEVEL_KEY = "piupiu.level";
+  const BAND_KEY = "piupiu.band";
   const PAD = 12;
   const DANGER_Y = 10;
   const ACCENT_HUES = [265, 190, 318, 42, 158, 225, 288, 12];
@@ -94,6 +96,7 @@
     typeInput: $("typeInput"),
     categorySelect: $("categorySelect"),
     diffGroup: $("diffGroup"),
+    levelSelect: $("levelSelect"),
     packCount: $("packCount"),
     score: $("score"),
     combo: $("combo"),
@@ -125,6 +128,7 @@
     categories: [],
     categoryId: "core",
     difficulty: 0,
+    band: "all",
     lastWord: "",
     score: 0,
     combo: 0,
@@ -223,6 +227,19 @@
     return word;
   }
 
+  function uniqueWords(words) {
+    const seen = new Set();
+    const result = [];
+    for (const word of words) {
+      const key = word.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(word);
+      }
+    }
+    return result;
+  }
+
   function buildCategories() {
     const coreLevels = { 1: [], 2: [], 3: [] };
     for (const word of WORD_BANK) {
@@ -231,12 +248,17 @@
     }
 
     const categories = [
-      { id: "core", icon: "✦", nameKey: "cat.core", levels: coreLevels },
+      { id: "core", icon: "✦", nameKey: "cat.core", education: false, levels: coreLevels },
     ];
 
     for (const category of LEXICON) {
       if (!category || !category.id || !category.levels) continue;
-      categories.push(category);
+      categories.push({ ...category, education: false });
+    }
+
+    for (const category of EDUCATION) {
+      if (!category || !category.id || !Array.isArray(category.bands)) continue;
+      categories.push({ ...category, education: true });
     }
     return categories;
   }
@@ -249,37 +271,101 @@
     const category = getSelectedCategory();
     if (!category) return WORD_BANK.slice();
 
-    const levels = category.levels;
     let words = [];
-    if (state.difficulty > 0) {
-      words = levels[state.difficulty] || [];
+    if (Array.isArray(category.bands)) {
+      const bands =
+        state.band && state.band !== "all"
+          ? category.bands.filter((band) => band.id === state.band)
+          : category.bands;
+      for (const band of bands) words = words.concat(band.words || []);
     } else {
-      for (const level of [1, 2, 3]) words = words.concat(levels[level] || []);
+      const levels = category.levels || {};
+      if (state.difficulty > 0) {
+        words = levels[state.difficulty] || [];
+      } else {
+        for (const level of [1, 2, 3]) words = words.concat(levels[level] || []);
+      }
     }
 
-    let pool = [...new Set(words)];
+    let pool = uniqueWords(words);
     if (!pool.length) {
-      const all = [1, 2, 3].flatMap((level) => levels[level] || []);
-      pool = [...new Set(all.length ? all : WORD_BANK)];
+      const fallback = Array.isArray(category.bands)
+        ? category.bands.flatMap((band) => band.words || [])
+        : [];
+      pool = uniqueWords(fallback.length ? fallback : WORD_BANK);
     }
     return pool;
   }
 
   function renderCategoryOptions() {
     if (!els.categorySelect) return;
-    els.categorySelect.replaceChildren();
-    for (const category of state.categories) {
-      const option = document.createElement("option");
-      option.value = category.id;
-      option.textContent = `${category.icon} ${tr(category.nameKey)}`;
-      els.categorySelect.appendChild(option);
+    const select = els.categorySelect;
+    select.replaceChildren();
+
+    const groups = [
+      { education: true, labelKey: "group.education" },
+      { education: false, labelKey: "group.themes" },
+    ];
+
+    for (const group of groups) {
+      const categories = state.categories.filter(
+        (category) => Boolean(category.education) === group.education,
+      );
+      if (!categories.length) continue;
+
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = tr(group.labelKey);
+      for (const category of categories) {
+        const option = document.createElement("option");
+        option.value = category.id;
+        option.textContent = `${category.icon} ${tr(category.nameKey)}`;
+        optgroup.appendChild(option);
+      }
+      select.appendChild(optgroup);
     }
-    els.categorySelect.value = state.categoryId;
+    select.value = state.categoryId;
+  }
+
+  function renderLevelOptions(category) {
+    if (!els.levelSelect) return;
+    els.levelSelect.replaceChildren();
+    if (!category || !Array.isArray(category.bands) || category.bands.length <= 1) return;
+
+    const addOption = (value, labelKey) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = tr(labelKey);
+      els.levelSelect.appendChild(option);
+    };
+
+    addOption("all", "band.all");
+    for (const band of category.bands) addOption(band.id, band.labelKey);
   }
 
   function updatePackUI() {
-    if (!els.categorySelect || !els.diffGroup) return;
+    if (!els.categorySelect || !els.diffGroup || !els.levelSelect) return;
+    const category = getSelectedCategory();
+    const banded = Boolean(category && Array.isArray(category.bands));
+    const showLevel = banded && category.bands.length > 1;
+
     els.categorySelect.value = state.categoryId;
+    els.diffGroup.classList.toggle("is-hidden", banded);
+    els.levelSelect.classList.toggle("is-hidden", !showLevel);
+
+    const controls = els.categorySelect.closest(".pack-controls");
+    if (controls) controls.classList.toggle("single", banded && !showLevel);
+
+    if (banded) {
+      const validBand =
+        state.band === "all" || category.bands.some((band) => band.id === state.band);
+      if (!validBand) state.band = "all";
+      if (showLevel) {
+        renderLevelOptions(category);
+        els.levelSelect.value = state.band;
+      }
+    } else {
+      renderLevelOptions(null);
+    }
 
     els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
       const level = Number(button.dataset.level);
@@ -296,6 +382,7 @@
     try {
       localStorage.setItem(PACK_KEY, state.categoryId);
       localStorage.setItem(LEVEL_KEY, String(state.difficulty));
+      localStorage.setItem(BAND_KEY, state.band);
     } catch {}
   }
 
@@ -311,14 +398,40 @@
     state.difficulty =
       Number.isInteger(savedLevel) && savedLevel >= 0 && savedLevel <= 3 ? savedLevel : 0;
 
+    state.band = readString(BAND_KEY, "all") || "all";
+    const category = getSelectedCategory();
+    if (category && Array.isArray(category.bands)) {
+      const validBand =
+        state.band === "all" || category.bands.some((band) => band.id === state.band);
+      if (!validBand) state.band = "all";
+    }
+
     state.pool = getSelectedPool();
   }
 
   function onCategoryChange() {
     const next = els.categorySelect.value;
-    if (!state.categories.some((category) => category.id === next)) return;
+    const category = state.categories.find((item) => item.id === next);
+    if (!category) return;
     state.categoryId = next;
-    if (!getSelectedPool().length) state.difficulty = 0;
+
+    if (Array.isArray(category.bands)) {
+      const validBand =
+        state.band === "all" || category.bands.some((band) => band.id === state.band);
+      if (!validBand) state.band = "all";
+    }
+
+    state.pool = getSelectedPool();
+    savePackSelection();
+    updatePackUI();
+  }
+
+  function onLevelChange() {
+    const category = getSelectedCategory();
+    if (!category || !Array.isArray(category.bands)) return;
+    const next = els.levelSelect.value;
+    if (next !== "all" && !category.bands.some((band) => band.id === next)) return;
+    state.band = next;
     state.pool = getSelectedPool();
     savePackSelection();
     updatePackUI();
@@ -583,7 +696,7 @@
     span.textContent = word;
     el.appendChild(span);
 
-    const emoji = EMOJI[word] || "";
+    const emoji = EMOJI[word.toLowerCase()] || "";
     if (emoji) {
       const emojiFace = document.createElement("span");
       emojiFace.className = "word-emoji";
@@ -873,13 +986,21 @@
   /* ------------------------------------------------------------------ */
 
   function formsFor(word) {
-    const forms = new Set([word]);
-    forms.add(`${word}s`);
-    forms.add(`${word}es`);
-    if (word.endsWith("y") && !/[aeiou]y$/.test(word)) {
-      forms.add(`${word.slice(0, -1)}ies`);
+    const base = word.toLowerCase();
+    const forms = new Set([base]);
+    const add = (value) => {
+      if (value) forms.add(value);
+    };
+
+    if (base.length >= 3) {
+      add(`${base}s`);
+      add(`${base}es`);
     }
-    for (const alias of HOMOPHONES[word] || []) forms.add(alias);
+    add(base.replace(/'/g, ""));
+    if (base.length >= 3 && base.endsWith("y") && !/[aeiou]y$/.test(base)) {
+      add(`${base.slice(0, -1)}ies`);
+    }
+    for (const alias of HOMOPHONES[base] || []) forms.add(alias);
     return forms;
   }
 
@@ -901,7 +1022,8 @@
     // Prefer an exact spelling match before plural / homophone / split-compound
     // matching, so two similar targets are not confused with each other.
     for (const word of candidates) {
-      if (tokens.includes(word.word) || normalized === word.word) return word;
+      const key = word.word.toLowerCase();
+      if (tokens.includes(key) || normalized === key) return word;
     }
 
     for (const word of candidates) {
@@ -1603,6 +1725,7 @@
   els.micBtn.addEventListener("click", toggleMic);
   els.typeForm.addEventListener("submit", handleTyped);
   els.categorySelect.addEventListener("change", onCategoryChange);
+  els.levelSelect.addEventListener("change", onLevelChange);
   els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
     button.addEventListener("click", () => onDifficultyClick(button));
   });
@@ -1744,6 +1867,7 @@
       getPack: () => ({
         category: state.categoryId,
         difficulty: state.difficulty,
+        band: state.band,
         count: state.pool.length,
         pool: state.pool.slice(),
       }),
@@ -1751,11 +1875,21 @@
         state.categories.map((category) => ({
           id: category.id,
           nameKey: category.nameKey,
-          counts: {
-            1: (category.levels[1] || []).length,
-            2: (category.levels[2] || []).length,
-            3: (category.levels[3] || []).length,
-          },
+          education: Boolean(category.education),
+          counts: category.levels
+            ? {
+                1: (category.levels[1] || []).length,
+                2: (category.levels[2] || []).length,
+                3: (category.levels[3] || []).length,
+              }
+            : null,
+          bands: category.bands
+            ? category.bands.map((band) => ({
+                id: band.id,
+                labelKey: band.labelKey,
+                count: (band.words || []).length,
+              }))
+            : null,
         })),
       getFalling: () =>
         state.words.map((w) => ({

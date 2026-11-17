@@ -917,6 +917,20 @@ button:disabled {
   align-items: center;
 }
 
+.pack-controls.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.level-select {
+  width: auto;
+  min-width: 132px;
+  max-width: 190px;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
 .pack-select {
   width: 100%;
   height: 40px;
@@ -1451,6 +1465,7 @@ button:disabled {
   .panel { border-radius: 21px; }
   .overlay { padding: 10px; }
   .pack-controls { grid-template-columns: 1fr; }
+  .level-select { width: 100%; max-width: none; }
   .diff-group { justify-content: space-between; }
   .diff-btn { flex: 1; text-align: center; }
   .danger-line span { display: none; }
