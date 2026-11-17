@@ -3,6 +3,10 @@
 
   const WORD_BANK = Array.isArray(window.PIU_WORDS) ? window.PIU_WORDS.slice() : [];
   const LEXICON = Array.isArray(window.PIU_LEXICON) ? window.PIU_LEXICON.slice() : [];
+  const EMOJI =
+    window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
+  const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
+  const EFFECT_HUES = { explode: 42, crack: 330, fly: 190, drop: 265, spin: 150 };
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   const HS_KEY = "piupiu.highscore";
   const MUTE_KEY = "piupiu.muted";
@@ -100,6 +104,7 @@
     pileFill: $("pileFill"),
     time: $("time"),
     heard: $("heard"),
+    praise: $("praise"),
     toast: $("toast"),
     bestLine: $("bestLine"),
     speechNote: $("speechNote"),
@@ -128,6 +133,7 @@
     missed: 0,
     missedWords: [],
     newRecord: false,
+    lastEffect: null,
     elapsed: 0,
     level: 1,
     spawnTimer: 0.8,
@@ -144,11 +150,14 @@
     speechNetworkErrors: 0,
     restartTimer: 0,
     heardTimer: 0,
+    praiseTimer: 0,
     toastTimer: 0,
     lastHud: {},
     lastFieldH: 0,
     lastFieldW: 0,
   };
+
+  let effectBag = [];
 
   /* ------------------------------------------------------------------ */
   /* utilities                                                           */
@@ -389,6 +398,65 @@
     noiseBurst(0.05, 0.02);
   }
 
+  function whoosh(duration = 0.35, from = 300, to = 1800, volume = 0.03) {
+    const ctx = audio();
+    if (!ctx) return;
+    const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.value = 1.1;
+    const start = ctx.currentTime;
+    filter.frequency.setValueAtTime(from, start);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(60, to), start + duration);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + duration * 0.25);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(start);
+    src.stop(start + duration + 0.02);
+  }
+
+  function playCrack() {
+    noiseBurst(0.07, 0.03);
+    tone(1180, 0.035, "square", 0.022);
+    tone(520, 0.06, "square", 0.02, 0.05);
+  }
+
+  function playFly() {
+    whoosh(0.38, 260, 2200, 0.035);
+    tone(520, 0.28, "sine", 0.022, 0, 1240);
+  }
+
+  function playDrop() {
+    tone(620, 0.3, "sine", 0.04, 0, 110);
+    tone(170, 0.12, "triangle", 0.03, 0.24);
+    whoosh(0.22, 800, 200, 0.02);
+  }
+
+  function playSpin() {
+    tone(660, 0.09, "triangle", 0.028);
+    tone(880, 0.09, "triangle", 0.028, 0.07);
+    tone(1320, 0.12, "triangle", 0.03, 0.14);
+    tone(1760, 0.16, "sine", 0.02, 0.22);
+  }
+
+  function playEffect(effect) {
+    if (effect === "crack") playCrack();
+    else if (effect === "fly") playFly();
+    else if (effect === "drop") playDrop();
+    else if (effect === "spin") playSpin();
+    else playPop();
+  }
+
   function playLevel() {
     tone(620, 0.1, "triangle", 0.03);
     tone(930, 0.14, "triangle", 0.03, 0.09);
@@ -409,6 +477,7 @@
     cancelAnimationFrame(state.raf);
     state.raf = 0;
     hideHeard();
+    hidePraise();
     hideToast();
     for (const w of state.words) w.el.remove();
     for (const s of state.settled) s.el.remove();
@@ -423,6 +492,7 @@
     state.missed = 0;
     state.missedWords = [];
     state.newRecord = false;
+    state.lastEffect = null;
     state.elapsed = 0;
     state.level = 1;
     state.spawnTimer = 0.85;
@@ -476,6 +546,7 @@
     const fieldH = els.field.clientHeight;
     for (const word of state.words.slice()) {
       if (state.phase !== "playing") break;
+      updateWordFace(word, dt);
       moveWord(word, dt, fieldH);
     }
 
@@ -504,6 +575,16 @@
     span.className = "word-text";
     span.textContent = word;
     el.appendChild(span);
+
+    const emoji = EMOJI[word] || "";
+    if (emoji) {
+      const emojiFace = document.createElement("span");
+      emojiFace.className = "word-emoji";
+      emojiFace.setAttribute("aria-hidden", "true");
+      emojiFace.textContent = emoji;
+      el.appendChild(emojiFace);
+    }
+
     els.wordLayer.appendChild(el);
 
     const width = el.offsetWidth;
@@ -513,9 +594,29 @@
 
     const fallSeconds = Math.max(3.3, 8.6 - (state.level - 1) * 0.5);
     const speed = fieldH / fallSeconds;
-    const obj = { word, el, x, y: -height - 8, w: width, h: height, speed };
+    const obj = {
+      word,
+      el,
+      x,
+      y: -height - 8,
+      w: width,
+      h: height,
+      speed,
+      emoji,
+      faceTimer: 1,
+      showEmoji: false,
+    };
     el.style.transform = `translate3d(${x}px, ${obj.y}px, 0)`;
     state.words.push(obj);
+  }
+
+  function updateWordFace(word, dt) {
+    if (!word.emoji) return;
+    word.faceTimer -= dt;
+    if (word.faceTimer > 0) return;
+    word.faceTimer += 1;
+    word.showEmoji = !word.showEmoji;
+    word.el.classList.toggle("show-emoji", word.showEmoji);
   }
 
   function moveWord(word, dt, fieldH) {
@@ -550,6 +651,8 @@
 
     const finalY = Math.max(0, y);
     word.y = finalY;
+    word.showEmoji = false;
+    word.el.classList.remove("show-emoji");
     word.el.classList.add("settled", "miss");
     word.el.style.transform = `translate3d(${word.x}px, ${finalY}px, 0)`;
     window.setTimeout(() => word.el.classList.remove("miss"), 340);
@@ -588,6 +691,7 @@
     stopSpeech();
     cancelAnimationFrame(state.raf);
     state.raf = 0;
+    hidePraise();
     els.pauseBtn.disabled = true;
     updatePauseButton();
 
@@ -748,6 +852,7 @@
       : tr("speech.note.unsupported");
     if (state.phase === "over") renderOverPanel();
     hideHeard();
+    hidePraise();
     hideToast();
   }
 
@@ -807,6 +912,150 @@
     return null;
   }
 
+  function nextEffect() {
+    if (!effectBag.length) effectBag = shuffle(EFFECTS.slice());
+    return effectBag.pop();
+  }
+
+  function cloneWordFace(word, rel) {
+    const clone = word.el.cloneNode(true);
+    clone.classList.add("fx-face");
+    clone.style.left = `${rel.left}px`;
+    clone.style.top = `${rel.top}px`;
+    clone.style.width = `${rel.width}px`;
+    clone.style.height = `${rel.height}px`;
+    clone.style.transform = "none";
+    clone.style.pointerEvents = "none";
+    return clone;
+  }
+
+  function spawnSparks(cx, cy, hue, count) {
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const distance = 34 + Math.random() * 120;
+      const spark = document.createElement("div");
+      spark.className = "spark";
+      spark.style.left = `${cx + (Math.random() - 0.5) * 18}px`;
+      spark.style.top = `${cy + (Math.random() - 0.5) * 14}px`;
+      spark.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+      spark.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+      spark.style.setProperty("--size", `${3 + Math.random() * 5}px`);
+      spark.style.setProperty("--dur", `${0.5 + Math.random() * 0.45}s`);
+      spark.style.setProperty("--hue", hue + (Math.random() * 50 - 25));
+      addFx(spark);
+    }
+  }
+
+  function spawnStars(cx, cy, hue, count) {
+    for (let i = 0; i < count; i++) {
+      const star = document.createElement("div");
+      star.className = "fx-star";
+      star.textContent = Math.random() > 0.5 ? "✦" : "✧";
+      star.style.left = `${cx + (Math.random() - 0.5) * 24}px`;
+      star.style.top = `${cy + (Math.random() - 0.5) * 20}px`;
+      star.style.setProperty("--size", `${12 + Math.random() * 12}px`);
+      star.style.setProperty("--hue", hue + (Math.random() * 60 - 30));
+      star.style.setProperty("--dx", `${(Math.random() - 0.5) * 200}px`);
+      star.style.setProperty("--dy", `${-30 - Math.random() * 150}px`);
+      star.style.setProperty("--rot", `${(Math.random() - 0.5) * 280}deg`);
+      addFx(star);
+    }
+  }
+
+  function spawnStreaks(cx, cy, hue, count) {
+    for (let i = 0; i < count; i++) {
+      const streak = document.createElement("div");
+      streak.className = "fx-streak";
+      streak.style.left = `${cx + (Math.random() - 0.5) * 90}px`;
+      streak.style.top = `${cy - 20 + (Math.random() - 0.5) * 20}px`;
+      streak.style.setProperty("--hue", hue);
+      addFx(streak);
+    }
+  }
+
+  function createFlash(cx, cy, hue) {
+    const flash = document.createElement("div");
+    flash.className = "fx-flash";
+    flash.style.setProperty("--x", `${cx}px`);
+    flash.style.setProperty("--y", `${cy}px`);
+    flash.style.setProperty("--hue", hue);
+    addFx(flash);
+  }
+
+  function spawnEmojiBurst(word, cx, cy) {
+    if (!word.emoji) return;
+    const node = document.createElement("span");
+    node.className = "fx-emoji";
+    node.textContent = word.emoji;
+    node.style.left = `${cx}px`;
+    node.style.top = `${cy}px`;
+    addFx(node);
+  }
+
+  function runEffect(effect, word, rel, wordHue, effectHue) {
+    const cx = rel.left + rel.width / 2;
+    const cy = rel.top + rel.height / 2;
+    createFlash(cx, cy, effectHue);
+
+    if (effect === "crack") {
+      const left = cloneWordFace(word, rel);
+      left.classList.add("fx-crack-left");
+      left.style.setProperty("--fx-hue", effectHue);
+      addFx(left);
+      const right = cloneWordFace(word, rel);
+      right.classList.add("fx-crack-right");
+      right.style.setProperty("--fx-hue", effectHue);
+      addFx(right);
+
+      const bolt = document.createElement("span");
+      bolt.className = "fx-bolt";
+      bolt.textContent = "⚡";
+      bolt.style.left = `${cx}px`;
+      bolt.style.top = `${cy}px`;
+      addFx(bolt);
+      spawnSparks(cx, cy, effectHue, 10);
+      spawnStars(cx, cy, effectHue, 6);
+      spawnEmojiBurst(word, cx, cy);
+      return;
+    }
+
+    if (effect === "fly") {
+      const clone = cloneWordFace(word, rel);
+      clone.classList.add("fx-fly");
+      clone.style.setProperty("--fx-hue", effectHue);
+      addFx(clone);
+      spawnStreaks(cx, cy, effectHue, 4);
+      spawnStars(cx, cy, effectHue, 8);
+      spawnEmojiBurst(word, cx, cy);
+      return;
+    }
+
+    if (effect === "drop") {
+      const clone = cloneWordFace(word, rel);
+      clone.classList.add("fx-drop");
+      clone.style.setProperty("--fx-hue", effectHue);
+      addFx(clone);
+      spawnStreaks(cx, cy, effectHue, 7);
+      spawnSparks(cx, cy, effectHue, 8);
+      spawnEmojiBurst(word, cx, cy);
+      return;
+    }
+
+    if (effect === "spin") {
+      const clone = cloneWordFace(word, rel);
+      clone.classList.add("fx-spin");
+      clone.style.setProperty("--fx-hue", effectHue);
+      addFx(clone);
+      spawnStars(cx, cy, effectHue, 12);
+      spawnEmojiBurst(word, cx, cy);
+      return;
+    }
+
+    burst(word.el, rel, wordHue);
+    spawnStars(cx, cy, effectHue, 6);
+    spawnEmojiBurst(word, cx, cy);
+  }
+
   function explodeWord(word) {
     const index = state.words.indexOf(word);
     if (index === -1) return;
@@ -833,13 +1082,23 @@
     state.score += points;
     state.cleared += 1;
 
-    burst(word.el, rel, hueFor(word.word));
+    const effect = nextEffect();
+    state.lastEffect = effect;
+    const effectHue = EFFECT_HUES[effect] || hueFor(word.word);
+    runEffect(effect, word, rel, hueFor(word.word), effectHue);
     word.el.remove();
-    showFloat(`+${points}`, state.combo >= 2 ? `×${state.combo}` : "", cx, cy);
-    playPop();
+    showFloat(
+      `+${points}`,
+      state.combo >= 2 ? `×${state.combo}` : "",
+      cx,
+      cy,
+      `hsl(${effectHue} 100% 78%)`,
+    );
+    playEffect(effect);
     pulseCombo();
     updateHUD(true);
     showHeard(tr("heard.correct", { word: word.word }));
+    showPraise();
   }
 
   function burst(el, rel, hue) {
@@ -856,21 +1115,7 @@
     ring.style.setProperty("--hue", hue);
     addFx(ring);
 
-    const sparkCount = 18;
-    for (let i = 0; i < sparkCount; i++) {
-      const angle = (Math.PI * 2 * i) / sparkCount + Math.random() * 0.5;
-      const distance = 34 + Math.random() * 120;
-      const spark = document.createElement("div");
-      spark.className = "spark";
-      spark.style.left = `${cx + (Math.random() - 0.5) * 18}px`;
-      spark.style.top = `${cy + (Math.random() - 0.5) * 14}px`;
-      spark.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
-      spark.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
-      spark.style.setProperty("--size", `${3 + Math.random() * 5}px`);
-      spark.style.setProperty("--dur", `${0.5 + Math.random() * 0.45}s`);
-      spark.style.setProperty("--hue", hue + (Math.random() * 50 - 25));
-      addFx(spark);
-    }
+    spawnSparks(cx, cy, hue, 18);
 
     const textEl = el.querySelector(".word-text");
     const node = textEl && textEl.firstChild;
@@ -908,11 +1153,15 @@
     els.fxLayer.appendChild(node);
   }
 
-  function showFloat(text, sub, x, y) {
+  function showFloat(text, sub, x, y, color) {
     const node = document.createElement("div");
     node.className = "float-score";
     node.style.left = `${x}px`;
     node.style.top = `${y}px`;
+    if (color) {
+      node.style.color = color;
+      node.style.textShadow = `0 0 18px ${color}`;
+    }
     node.appendChild(document.createTextNode(text));
     if (sub) {
       const small = document.createElement("small");
@@ -1112,6 +1361,24 @@
     setText(els.heard, "");
   }
 
+  function showPraise() {
+    if (!els.praise) return;
+    const keys = ["praise.1", "praise.2", "praise.3", "praise.4"];
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    setText(els.praise, `⭐ ${tr(key)}`);
+    els.praise.classList.add("show");
+    clearTimeout(state.praiseTimer);
+    state.praiseTimer = window.setTimeout(() => {
+      els.praise.classList.remove("show");
+    }, 950);
+  }
+
+  function hidePraise() {
+    clearTimeout(state.praiseTimer);
+    els.praise.classList.remove("show");
+    setText(els.praise, "");
+  }
+
   function togglePause() {
     if (state.phase === "playing") pauseGame();
     else if (state.phase === "paused") resumeGame();
@@ -1308,7 +1575,16 @@
           },
         })),
       getFalling: () =>
-        state.words.map((w) => ({ word: w.word, x: w.x, y: w.y, w: w.w, h: w.h })),
+        state.words.map((w) => ({
+          word: w.word,
+          x: w.x,
+          y: w.y,
+          w: w.w,
+          h: w.h,
+          emoji: w.emoji,
+          showEmoji: w.showEmoji,
+        })),
+      updateWordFace,
       getSettled: () =>
         state.settled.map((s) => ({ word: s.word, x: s.x, y: s.y, w: s.w, h: s.h })),
     };

@@ -72,18 +72,19 @@
       <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
       <div id="heard" class="heard" aria-live="polite"></div>
+      <div id="praise" class="praise" aria-live="polite"></div>
       <div id="toast" class="toast" role="status"></div>
 
       <div id="overlay" class="overlay">
         <section id="startPanel" class="panel" aria-labelledby="gameTitle">
-          <p class="eyebrow" data-i18n="start.eyebrow">英语单词爆破</p>
+          <p class="eyebrow" data-i18n="start.eyebrow">🚀 英语单词爆破</p>
           <h1 id="gameTitle">Piu<span>Piu</span></h1>
           <p class="tagline" data-i18n="start.tagline">读出来，让它爆炸。</p>
 
           <div class="steps">
-            <div class="step"><span>01</span><p data-i18n="start.step1">单词从屏幕顶部随机落下</p></div>
-            <div class="step"><span>02</span><p data-i18n="start.step2">对着麦克风大声读出这个英语单词</p></div>
-            <div class="step"><span>03</span><p data-i18n="start.step3">读对立即爆破，没接住就会堆在底部</p></div>
+            <div class="step"><span class="step-icon" aria-hidden="true">⬇️</span><p data-i18n="start.step1">单词从屏幕顶部随机落下</p></div>
+            <div class="step"><span class="step-icon" aria-hidden="true">🎤</span><p data-i18n="start.step2">对着麦克风大声读出这个英语单词</p></div>
+            <div class="step"><span class="step-icon" aria-hidden="true">💥</span><p data-i18n="start.step3">读对立即爆破，没接住就会堆在底部</p></div>
           </div>
 
           <p class="rule">
@@ -118,7 +119,7 @@
         </section>
 
         <section id="pausePanel" class="panel hidden" aria-labelledby="pauseTitle">
-          <p class="eyebrow" data-i18n="pause.eyebrow">休息一下</p>
+          <p class="eyebrow" data-i18n="pause.eyebrow">😴 休息一下</p>
           <h2 id="pauseTitle" data-i18n="pause.title">已暂停</h2>
           <p class="tagline" data-i18n="pause.tagline">单词们正在半空中等你。</p>
           <button id="resumeBtn" class="primary-btn" type="button" data-i18n="pause.cta">继续游戏</button>
@@ -126,9 +127,9 @@
         </section>
 
         <section id="overPanel" class="panel hidden" aria-labelledby="overTitle">
-          <p class="eyebrow" data-i18n="over.eyebrow">堆积到顶了</p>
-          <h2 id="overTitle" data-i18n="over.title">游戏结束</h2>
-          <p class="tagline" data-i18n="over.tagline">单词堆到屏幕顶端了。</p>
+          <p class="eyebrow" data-i18n="over.eyebrow">🎉 堆积到顶了</p>
+          <h2 id="overTitle" data-i18n="over.title">本轮结束</h2>
+          <p class="tagline" data-i18n="over.tagline">单词堆满啦，再来一次吧！</p>
 
           <div class="result-grid">
             <div><span data-i18n="over.score">得分</span><strong id="finalScore">0</strong></div>
@@ -137,7 +138,7 @@
             <div><span data-i18n="over.time">坚持</span><strong id="finalTime">0:00</strong></div>
           </div>
 
-          <p class="missed-title" data-i18n="over.missedTitle">漏掉的单词</p>
+          <p class="missed-title" data-i18n="over.missedTitle">这些词再练一练</p>
           <div id="missedList" class="missed-list"></div>
           <p id="recordLine" class="record"></p>
 
@@ -168,6 +169,7 @@
   <script src="js/i18n.js"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
+  <script src="js/emojis.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>
