@@ -1,119 +1,87 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const ambient = require("../js/ambient.js");
 
-const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+const root = path.join(__dirname, "..");
+const source = fs.readFileSync(path.join(root, "js/pixi-ambient.js"), "utf8");
+const gameHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const demoHtml = fs.readFileSync(path.join(root, "pixi-demo.html"), "utf8");
+const gameCss = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
+const demoCss = fs.readFileSync(path.join(root, "css/pixi-demo.css"), "utf8");
+const vendorPath = path.join(root, "js/vendor/pixi.min.js");
+const licensePath = path.join(root, "js/vendor/pixi.LICENSE.txt");
 
-const { SEASONS, FEATURES, ELEMENTS, WEATHERS } = ambient;
-const KINDS = ["fly", "walk", "swim", "space", "sky", "bloom"];
-const VALID_SEASONS = new Set([...SEASONS, "any"]);
-const ALLOWED_SIZES = (pair, id) => {
-  assert.ok(Array.isArray(pair) && pair.length === 2, `${id} needs a two-value range`);
-  const [min, max] = pair;
-  assert.ok(Number.isFinite(min) && Number.isFinite(max), `${id} range must be numeric`);
-  assert.ok(min > 0 && min <= max, `${id} range must be positive and ordered`);
-};
+const SCENES = ["spring", "summer", "autumn", "winter", "egypt", "greece", "rome", "space"];
 
-// ---------- seasons ----------
-assert.deepEqual(
-  SEASONS.slice().sort(),
-  ["autumn", "spring", "summer", "winter"],
-  "four seasons expected",
+// ---------- vendored engine ----------
+assert.ok(fs.existsSync(vendorPath), "vendored PixiJS is missing");
+const vendor = fs.readFileSync(vendorPath, "utf8");
+assert.ok(vendor.length > 500_000, "vendored PixiJS looks truncated");
+assert.ok(vendor.includes("PIXI="), "vendored PixiJS does not expose the PIXI global");
+assert.ok(fs.existsSync(licensePath), "PixiJS license file is missing");
+assert.match(fs.readFileSync(licensePath, "utf8"), /MIT License/i, "PixiJS license must stay MIT");
+
+// ---------- eight scenes ----------
+assert.match(
+  source,
+  /const ORDER = \["spring", "summer", "autumn", "winter", "egypt", "greece", "rome", "space"\];/,
+  "ambient scene order must contain the four seasons and four themed scenes",
 );
-
-// ---------- catalog size ----------
-assert.ok(
-  ELEMENTS.length >= 50,
-  `expected at least 50 ambient elements, got ${ELEMENTS.length}`,
-);
-assert.ok(
-  WEATHERS.length >= 15,
-  `expected at least 15 weather types, got ${WEATHERS.length}`,
-);
-assert.ok(
-  ELEMENTS.length + WEATHERS.length >= 65,
-  "combined ambient catalog should be rich",
-);
-
-const elementIds = new Set();
-for (const element of ELEMENTS) {
-  assert.match(element.id, /^[a-z][a-z0-9-]*$/, `bad element id: ${element.id}`);
-  assert.ok(!elementIds.has(element.id), `duplicate element id: ${element.id}`);
-  elementIds.add(element.id);
-
-  assert.equal(typeof element.emoji, "string", `${element.id} needs an emoji`);
-  assert.match(element.emoji, /\p{Extended_Pictographic}/u, `${element.id} emoji is invalid`);
-  assert.ok(FEATURES.includes(element.feature), `${element.id} has unknown feature`);
-  assert.ok(KINDS.includes(element.kind), `${element.id} has unknown kind`);
-  assert.ok(Array.isArray(element.seasons) && element.seasons.length > 0, `${element.id} needs seasons`);
-  for (const season of element.seasons) {
-    assert.ok(VALID_SEASONS.has(season), `${element.id} has invalid season ${season}`);
-  }
-  ALLOWED_SIZES(element.size, element.id);
-  ALLOWED_SIZES(element.group, element.id);
-  ALLOWED_SIZES(element.duration, element.id);
-  assert.ok(element.group[1] <= 6, `${element.id} group is too large`);
-  if (element.special) assert.equal(element.special, "ufo", `${element.id} has unknown special`);
+for (const scene of SCENES) {
+  assert.ok(source.includes(`    ${scene}: {`), `missing scene metadata: ${scene}`);
+}
+for (const [scene, builder] of [
+  ["spring", "buildSpring"],
+  ["summer", "buildSummer"],
+  ["autumn", "buildAutumn"],
+  ["winter", "buildWinter"],
+  ["egypt", "buildEgypt"],
+  ["greece", "buildGreece"],
+  ["rome", "buildRome"],
+  ["space", "buildSpace"],
+]) {
+  assert.ok(source.includes(`${scene}: ${builder},`), `missing scene builder link: ${scene}`);
+  assert.ok(source.includes(`function ${builder}()`), `missing scene builder: ${builder}`);
+}
+for (const scene of ["egypt", "greece", "rome", "space"]) {
+  assert.ok(source.includes(`    ${scene}(ctx, w, h) {`), `missing painted backdrop: ${scene}`);
 }
 
-// every feature group must have life in it
-for (const feature of FEATURES) {
-  const count = ELEMENTS.filter((element) => element.feature === feature).length;
-  assert.ok(count >= 3, `feature ${feature} only has ${count} elements`);
-}
+// ---------- engine behaviour ----------
+assert.match(source, /PIXI\.Application/, "ambient engine must use a Pixi Application");
+assert.match(source, /preference:\s*"webgl"/, "ambient engine should request WebGL explicitly");
+assert.match(source, /prefers-reduced-motion/, "ambient engine should respect reduced motion");
+assert.match(source, /blendMode\s*=\s*"add"/, "ambient engine should use additive glow blending");
+assert.match(source, /IS_DEMO/, "ambient engine should support demo and in-game modes");
+assert.match(source, /seasonForMonth/, "game mode should start from the real season");
+assert.match(source, /visibilitychange/, "ambient engine should pause with the tab");
+assert.match(source, /setScene:/, "debug scene switching should be exposed");
+assert.doesNotMatch(source, /\p{Extended_Pictographic}/u, "the ambient engine must stay free of emoji assets");
 
-// the requested families are definitely represented
-for (const feature of ["birds", "land", "ocean", "space", "blooms", "sky", "garden"]) {
-  assert.ok(FEATURES.includes(feature), `missing feature group: ${feature}`);
-}
-assert.ok(ELEMENTS.some((element) => element.kind === "swim"), "ocean swimmers missing");
-assert.ok(ELEMENTS.some((element) => element.kind === "fly"), "flying animals missing");
-assert.ok(ELEMENTS.some((element) => element.kind === "bloom"), "flowers missing");
-assert.ok(ELEMENTS.some((element) => element.feature === "space" && element.special === "ufo"), "UFO visit missing");
-assert.ok(
-  ELEMENTS.some((element) => element.emoji === "👽"),
-  "aliens missing",
-);
+// ---------- game wiring ----------
+assert.match(gameHtml, /id="pixiAmbient"/, "game is missing the Pixi ambient mount");
+assert.match(gameHtml, /js\/vendor\/pixi\.min\.js/, "game does not load vendored PixiJS");
+assert.match(gameHtml, /js\/pixi-ambient\.js/, "game does not load the ambient engine");
+assert.doesNotMatch(gameHtml, /js\/ambient\.js/, "game must not load the old ambient.js");
+assert.doesNotMatch(gameHtml, /ambientLayer|weatherLayer|season-wash/, "old ambient markup is still present");
+assert.ok(!fs.existsSync(path.join(root, "js/ambient.js")), "old ambient.js still exists");
+assert.match(gameCss, /\.pixi-ambient\s*\{/, "game CSS is missing .pixi-ambient");
+assert.match(gameCss, /z-index:\s*1;/, "Pixi ambient should sit above the field backdrop");
+assert.match(gameCss, /pointer-events:\s*none;/, "Pixi ambient must not intercept input");
+assert.doesNotMatch(gameCss, /\.ambient-layer|\.weather-drop|\.season-wash/, "old ambient CSS is still present");
 
-// ---------- weather ----------
-const weatherIds = new Set();
-for (const item of WEATHERS) {
-  assert.match(item.id, /^[a-z][a-z0-9-]*$/, `bad weather id: ${item.id}`);
-  assert.ok(!weatherIds.has(item.id), `duplicate weather id: ${item.id}`);
-  weatherIds.add(item.id);
-  assert.equal(item.kind, item.id, `${item.id} must animate with its own kind`);
-  assert.ok(Array.isArray(item.seasons) && item.seasons.length > 0, `${item.id} needs seasons`);
-  for (const season of item.seasons) {
-    assert.ok(VALID_SEASONS.has(season), `${item.id} has invalid season ${season}`);
-  }
-  ALLOWED_SIZES(item.duration, item.id);
-}
+// ---------- standalone preview ----------
+assert.match(demoHtml, /js\/vendor\/pixi\.min\.js/, "preview does not load vendored PixiJS");
+assert.match(demoHtml, /js\/pixi-ambient\.js/, "preview does not load the shared ambient engine");
+assert.match(demoHtml, /id="stage"/, "preview is missing its stage");
+assert.match(demoHtml, /id="dock"/, "preview is missing its scene dock");
+assert.match(demoCss, /\.stage\s*\{/, "preview CSS is missing the stage");
+assert.match(demoCss, /\.scene-btn/, "preview CSS is missing scene buttons");
+assert.match(demoCss, /prefers-reduced-motion/, "preview CSS should respect reduced motion");
 
-for (const kind of ["rain", "snow", "wind", "thunder", "fog", "hail", "frost", "aurora", "rainbow"]) {
-  assert.ok(weatherIds.has(kind), `missing weather type: ${kind}`);
-}
-
-// ---------- wiring ----------
-for (const id of ["ambientLayer", "weatherLayer", "field"]) {
-  assert.match(html, new RegExp(`id="${id}"`), `index.html is missing #${id}`);
-}
-assert.match(html, /season-wash/, "index.html is missing the season wash layer");
-assert.match(html, /js\/ambient\.js/, "index.html does not load the ambient script");
-assert.match(css, /\.ambient-layer/, "css is missing ambient layer styling");
-assert.match(css, /\.weather-layer/, "css is missing weather layer styling");
-assert.match(css, /prefers-reduced-motion[\s\S]*ambient-layer/, "reduced motion must hide ambient life");
-
-// ---------- runtime API ----------
-for (const name of ["start", "stop", "setSeason", "spawnElementById", "runWeatherById"]) {
-  assert.equal(typeof ambient[name], "function", `ambient API is missing ${name}()`);
-}
-assert.equal(typeof ambient.setSeason("summer"), "undefined", "setSeason should stay DOM-free in Node");
-
-console.log(`✓ ${ELEMENTS.length} ambient elements across ${FEATURES.length} feature groups`);
-console.log(`✓ ${WEATHERS.length} weather types (rain, snow, wind, thunder, fog, aurora …)`);
-console.log(`✓ ${elementIds.size + weatherIds.size} unique visual definitions (≥ 50 required)`);
-console.log("✓ every element has a valid emoji, feature, kind and season");
-console.log("✓ birds, land animals, ocean life, aliens/UFO and flowers are all represented");
-console.log("✓ ambient layers are wired into the markup, CSS and reduced-motion rules");
+console.log("✓ PixiJS 8 is vendored locally with its MIT license");
+console.log(`✓ ${SCENES.length} scenes: four seasons + Egypt, Greece, Rome and space`);
+console.log("✓ game uses the Pixi layer and no longer loads the old ambient effects");
+console.log("✓ ambient canvas sits above the backdrop, below words, and ignores input");
+console.log("✓ season start, auto rotation, tab pausing and reduced motion are wired");
+console.log("✓ the shared engine powers both the game and the standalone preview");

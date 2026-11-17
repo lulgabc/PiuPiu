@@ -8,10 +8,11 @@
 
 内置 **500 个核心英语名词与动词**、**20 个主题词库**、**3 套 K-12 阅读词表**（Dolch / Fry / Dale-Chall）和 **Paul Nation 的 BNC/COCA 词族表（1k–25k）**。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
 
-游戏区背后还有一层**四季环境剧场**：季节轮换、雨雪雷电、飞鸟游鱼、外星飞船和遍地小花，共 76 种随机视觉元素，完全不干扰玩法。
+游戏区背后是一层 **PixiJS 8 环境剧场**：四季 + 古埃及、古希腊、古罗马、太空共 **8 个程序化场景**，完全不干扰玩法。
 
-> **实验分支：PixiJS 环境效果预览** → **[pixi-demo.html](https://lulgabc.github.io/PiuPiu/pixi-demo.html)**
-> 用 PixiJS 8 程序化重绘的五个场景（春·花雨 / 夏·深海 / 秋·落叶 / 冬·极光 / 雨·霓虹），目前为独立预览，尚未替换游戏内的 DOM 环境层。
+> **环境效果独立预览** → **[pixi-demo.html](https://lulgabc.github.io/PiuPiu/pixi-demo.html)**
+> 与游戏内使用同一个引擎，可手动切换全部 8 个场景。
+
 
 ## 运行
 
@@ -106,46 +107,41 @@ npm start
 - 奖励特效包括金色光束、屏幕闪光、星星粒子、奖励文案和独立音效，HUD 的「正确」数字会闪烁。
 - 奖励只清除堆积单词，不增加正确计数或得分。
 
-## 四季与环境彩蛋
+## PixiJS 环境场景
 
-游戏区域背后有一层完全独立的「环境剧场」，不会改变单词、计分或操作：
+游戏区域背后是一层完全独立的 PixiJS 8 环境引擎，包含 **8 个程序化场景**：
 
-- **四季变换**：按真实月份从当前季节开始，每 36 秒轮换春 → 夏 → 秋 → 冬，游戏区边框和环境色调随之变化。
-- **天气**：雨、雪、落叶、花瓣、风、雾、雷暴闪电、萤火虫、气泡、流星、彩虹、极光、阳光光束、霜冻、冰雹，共 **15 种**。
-- **动物与生命**：鸟类（小鸟、鸽子、鹰、鸭子、天鹅、火烈鸟、鹦鹉、猫头鹰）、小动物（松鼠、兔子、狐狸、鹿、刺猬、青蛙、乌龟、猫、狗）、昆虫（蝴蝶、蜜蜂、瓢虫、蜗牛、毛毛虫）。
-- **海洋**：鱼、热带鱼、河豚、鲨鱼、海豚、鲸、蓝鲸、章鱼、鱿鱼、蟹、龙虾、水母在屏幕中层游动。
-- **外星来客**：外星人、像素外星怪、火箭、卫星、彗星、行星、流星；🛸 UFO 会带着光柱和 `👽 👾` 降临。
-- **天空与花朵**：云、彩虹、太阳、月亮、星星、闪光，以及樱花、雏菊、郁金香、玫瑰、木槿、向日葵、花束、嫩芽等会在地面附近绽放。
-- 共 **61 种环境元素 + 15 种天气 = 76 种随机视觉定义**，按季节筛选后随机组合；天气作为主效果，动物 / 花朵 / 天空作为次效果可以同时出现。
-- 环境层位于单词层**下方**，全部 `pointer-events: none`，不拦截点击或输入；节点数量有上限，动画只使用 `transform` 和 `opacity`。
-- 标签页切到后台时环境动画会停止，回到前台自动恢复；开启系统「减少动态效果」时不生成环境元素，并隐藏环境层。
+| 场景 | 内容 |
+| --- | --- |
+| **春 · 花雨** | 晨光、太阳光晕、樱花花瓣、前后景景深、漂浮光斑 |
+| **夏 · 深海** | 月光、水母、气泡、鱼群、水面光纹与水下光柱 |
+| **秋 · 落叶** | 暖色薄雾、银杏叶、椭圆落叶、远景飞鸟 |
+| **冬 · 极光** | 极光帘幕、星空、雪幕、山脊与松林剪影 |
+| **埃及 · 金沙** | 金字塔、尼罗河落日、沙丘、棕榈与金色尘埃 |
+| **希腊 · 爱琴海** | 月光、海面、石柱神殿、橄榄叶与萤火 |
+| **罗马 · 余晖** | 斗兽场拱门、火炬余烬、松柏与帝国晚霞 |
+| **太空 · 星海** | 星云、环状行星、流星、卫星与闪烁星场 |
+
+- 游戏从真实月份对应的季节开始，每 **22 秒**切换一个场景，按「春 → 夏 → 秋 → 冬 → 古埃及 → 古希腊 → 古罗马 → 太空」循环，使用交叉淡入淡出。
+- 花瓣、银杏、水母、极光、金字塔、神殿、斗兽场、行星与星云全部由 Canvas 渐变、矢量图形和粒子程序化绘制，**不使用 emoji 贴图**。
+- 环境层位于单词层**下方**（环境 `z-index: 1`，单词层 `3`），`pointer-events: none`，不拦截点击、输入或空格提示，也不改变任何游戏状态。
+- 标签页切到后台时停止 Pixi 渲染与场景轮播，回到前台自动恢复。
+- 开启系统「减少动态效果」时不加载 Pixi 场景，并隐藏环境层。
+- 桌面实测约 **61 FPS**；渲染分辨率上限为 2x DPR，移动端自动适配。
+- PixiJS 8 以 MIT 许可内置在 `js/vendor/pixi.min.js`，不依赖 CDN。
+
+独立预览页：**[pixi-demo.html](https://lulgabc.github.io/PiuPiu/pixi-demo.html)**，可手动切换或暂停 8 个场景。
 
 ### 环境调试
 
 在 URL 后加 `?debug=1` 后可在控制台直接调用：
 
 ```js
-PiuAmbient.ELEMENTS.length;      // 61
-PiuAmbient.WEATHERS.length;      // 15
-PiuAmbient.setSeason("winter");  // spring / summer / autumn / winter
-PiuAmbient.spawnElementById("ufo");
-PiuAmbient.runWeatherById("thunder");
+PiuAmbient.scenes;               // 8 个场景 key
+PiuAmbient.current;              // 当前场景
+PiuAmbient.setScene("egypt");    // spring / summer / autumn / winter / egypt / greece / rome / space
+PiuAmbient.next();
 ```
-
-## PixiJS 环境效果预览
-
-打开 **[pixi-demo.html](https://lulgabc.github.io/PiuPiu/pixi-demo.html)** 查看独立预览：
-
-- **春 · 花雨**：晨光、樱花与自由飘落的花瓣。
-- **夏 · 深海**：月光、水母、气泡、鱼群与水面光纹。
-- **秋 · 落叶**：暖色薄雾、银杏与椭圆落叶。
-- **冬 · 极光**：星空、雪幕、极光帘幕与松林山脊。
-- **雨 · 霓虹**：雨线、城市灯火、地面涟漪与闪电。
-- 五个场景自动轮播，也可以手动切换或暂停；全部由 PixiJS 8 / WebGL 程序化绘制，不使用 emoji 贴图。
-- 花瓣、银杏、水母、极光和雨线均为矢量或 canvas 纹理；背景使用多层渐变、光晕和剪影。
-- 桌面实测约 61 FPS，移动端自适应排列；启用「减少动态效果」时不自动轮播。
-
-PixiJS 8 以 MIT 许可本地内置在 `js/vendor/pixi.min.js`。该页面目前是**独立实验**，游戏内仍使用原有的 `js/ambient.js`；确认视觉方向后再替换环境层。
 
 ## 玩法
 
@@ -191,7 +187,7 @@ PixiJS 8 以 MIT 许可本地内置在 `js/vendor/pixi.min.js`。该页面目前
 ```text
 PiuPiu/
 ├── index.html                # 页面结构、开始 / 暂停 / 结束面板、词库选择
-├── pixi-demo.html            # PixiJS 四季环境效果独立预览
+├── pixi-demo.html            # 8 个 PixiJS 环境场景独立预览
 ├── css/style.css             # 圆润儿童化视觉、emoji 卡片、特效动画、响应式布局
 ├── css/pixi-demo.css         # PixiJS 预览页的舞台与控制栏样式
 ├── js/i18n.js                # 中文 / 法语 / 英语界面文案与语言切换
@@ -201,8 +197,7 @@ PiuPiu/
 ├── js/education.js           # Dolch / Fry / Dale-Chall 教育词表
 ├── js/families.js            # Paul Nation BNC/COCA 词族 1k–25k
 ├── js/emojis.js              # 单词 → emoji 映射
-├── js/ambient.js             # 四季、天气与 61 种随机环境元素
-├── js/pixi-ambient-demo.js   # PixiJS 预览：五个程序化环境场景
+├── js/pixi-ambient.js        # 游戏与预览共用的 8 场景 PixiJS 环境引擎
 ├── js/vendor/pixi.min.js     # PixiJS 8（MIT）
 ├── tests/verify-words.cjs    # 核心词库校验
 ├── tests/verify-lexicon.cjs  # 类别、等级、重复词与主题名翻译校验
@@ -210,11 +205,11 @@ PiuPiu/
 ├── tests/verify-families.cjs # BNC/COCA 25 个词族列表与 headword 校验
 ├── tests/verify-emojis.cjs   # emoji 映射、覆盖率和重复键校验
 ├── tests/verify-i18n.cjs     # 三语翻译完整性与插值占位符校验
-├── tests/verify-ambient.cjs  # 四季、天气与环境元素目录校验
+├── tests/verify-ambient.cjs  # 8 场景、游戏接入与旧环境清理校验
 └── package.json
 ```
 
-纯原生 HTML / CSS / JavaScript，无构建步骤、无第三方依赖。音效使用 Web Audio API 实时合成。
+纯原生 HTML / CSS / JavaScript，无构建步骤；PixiJS 8 已本地内置。音效使用 Web Audio API 实时合成。
 
 ## 校验
 
@@ -222,7 +217,7 @@ PiuPiu/
 npm test
 ```
 
-检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。另外校验环境系统：至少 50 种元素、15 种天气、唯一 ID、合法 emoji、要素分组与季节覆盖，以及环境层是否已接入页面和减少动态效果规则。
+检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。另外校验 Pixi 环境引擎：8 个场景与顺序、WebGL 初始化、游戏内挂载、旧环境层已移除、无 emoji 素材，以及后台暂停和减少动态效果规则。
 
 ## 调试
 
@@ -235,9 +230,10 @@ __PIU__.getPack();
 __PIU__.getCategories();
 __PIU__.state.pile;
 
-PiuAmbient.setSeason("spring");
-PiuAmbient.spawnElementById("ufo");
-PiuAmbient.runWeatherById("snow");
+PiuAmbient.scenes;             // 8 个场景
+PiuAmbient.current;            // 当前场景
+PiuAmbient.setScene("egypt");
+PiuAmbient.next();
 ```
 
 ## 已知限制
@@ -247,4 +243,6 @@ PiuAmbient.runWeatherById("snow");
 - Chrome 的语音识别通常需要联网；Safari 可能使用系统语音服务。
 - 界面语言不会改变目标单词，也不会改变语音识别使用的 `en-US` 语言。
 - 浏览器不支持 `SpeechRecognition` 时（例如 Firefox），游戏自动使用键盘输入模式。
+- 环境场景依赖 WebGL；如果 WebGL 初始化失败，环境层会自动隐藏，不影响单词与游戏逻辑。
+- 系统开启「减少动态效果」时不会创建环境画布，只保留静态的游戏背景。
 - 麦克风权限被拒绝后，可点击底部麦克风按钮重试，或直接使用输入框。
