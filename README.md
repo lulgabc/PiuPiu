@@ -10,6 +10,9 @@
 
 游戏区背后还有一层**四季环境剧场**：季节轮换、雨雪雷电、飞鸟游鱼、外星飞船和遍地小花，共 76 种随机视觉元素，完全不干扰玩法。
 
+> **实验分支：PixiJS 环境效果预览** → **[pixi-demo.html](https://lulgabc.github.io/PiuPiu/pixi-demo.html)**
+> 用 PixiJS 8 程序化重绘的五个场景（春·花雨 / 夏·深海 / 秋·落叶 / 冬·极光 / 雨·霓虹），目前为独立预览，尚未替换游戏内的 DOM 环境层。
+
 ## 运行
 
 语音识别要求安全上下文，请用本地服务器打开，不要直接双击 `index.html`。
@@ -129,6 +132,21 @@ PiuAmbient.spawnElementById("ufo");
 PiuAmbient.runWeatherById("thunder");
 ```
 
+## PixiJS 环境效果预览
+
+打开 **[pixi-demo.html](https://lulgabc.github.io/PiuPiu/pixi-demo.html)** 查看独立预览：
+
+- **春 · 花雨**：晨光、樱花与自由飘落的花瓣。
+- **夏 · 深海**：月光、水母、气泡、鱼群与水面光纹。
+- **秋 · 落叶**：暖色薄雾、银杏与椭圆落叶。
+- **冬 · 极光**：星空、雪幕、极光帘幕与松林山脊。
+- **雨 · 霓虹**：雨线、城市灯火、地面涟漪与闪电。
+- 五个场景自动轮播，也可以手动切换或暂停；全部由 PixiJS 8 / WebGL 程序化绘制，不使用 emoji 贴图。
+- 花瓣、银杏、水母、极光和雨线均为矢量或 canvas 纹理；背景使用多层渐变、光晕和剪影。
+- 桌面实测约 61 FPS，移动端自适应排列；启用「减少动态效果」时不自动轮播。
+
+PixiJS 8 以 MIT 许可本地内置在 `js/vendor/pixi.min.js`。该页面目前是**独立实验**，游戏内仍使用原有的 `js/ambient.js`；确认视觉方向后再替换环境层。
+
 ## 玩法
 
 1. 在开始页选择词库和难度，点击「开始游戏」，允许麦克风权限。
@@ -173,7 +191,9 @@ PiuAmbient.runWeatherById("thunder");
 ```text
 PiuPiu/
 ├── index.html                # 页面结构、开始 / 暂停 / 结束面板、词库选择
+├── pixi-demo.html            # PixiJS 四季环境效果独立预览
 ├── css/style.css             # 圆润儿童化视觉、emoji 卡片、特效动画、响应式布局
+├── css/pixi-demo.css         # PixiJS 预览页的舞台与控制栏样式
 ├── js/i18n.js                # 中文 / 法语 / 英语界面文案与语言切换
 ├── js/game.js                # 游戏循环、词库池、emoji 轮换、随机特效、语音识别
 ├── js/words.js               # 500 个核心名词 / 动词
@@ -182,6 +202,8 @@ PiuPiu/
 ├── js/families.js            # Paul Nation BNC/COCA 词族 1k–25k
 ├── js/emojis.js              # 单词 → emoji 映射
 ├── js/ambient.js             # 四季、天气与 61 种随机环境元素
+├── js/pixi-ambient-demo.js   # PixiJS 预览：五个程序化环境场景
+├── js/vendor/pixi.min.js     # PixiJS 8（MIT）
 ├── tests/verify-words.cjs    # 核心词库校验
 ├── tests/verify-lexicon.cjs  # 类别、等级、重复词与主题名翻译校验
 ├── tests/verify-education.cjs # Dolch、Fry、Dale-Chall 词数与分级校验

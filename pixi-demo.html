@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070f">
+  <meta name="description" content="PiuPiu 的 PixiJS 环境效果预览：四季、天气与深海极光。">
+  <title>PiuPiu · PixiJS 环境效果预览</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A5%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/pixi-demo.css">
+</head>
+<body>
+  <div class="demo-shell">
+    <header class="demo-header">
+      <a class="demo-brand" href="./" aria-label="返回 PiuPiu 游戏">
+        <span class="demo-logo" aria-hidden="true">✦</span>
+        <span class="demo-brand-text">Piu<span>Piu</span></span>
+      </a>
+      <div class="demo-title">
+        <span class="demo-eyebrow">PIXIJS AMBIENT LAB</span>
+        <h1>环境效果预览</h1>
+      </div>
+      <a class="demo-back" href="./">返回游戏 ↗</a>
+    </header>
+
+    <main class="stage-wrap">
+      <div class="stage" id="stage" aria-label="PixiJS 四季环境效果预览">
+        <div class="scene-copy" id="sceneCopy">
+          <span class="scene-kicker" id="sceneKicker">SPRING</span>
+          <h2 class="scene-title" id="sceneTitle">春日花雨</h2>
+          <p class="scene-desc" id="sceneDesc">樱瓣、晨光与微风的呼吸</p>
+        </div>
+        <div class="stage-badge" aria-hidden="true"><span></span>PixiJS 8 · WebGL</div>
+        <div class="stage-frame" aria-hidden="true"></div>
+      </div>
+    </main>
+
+    <div class="dock-row">
+      <nav class="dock" id="dock" aria-label="环境场景选择"></nav>
+      <button class="auto-btn" id="autoBtn" type="button" aria-pressed="true">
+        <span class="auto-dot" aria-hidden="true"></span>
+        <span id="autoLabel">自动轮播</span>
+      </button>
+    </div>
+    <p class="demo-note">独立预览 · 尚未接入游戏 · 全部由 PixiJS 程序化绘制，不使用 emoji 素材</p>
+  </div>
+
+  <noscript>请启用 JavaScript 以查看 PixiJS 环境效果。</noscript>
+  <script src="js/vendor/pixi.min.js"></script>
+  <script src="js/pixi-ambient-demo.js"></script>
+</body>
+</html>
