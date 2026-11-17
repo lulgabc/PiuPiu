@@ -4,6 +4,7 @@
   const WORD_BANK = Array.isArray(window.PIU_WORDS) ? window.PIU_WORDS.slice() : [];
   const LEXICON = Array.isArray(window.PIU_LEXICON) ? window.PIU_LEXICON.slice() : [];
   const EDUCATION = Array.isArray(window.PIU_EDUCATION) ? window.PIU_EDUCATION.slice() : [];
+  const FAMILIES = Array.isArray(window.PIU_FAMILIES) ? window.PIU_FAMILIES.slice() : [];
   const EMOJI =
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
   const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
@@ -248,17 +249,29 @@
     }
 
     const categories = [
-      { id: "core", icon: "✦", nameKey: "cat.core", education: false, levels: coreLevels },
+      {
+        id: "core",
+        icon: "✦",
+        nameKey: "cat.core",
+        education: false,
+        group: "themes",
+        levels: coreLevels,
+      },
     ];
 
     for (const category of LEXICON) {
       if (!category || !category.id || !category.levels) continue;
-      categories.push({ ...category, education: false });
+      categories.push({ ...category, education: false, group: "themes" });
     }
 
     for (const category of EDUCATION) {
       if (!category || !category.id || !Array.isArray(category.bands)) continue;
-      categories.push({ ...category, education: true });
+      categories.push({ ...category, education: true, group: category.group || "education" });
+    }
+
+    for (const category of FAMILIES) {
+      if (!category || !category.id || !Array.isArray(category.bands)) continue;
+      categories.push({ ...category, education: true, group: category.group || "families" });
     }
     return categories;
   }
@@ -303,13 +316,15 @@
     select.replaceChildren();
 
     const groups = [
-      { education: true, labelKey: "group.education" },
-      { education: false, labelKey: "group.themes" },
+      { key: "education", labelKey: "group.education" },
+      { key: "families", labelKey: "group.families" },
+      { key: "themes", labelKey: "group.themes" },
     ];
 
     for (const group of groups) {
       const categories = state.categories.filter(
-        (category) => Boolean(category.education) === group.education,
+        (category) =>
+          (category.group || (category.education ? "education" : "themes")) === group.key,
       );
       if (!categories.length) continue;
 
@@ -707,8 +722,16 @@
 
     els.wordLayer.appendChild(el);
 
-    const width = el.offsetWidth;
-    const height = el.offsetHeight;
+    let width = el.offsetWidth;
+    let height = el.offsetHeight;
+    const maxWordWidth = Math.max(80, fieldW - PAD * 2);
+    if (width > maxWordWidth) {
+      const currentSize = Number.parseFloat(getComputedStyle(el).fontSize) || 32;
+      el.style.fontSize = `${Math.max(10, currentSize * (maxWordWidth / width))}px`;
+      width = el.offsetWidth;
+      height = el.offsetHeight;
+    }
+
     const maxX = Math.max(PAD, fieldW - width - PAD);
     const x = PAD + Math.random() * Math.max(1, maxX - PAD);
 
@@ -1876,6 +1899,7 @@
           id: category.id,
           nameKey: category.nameKey,
           education: Boolean(category.education),
+          group: category.group || (category.education ? "education" : "themes"),
           counts: category.levels
             ? {
                 1: (category.levels[1] || []).length,

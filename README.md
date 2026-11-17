@@ -6,7 +6,7 @@
 
 单词从屏幕顶部随机落下。你对着麦克风正确读出单词，它就会带着不同颜色和动画效果消失；如果一直没读对，单词会落到底部并不断堆积。单词堆到屏幕顶端时，本轮结束。
 
-内置 **500 个核心英语名词与动词**、**20 个主题词库**和 **3 套 K-12 阅读词表**（Dolch / Fry / Dale-Chall）。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
+内置 **500 个核心英语名词与动词**、**20 个主题词库**、**3 套 K-12 阅读词表**（Dolch / Fry / Dale-Chall）和 **Paul Nation 的 BNC/COCA 词族表（1k–25k）**。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
 
 ## 运行
 
@@ -43,6 +43,7 @@ npm start
 - **20 个主题词库**：食物、水果、蔬菜、饮品、动物、身体、家庭、服饰、家居、学校、职业、运动、音乐、旅行、交通、自然、天气、科技、情感、地点。
 - 每个主题包含 30 个词，分为初级 / 中级 / 高级，每级 10 个词；选择「全部」会混合三个等级。
 - **教育词表**：Dolch、Fry、Dale-Chall 三套公开阅读词表，位于词库下拉框的「K-12 阅读词表」分组。
+- **BNC/COCA 词族表**：Paul Nation 的 25 个词族列表（1st 1000–25th 1000），位于「词族词表」分组。
 - 当前选择会保存到 `localStorage`，刷新或下次打开时保持。
 - 开始按钮上方会显示当前词库包含的单词数量。
 
@@ -61,9 +62,21 @@ npm start
 - 数据来源均为公开词表：Dolch 为公共领域；Fry 为公开教育词表；Dale-Chall 使用 textstat 的公开 `easy_words.txt` 数据。
 - 参考来源：Dolch 官方分组词表（sightwords.com / 公共领域版本）、Edward Fry 1000 Instant Words、[textstat/textstat](https://github.com/textstat/textstat)。
 
+## BNC/COCA 词族表
+
+- **25 个词族列表**：1st 1000、2nd 1000、…、25th 1000
+- 共 **25,002 个词族 headword**
+- 词族划分采用 Bauer & Nation Level 6（包含常见屈折、派生和前后缀）
+- 游戏中每个 headword 代表一个词族；只存 headword，不展开全部词族成员
+- 选中后使用单独的级别下拉框选择 1st–25th 列表
+- headword 统一为 ASCII 小写；带重音的词会转写（如 `musée → musee`）
+- 本数据源包含 25 个频率词族表；官方的专有名词、边缘词、透明复合词和缩略语补充列表未包含在内
+
+**来源与授权：** I.S.P. Nation (2017), *The BNC/COCA Level 6 word family lists*。本项目的 headword 数据来自公开的 BNC/COCA headword lists（Victoria University of Wellington / EAP Foundation 及公开 CSV 转录）。**BNC/COCA 词表版权归 I.S.P. Nation，并非公共领域**；此处仅用于教育和研究用途并保留署名，重新分发或商用前请核对官方条款。
+
 ## 表情与儿童化
 
-- 755 个可玩单词配有 emoji；下落时单词卡会**每 1 秒在 emoji 和文字之间轮换**，没有 emoji 的单词保持文字。
+- 764 个可玩单词配有 emoji；下落时单词卡会**每 1 秒在 emoji 和文字之间轮换**，没有 emoji 的单词保持文字。
 - 读对后会随机触发 5 种效果之一：**爆炸、裂开、飞走、快速坠落、旋转消失**。
 - 每种效果有不同颜色闪光、星星/火花粒子、飘分颜色和 Web Audio 合成音效。
 - 每次成功会出现本地化鼓励语（⭐ 太棒了 / Bravo / Great!）。
@@ -108,7 +121,7 @@ npm start
 
 ## 单词库
 
-`js/words.js` 提供 500 个核心词；`js/lexicon.js` 提供 20 个主题词库，共 600 个主题词条（572 个跨类别唯一词）；`js/education.js` 提供 Dolch 315、Fry 1000、Dale-Chall 2940 个教育词条。
+`js/words.js` 提供 500 个核心词；`js/lexicon.js` 提供 20 个主题词库，共 600 个主题词条（572 个跨类别唯一词）；`js/education.js` 提供 Dolch 315、Fry 1000、Dale-Chall 2940 个教育词条；`js/families.js` 提供 BNC/COCA 25 个词族列表、25,002 个 headword。
 
 `js/emojis.js` 为 766 个词提供 emoji 映射，覆盖核心、主题和教育词表中的大量单词。
 
@@ -129,10 +142,12 @@ PiuPiu/
 ├── js/words.js               # 500 个核心名词 / 动词
 ├── js/lexicon.js             # 20 个主题词库 × 3 个难度等级
 ├── js/education.js           # Dolch / Fry / Dale-Chall 教育词表
+├── js/families.js            # Paul Nation BNC/COCA 词族 1k–25k
 ├── js/emojis.js              # 单词 → emoji 映射
 ├── tests/verify-words.cjs    # 核心词库校验
 ├── tests/verify-lexicon.cjs  # 类别、等级、重复词与主题名翻译校验
 ├── tests/verify-education.cjs # Dolch、Fry、Dale-Chall 词数与分级校验
+├── tests/verify-families.cjs # BNC/COCA 25 个词族列表与 headword 校验
 ├── tests/verify-emojis.cjs   # emoji 映射、覆盖率和重复键校验
 ├── tests/verify-i18n.cjs     # 三语翻译完整性与插值占位符校验
 └── package.json
@@ -146,7 +161,7 @@ PiuPiu/
 npm test
 ```
 
-检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。
+检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。
 
 ## 调试
 

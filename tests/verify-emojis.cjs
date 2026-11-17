@@ -5,6 +5,7 @@ const EMOJI = require("../js/emojis.js");
 const coreWords = require("../js/words.js");
 const categories = require("../js/lexicon.js");
 const education = require("../js/education.js");
+const families = require("../js/families.js");
 
 const source = fs.readFileSync(path.join(__dirname, "../js/emojis.js"), "utf8");
 const sourceKeys = [...source.matchAll(/\b([a-z]+):\s*"/g)].map((m) => m[1]);
@@ -32,8 +33,13 @@ const themedWords = categories.flatMap((category) =>
 const educationWords = education.flatMap((category) =>
   category.bands.flatMap((band) => band.words),
 );
+const familyWords = families.flatMap((category) =>
+  category.bands.flatMap((band) => band.words),
+);
 const bank = new Set(
-  [...coreWords, ...themedWords, ...educationWords].map((word) => word.toLowerCase()),
+  [...coreWords, ...themedWords, ...educationWords, ...familyWords].map((word) =>
+    word.toLowerCase(),
+  ),
 );
 const mappedBankWords = keys.filter((key) => bank.has(key));
 assert.ok(
