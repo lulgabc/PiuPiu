@@ -8,6 +8,8 @@
 
 内置 **500 个核心英语名词与动词**、**20 个主题词库**、**3 套 K-12 阅读词表**（Dolch / Fry / Dale-Chall）和 **Paul Nation 的 BNC/COCA 词族表（1k–25k）**。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
 
+游戏区背后还有一层**四季环境剧场**：季节轮换、雨雪雷电、飞鸟游鱼、外星飞船和遍地小花，共 76 种随机视觉元素，完全不干扰玩法。
+
 ## 运行
 
 语音识别要求安全上下文，请用本地服务器打开，不要直接双击 `index.html`。
@@ -101,6 +103,32 @@ npm start
 - 奖励特效包括金色光束、屏幕闪光、星星粒子、奖励文案和独立音效，HUD 的「正确」数字会闪烁。
 - 奖励只清除堆积单词，不增加正确计数或得分。
 
+## 四季与环境彩蛋
+
+游戏区域背后有一层完全独立的「环境剧场」，不会改变单词、计分或操作：
+
+- **四季变换**：按真实月份从当前季节开始，每 36 秒轮换春 → 夏 → 秋 → 冬，游戏区边框和环境色调随之变化。
+- **天气**：雨、雪、落叶、花瓣、风、雾、雷暴闪电、萤火虫、气泡、流星、彩虹、极光、阳光光束、霜冻、冰雹，共 **15 种**。
+- **动物与生命**：鸟类（小鸟、鸽子、鹰、鸭子、天鹅、火烈鸟、鹦鹉、猫头鹰）、小动物（松鼠、兔子、狐狸、鹿、刺猬、青蛙、乌龟、猫、狗）、昆虫（蝴蝶、蜜蜂、瓢虫、蜗牛、毛毛虫）。
+- **海洋**：鱼、热带鱼、河豚、鲨鱼、海豚、鲸、蓝鲸、章鱼、鱿鱼、蟹、龙虾、水母在屏幕中层游动。
+- **外星来客**：外星人、像素外星怪、火箭、卫星、彗星、行星、流星；🛸 UFO 会带着光柱和 `👽 👾` 降临。
+- **天空与花朵**：云、彩虹、太阳、月亮、星星、闪光，以及樱花、雏菊、郁金香、玫瑰、木槿、向日葵、花束、嫩芽等会在地面附近绽放。
+- 共 **61 种环境元素 + 15 种天气 = 76 种随机视觉定义**，按季节筛选后随机组合；天气作为主效果，动物 / 花朵 / 天空作为次效果可以同时出现。
+- 环境层位于单词层**下方**，全部 `pointer-events: none`，不拦截点击或输入；节点数量有上限，动画只使用 `transform` 和 `opacity`。
+- 标签页切到后台时环境动画会停止，回到前台自动恢复；开启系统「减少动态效果」时不生成环境元素，并隐藏环境层。
+
+### 环境调试
+
+在 URL 后加 `?debug=1` 后可在控制台直接调用：
+
+```js
+PiuAmbient.ELEMENTS.length;      // 61
+PiuAmbient.WEATHERS.length;      // 15
+PiuAmbient.setSeason("winter");  // spring / summer / autumn / winter
+PiuAmbient.spawnElementById("ufo");
+PiuAmbient.runWeatherById("thunder");
+```
+
 ## 玩法
 
 1. 在开始页选择词库和难度，点击「开始游戏」，允许麦克风权限。
@@ -153,12 +181,14 @@ PiuPiu/
 ├── js/education.js           # Dolch / Fry / Dale-Chall 教育词表
 ├── js/families.js            # Paul Nation BNC/COCA 词族 1k–25k
 ├── js/emojis.js              # 单词 → emoji 映射
+├── js/ambient.js             # 四季、天气与 61 种随机环境元素
 ├── tests/verify-words.cjs    # 核心词库校验
 ├── tests/verify-lexicon.cjs  # 类别、等级、重复词与主题名翻译校验
 ├── tests/verify-education.cjs # Dolch、Fry、Dale-Chall 词数与分级校验
 ├── tests/verify-families.cjs # BNC/COCA 25 个词族列表与 headword 校验
 ├── tests/verify-emojis.cjs   # emoji 映射、覆盖率和重复键校验
 ├── tests/verify-i18n.cjs     # 三语翻译完整性与插值占位符校验
+├── tests/verify-ambient.cjs  # 四季、天气与环境元素目录校验
 └── package.json
 ```
 
@@ -170,7 +200,7 @@ PiuPiu/
 npm test
 ```
 
-检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。
+检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。另外校验环境系统：至少 50 种元素、15 种天气、唯一 ID、合法 emoji、要素分组与季节覆盖，以及环境层是否已接入页面和减少动态效果规则。
 
 ## 调试
 
@@ -182,6 +212,10 @@ __PIU__.getSettled();
 __PIU__.getPack();
 __PIU__.getCategories();
 __PIU__.state.pile;
+
+PiuAmbient.setSeason("spring");
+PiuAmbient.spawnElementById("ufo");
+PiuAmbient.runWeatherById("snow");
 ```
 
 ## 已知限制
