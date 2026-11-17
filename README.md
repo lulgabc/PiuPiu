@@ -6,7 +6,7 @@
 
 单词从屏幕顶部随机落下。你对着麦克风正确读出单词，它就会带着不同颜色和动画效果消失；如果一直没读对，单词会落到底部并不断堆积。单词堆到屏幕顶端时，本轮结束。
 
-内置 **500 个核心英语名词与动词**、**20 个主题词库**、**3 套 K-12 阅读词表**（Dolch / Fry / Dale-Chall）和 **Paul Nation 的 BNC/COCA 词族表（1k–25k）**。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
+内置 **500 个核心英语名词与动词**、**20 个主题词库**、**3 套 K-12 阅读词表**（Dolch / Fry / Dale-Chall）、**Paul Nation 的 BNC/COCA 词族表（1k–25k）**，以及 **PHaVE 动词短语表**和 **PHRASE 短语表**。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
 
 游戏区背后是一层 **PixiJS 8 环境剧场**：四季 + 古埃及、古希腊、古罗马、太空共 **8 个程序化场景**，完全不干扰玩法。
 
@@ -50,8 +50,10 @@ npm start
 - 每个主题包含 30 个词，分为初级 / 中级 / 高级，每级 10 个词；选择「全部」会混合三个等级。
 - **教育词表**：Dolch、Fry、Dale-Chall 三套公开阅读词表，位于词库下拉框的「K-12 阅读词表」分组。
 - **BNC/COCA 词族表**：Paul Nation 的 25 个词族列表（1st 1000–25th 1000），位于「词族词表」分组。
+- **短语词表**：**PHaVE 动词短语** 150 个，**PHRASE 短语表** 499 个可玩短语，位于「短语词表」分组。
+- 选择短语词表时，卡片会显示完整短语；朗读或输入完整短语即可消除。
 - 当前选择会保存到 `localStorage`，刷新或下次打开时保持。
-- 开始按钮上方会显示当前词库包含的单词数量。
+- 开始按钮上方会显示当前词库包含的词条数量。
 
 ## K-12 阅读词表
 
@@ -79,6 +81,28 @@ npm start
 - 本数据源包含 25 个频率词族表；官方的专有名词、边缘词、透明复合词和缩略语补充列表未包含在内
 
 **来源与授权：** I.S.P. Nation (2017), *The BNC/COCA Level 6 word family lists*。本项目的 headword 数据来自公开的 BNC/COCA headword lists（Victoria University of Wellington / EAP Foundation 及公开 CSV 转录）。**BNC/COCA 词表版权归 I.S.P. Nation，并非公共领域**；此处仅用于教育和研究用途并保留署名，重新分发或商用前请核对官方条款。
+
+## PHaVE 动词短语与 PHRASE 短语表
+
+### PHaVE List
+
+- **150 个最常用动词短语**，按语料频率排序。
+- 游戏内分为三个频率段：**1–50 / 51–100 / 101–150**，每段 50 个。
+- 只使用动词短语本身（如 `give up`、`find out`、`look after`），不包含原表 288 条义项释义。
+- **来源：** Garnier, M., & Schmitt, N. (2015). *The PHaVE List: A pedagogical list of phrasal verbs and their most frequent meaning senses.* Language Teaching Research, 19(6), 645–666.
+- [Norbert Schmitt 词汇资源页](https://www.norbertschmitt.co.uk/vocabulary-resources)（免费下载 PHaVE List、用户手册和频率索引）。
+
+### PHRASE List
+
+- 原表为 **505 条**最常用的非透明多词表达，按 BNC 1K–5K 频率段排列。
+- 公开附录表格实际有 506 行（一个重复的 Integrated List Rank）。本游戏按**去掉义项重复后的表面形式**收录 **499 个可玩短语**：
+  - `used to`、`up to`、`out of`、`get to`、`get on` 等同一表面形式的不同义项合并为一张卡。
+  - 可选/可变成分归一为自然形式：`a bit (of) → a bit`、`have got (+NP) → have got`、`make its/one's way → make one's way`、`there is/are → there is` 等。
+- 保留原表的 1K–5K 频率段，各段词条数为 **32 / 84 / 126 / 155 / 102**。
+- **来源：** Martinez, R., & Schmitt, N. (2012). *A Phrasal Expressions List.* Applied Linguistics, 33(3), 299–320.
+- [Norbert Schmitt 词汇资源页](https://www.norbertschmitt.co.uk/vocabulary-resources) / [公开附录 PDF](http://www.drronmartinez.com/uploads/4/4/8/2/44820161/appendix_phrase_list_martinez_and_schmitt_2012.pdf)。
+
+两份列表可从作者网站免费下载，但**并非公共领域**；本项目仅用于非商业教育和研究，并保留作者署名。重新分发或商用前请核对原作者与出版方的条款。
 
 ## 表情与儿童化
 
@@ -174,7 +198,7 @@ PiuAmbient.next();
 
 `js/words.js` 提供 500 个核心词；`js/lexicon.js` 提供 20 个主题词库，共 600 个主题词条（572 个跨类别唯一词）；`js/education.js` 提供 Dolch 315、Fry 1000、Dale-Chall 2940 个教育词条；`js/families.js` 提供 BNC/COCA 25 个词族列表、25,002 个 headword。
 
-`js/emojis.js` 为 766 个词提供 emoji 映射，覆盖核心、主题和教育词表中的大量单词。
+`js/emojis.js` 为 766 个词提供 emoji 映射，覆盖核心、主题和教育词表中的大量单词；`js/phrases.js` 提供 PHaVE 150 个动词短语和 PHRASE 499 个短语。
 
 核心词示例：
 
@@ -196,6 +220,7 @@ PiuPiu/
 ├── js/lexicon.js             # 20 个主题词库 × 3 个难度等级
 ├── js/education.js           # Dolch / Fry / Dale-Chall 教育词表
 ├── js/families.js            # Paul Nation BNC/COCA 词族 1k–25k
+├── js/phrases.js             # PHaVE 150 动词短语 + PHRASE 499 短语
 ├── js/emojis.js              # 单词 → emoji 映射
 ├── js/pixi-ambient.js        # 游戏与预览共用的 8 场景 PixiJS 环境引擎
 ├── js/vendor/pixi.min.js     # PixiJS 8（MIT）
@@ -203,6 +228,7 @@ PiuPiu/
 ├── tests/verify-lexicon.cjs  # 类别、等级、重复词与主题名翻译校验
 ├── tests/verify-education.cjs # Dolch、Fry、Dale-Chall 词数与分级校验
 ├── tests/verify-families.cjs # BNC/COCA 25 个词族列表与 headword 校验
+├── tests/verify-phrases.cjs  # PHaVE / PHRASE 数量、频段、唯一性与翻译校验
 ├── tests/verify-emojis.cjs   # emoji 映射、覆盖率和重复键校验
 ├── tests/verify-i18n.cjs     # 三语翻译完整性与插值占位符校验
 ├── tests/verify-ambient.cjs  # 8 场景、游戏接入与旧环境清理校验
@@ -217,7 +243,7 @@ PiuPiu/
 npm test
 ```
 
-检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。另外校验 Pixi 环境引擎：8 个场景与顺序、每局固定主题、新局换题事件、WebGL 初始化、游戏内挂载、旧环境层已移除、无 emoji 素材，以及后台暂停和减少动态效果规则。
+检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。另外校验短语词表：PHaVE 150 个、PHRASE 499 个、频段数量、跨表唯一性，以及分组和级别标签的三语翻译。还会校验 Pixi 环境引擎：8 个场景与顺序、每局固定主题、新局换题事件、WebGL 初始化、游戏内挂载、旧环境层已移除、无 emoji 素材，以及后台暂停和减少动态效果规则。
 
 ## 调试
 
@@ -245,4 +271,6 @@ PiuAmbient.next();
 - 浏览器不支持 `SpeechRecognition` 时（例如 Firefox），游戏自动使用键盘输入模式。
 - 环境场景依赖 WebGL；如果 WebGL 初始化失败，环境层会自动隐藏，不影响单词与游戏逻辑。
 - 系统开启「减少动态效果」时不会创建环境画布，只保留静态的游戏背景。
+- 短语词表需要朗读或输入完整短语；多词短语的语音识别准确率可能低于单个单词。
+- 很长的短语会自动缩小字号以适配卡片宽度，移动端仍可正常显示。
 - 麦克风权限被拒绝后，可点击底部麦克风按钮重试，或直接使用输入框。

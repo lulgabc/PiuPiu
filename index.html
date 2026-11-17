@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#060814">
-  <meta name="description" content="PiuPiu — 读出下落的英语单词，读对就爆炸。500 个常用名词与动词。">
+  <meta name="description" content="PiuPiu — 读出下落的英语单词，读对就爆炸。500 个常用词、PHaVE 动词短语与 PHRASE 短语表。">
   <title>PiuPiu · 英语单词爆破</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A5%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css?v=2.0.1">
@@ -87,14 +87,14 @@
           <p class="tagline" data-i18n="start.tagline">读出来，让它爆炸。</p>
 
           <div class="steps">
-            <div class="step"><span class="step-icon" aria-hidden="true">⬇️</span><p data-i18n="start.step1">单词从屏幕顶部随机落下</p></div>
-            <div class="step"><span class="step-icon" aria-hidden="true">🎤</span><p data-i18n="start.step2">对着麦克风大声读出这个英语单词</p></div>
+            <div class="step"><span class="step-icon" aria-hidden="true">⬇️</span><p data-i18n="start.step1">单词或短语从屏幕顶部随机落下</p></div>
+            <div class="step"><span class="step-icon" aria-hidden="true">🎤</span><p data-i18n="start.step2">对着麦克风大声读出这个英语单词或短语</p></div>
             <div class="step"><span class="step-icon" aria-hidden="true">💥</span><p data-i18n="start.step3">读对立即爆破，没接住就会堆在底部</p></div>
           </div>
 
           <p class="rule">
-            <span data-i18n="start.rule1">单词堆到屏幕顶端，游戏结束。</span><br>
-            <span data-i18n="start.rule2">20 个主题词库 + K-12 阅读词表 + BNC/COCA 词族 · 500 个核心词 · 没有麦克风也能打字。</span>
+            <span data-i18n="start.rule1">单词或短语堆到屏幕顶端，游戏结束。</span><br>
+            <span data-i18n="start.rule2">20 个主题词库 + K-12 阅读词表 + BNC/COCA 词族 + PHaVE/PHRASE 短语 · 500 个核心词 · 没有麦克风也能打字。</span>
           </p>
 
           <div class="pack-picker">
@@ -116,7 +116,7 @@
             </div>
           </div>
 
-          <p class="help-hint" data-i18n="help.hint">🔊 空格 / 点击屏幕：听最下面的单词。</p>
+          <p class="help-hint" data-i18n="help.hint">🔊 空格 / 点击屏幕：听最下面的单词或短语。</p>
 
           <button id="startBtn" class="primary-btn" type="button">
             <span data-i18n="start.cta">开始游戏</span>
@@ -165,23 +165,24 @@
 
       <form id="typeForm" class="type-form" autocomplete="off">
         <input id="typeInput" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false"
-               placeholder="也可以输入单词，按 Enter 爆破…" data-i18n-placeholder="footer.placeholder"
-               aria-label="输入单词" data-i18n-aria="footer.inputAria">
+               placeholder="也可以输入单词或短语，按 Enter 爆破…" data-i18n-placeholder="footer.placeholder"
+               aria-label="输入单词或短语" data-i18n-aria="footer.inputAria">
         <button type="submit" class="send-btn" data-i18n="footer.send">发射</button>
       </form>
 
-      <p class="foot-hint" data-i18n="footer.hint">读出单词 · 空格/点击听提示</p>
+      <p class="foot-hint" data-i18n="footer.hint">读出单词或短语 · 空格/点击听提示</p>
     </footer>
   </div>
 
-  <script src="js/i18n.js"></script>
+  <script src="js/i18n.js?v=2.1.0"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
   <script src="js/education.js"></script>
   <script src="js/families.js"></script>
+  <script src="js/phrases.js?v=2.1.0"></script>
   <script src="js/emojis.js"></script>
   <script src="js/vendor/pixi.min.js?v=2.0.1"></script>
   <script src="js/pixi-ambient.js?v=2.0.1"></script>
-  <script src="js/game.js"></script>
+  <script src="js/game.js?v=2.1.0"></script>
 </body>
 </html>

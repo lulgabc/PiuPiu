@@ -5,6 +5,7 @@
   const LEXICON = Array.isArray(window.PIU_LEXICON) ? window.PIU_LEXICON.slice() : [];
   const EDUCATION = Array.isArray(window.PIU_EDUCATION) ? window.PIU_EDUCATION.slice() : [];
   const FAMILIES = Array.isArray(window.PIU_FAMILIES) ? window.PIU_FAMILIES.slice() : [];
+  const PHRASES = Array.isArray(window.PIU_PHRASES) ? window.PIU_PHRASES.slice() : [];
   const EMOJI =
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
   const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
@@ -275,6 +276,11 @@
       if (!category || !category.id || !Array.isArray(category.bands)) continue;
       categories.push({ ...category, education: true, group: category.group || "families" });
     }
+
+    for (const category of PHRASES) {
+      if (!category || !category.id || !Array.isArray(category.bands)) continue;
+      categories.push({ ...category, education: true, group: category.group || "phrases" });
+    }
     return categories;
   }
 
@@ -320,6 +326,7 @@
     const groups = [
       { key: "education", labelKey: "group.education" },
       { key: "families", labelKey: "group.families" },
+      { key: "phrases", labelKey: "group.phrases" },
       { key: "themes", labelKey: "group.themes" },
     ];
 
@@ -392,7 +399,8 @@
     });
 
     const count = getSelectedPool().length;
-    setText(els.packCount, tr("pack.count", { count: formatNumber(count) }));
+    const countKey = category && category.countKey ? category.countKey : "pack.count";
+    setText(els.packCount, tr(countKey, { count: formatNumber(count) }));
   }
 
   function savePackSelection() {
