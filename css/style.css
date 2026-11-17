@@ -429,6 +429,7 @@ button:disabled {
   backdrop-filter: blur(6px);
   will-change: transform;
   opacity: 0;
+  transition: opacity 0.2s ease, filter 0.2s ease;
   animation: wordIn 0.24s ease-out forwards;
 }
 
@@ -488,6 +489,35 @@ button:disabled {
 
 .word.miss {
   animation: missBlink 0.32s ease-out;
+}
+
+.word.focused {
+  z-index: 6;
+  outline: 3px solid rgba(255, 214, 90, 0.95);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 6px rgba(255, 214, 90, 0.18),
+    0 0 38px rgba(255, 214, 90, 0.62),
+    0 0 22px hsla(var(--hue, 265), 100%, 65%, 0.6);
+  filter: brightness(1.2) saturate(1.18);
+}
+
+.word.focused::before {
+  content: "🔊";
+  position: absolute;
+  top: -1.55em;
+  left: 50%;
+  font-size: 1.15em;
+  line-height: 1;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 10px rgba(255, 214, 90, 0.8));
+  animation: hintBob 0.55s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.word-layer.has-focus .word:not(.focused) {
+  opacity: 0.3;
+  filter: saturate(0.45) brightness(0.72);
 }
 
 /* ---------- explosion fx ---------- */
@@ -907,6 +937,18 @@ button:disabled {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.help-hint {
+  margin: -6px auto 12px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 190, 92, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 190, 92, 0.07);
+  color: #ffe0a1;
+  font-size: 10.5px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .pack-select:hover {
   border-color: rgba(139, 92, 255, 0.38);
 }
@@ -1227,6 +1269,11 @@ button:disabled {
 
 /* ---------- animations ---------- */
 
+@keyframes hintBob {
+  from { transform: translate(-50%, 0) scale(0.96); }
+  to { transform: translate(-50%, -6px) scale(1.06); }
+}
+
 @keyframes brandBounce {
   0%, 100% { transform: translateY(0) rotate(0); }
   50% { transform: translateY(-2px) rotate(5deg); }
@@ -1492,6 +1539,7 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .field-stars,
   .brand-mark,
+  .word.focused::before,
   .mic-btn.listening .mic-dot,
   .record.new { animation: none; }
   .word,

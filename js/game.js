@@ -151,6 +151,10 @@
     restartTimer: 0,
     heardTimer: 0,
     praiseTimer: 0,
+    focusTimer: 0,
+    focusedWord: null,
+    helpSpeaking: false,
+    helpSpeakToken: 0,
     toastTimer: 0,
     lastHud: {},
     lastFieldH: 0,
@@ -158,6 +162,7 @@
   };
 
   let effectBag = [];
+  let helpVoice = null;
 
   /* ------------------------------------------------------------------ */
   /* utilities                                                           */
@@ -476,6 +481,8 @@
   function resetGame() {
     cancelAnimationFrame(state.raf);
     state.raf = 0;
+    clearFocus();
+    stopHelpSpeech();
     hideHeard();
     hidePraise();
     hideToast();
@@ -647,6 +654,7 @@
   function settleWord(word, y) {
     const index = state.words.indexOf(word);
     if (index === -1) return;
+    if (state.focusedWord === word) clearFocus();
     state.words.splice(index, 1);
 
     const finalY = Math.max(0, y);
@@ -688,6 +696,8 @@
   function endGame() {
     if (state.phase === "over") return;
     state.phase = "over";
+    stopHelpSpeech();
+    clearFocus();
     stopSpeech();
     cancelAnimationFrame(state.raf);
     state.raf = 0;
@@ -717,6 +727,8 @@
     state.phase = "paused";
     cancelAnimationFrame(state.raf);
     state.raf = 0;
+    stopHelpSpeech();
+    clearFocus();
     stopSpeech();
     updatePauseButton();
     updateMicUI();
@@ -1059,6 +1071,7 @@
   function explodeWord(word) {
     const index = state.words.indexOf(word);
     if (index === -1) return;
+    if (state.focusedWord === word) clearFocus();
     state.words.splice(index, 1);
 
     const fRect = els.field.getBoundingClientRect();
@@ -1172,6 +1185,138 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* help: speak the lowest falling word                                 */
+  /* ------------------------------------------------------------------ */
+
+  function lowestFallingWord() {
+    let lowest = null;
+    for (const word of state.words) {
+      if (!lowest || word.y > lowest.y) lowest = word;
+    }
+    return lowest;
+  }
+
+  function clearFocus() {
+    if (state.focusTimer) {
+      clearTimeout(state.focusTimer);
+      state.focusTimer = 0;
+    }
+    if (state.focusedWord) {
+      state.focusedWord.el.classList.remove("focused");
+      state.focusedWord = null;
+    }
+    els.wordLayer.classList.remove("has-focus");
+  }
+
+  function focusWord(word) {
+    clearFocus();
+    state.focusedWord = word;
+    word.el.classList.add("focused");
+    els.wordLayer.classList.add("has-focus");
+    state.focusTimer = window.setTimeout(clearFocus, 3000);
+  }
+
+  function pickHelpVoice() {
+    const synth = window.speechSynthesis;
+    if (!synth) return null;
+    try {
+      const voices = synth.getVoices() || [];
+      helpVoice =
+        voices.find((voice) => /^en[-_]US/i.test(voice.lang) && voice.localService) ||
+        voices.find((voice) => /^en[-_]US/i.test(voice.lang)) ||
+        voices.find((voice) => /^en/i.test(voice.lang)) ||
+        null;
+    } catch {
+      helpVoice = null;
+    }
+    return helpVoice;
+  }
+
+  function stopHelpSpeech() {
+    state.helpSpeakToken += 1;
+    state.helpSpeaking = false;
+    if (window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
+  }
+
+  function speakHelp(word) {
+    const synth = window.speechSynthesis;
+    const Utterance = window.SpeechSynthesisUtterance;
+    if (!synth || !Utterance) {
+      toast(tr("help.unsupported"), "warn");
+      return;
+    }
+
+    const token = ++state.helpSpeakToken;
+    state.helpSpeaking = true;
+    if (state.micEnabled) stopSpeech();
+    try {
+      synth.cancel();
+    } catch {}
+    updateMicUI();
+
+    const utterance = new Utterance(word.word);
+    utterance.lang = "en-US";
+    utterance.rate = 0.82;
+    utterance.pitch = 1.05;
+    utterance.volume = 1;
+    if (!helpVoice) pickHelpVoice();
+    if (helpVoice) utterance.voice = helpVoice;
+
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      if (token !== state.helpSpeakToken) return;
+      state.helpSpeaking = false;
+      updateMicUI();
+      if (state.phase === "playing" && state.micEnabled) {
+        window.setTimeout(() => {
+          if (state.phase === "playing" && state.micEnabled && !state.helpSpeaking) {
+            startSpeech();
+          }
+        }, 350);
+      }
+    };
+
+    utterance.onend = done;
+    utterance.onerror = done;
+
+    try {
+      synth.speak(utterance);
+    } catch {
+      done();
+      toast(tr("help.unsupported"), "warn");
+      return;
+    }
+
+    window.setTimeout(() => {
+      if (token === state.helpSpeakToken && state.helpSpeaking) done();
+    }, 6000);
+  }
+
+  function triggerHelp() {
+    if (state.phase !== "playing") return;
+    const word = lowestFallingWord();
+    if (!word) {
+      toast(tr("help.empty"), "warn");
+      return;
+    }
+    focusWord(word);
+    showHeard(tr("help.listen", { word: word.word }));
+    speakHelp(word);
+  }
+
+  function setupHelp() {
+    if (!window.speechSynthesis) return;
+    pickHelpVoice();
+    window.speechSynthesis.onvoiceschanged = pickHelpVoice;
+  }
+
+  /* ------------------------------------------------------------------ */
   /* speech recognition                                                  */
   /* ------------------------------------------------------------------ */
 
@@ -1217,10 +1362,12 @@
         state.listening = false;
         state.speechStarting = false;
         updateMicUI();
-        if (state.phase === "playing" && state.micEnabled && !state.restartTimer) {
+        if (state.phase === "playing" && state.micEnabled && !state.helpSpeaking && !state.restartTimer) {
           state.restartTimer = window.setTimeout(() => {
             state.restartTimer = 0;
-            if (state.phase === "playing" && state.micEnabled && !state.listening) startSpeech();
+            if (state.phase === "playing" && state.micEnabled && !state.listening && !state.helpSpeaking) {
+              startSpeech();
+            }
           }, 300);
         }
       };
@@ -1315,6 +1462,8 @@
 
     if (!state.micEnabled) {
       els.micLabel.textContent = state.speechError ? tr("mic.error") : tr("mic.off");
+    } else if (state.helpSpeaking) {
+      els.micLabel.textContent = tr("mic.help");
     } else if (state.phase === "paused") {
       els.micLabel.textContent = tr("mic.paused");
     } else if (active) {
@@ -1468,10 +1617,35 @@
       }
       return;
     }
+
+    const interactive =
+      target && typeof target.closest === "function"
+        ? target.closest("button, input, textarea, select, a, [contenteditable='true']")
+        : null;
+    if ((event.code === "Space" || event.key === " ") && state.phase === "playing" && !interactive) {
+      event.preventDefault();
+      triggerHelp();
+      return;
+    }
+
     if (event.key === "Enter" && state.phase === "menu" && !typing && target.tagName !== "BUTTON") {
       event.preventDefault();
       startGame();
     }
+  });
+
+  els.field.addEventListener("pointerdown", (event) => {
+    if (state.phase !== "playing") return;
+    if (event.button !== undefined && event.button !== 0) return;
+    const target = event.target;
+    if (
+      target &&
+      typeof target.closest === "function" &&
+      target.closest("button, input, textarea, select, a, .overlay")
+    ) {
+      return;
+    }
+    triggerHelp();
   });
 
   document.addEventListener("visibilitychange", () => {
@@ -1480,7 +1654,10 @@
 
   document.addEventListener("piupiu:langchange", refreshLanguage);
 
-  window.addEventListener("beforeunload", stopSpeech);
+  window.addEventListener("beforeunload", () => {
+    stopHelpSpeech();
+    stopSpeech();
+  });
 
   window.addEventListener("resize", () => {
     const fieldW = els.field.clientWidth;
@@ -1535,6 +1712,7 @@
       state.micEnabled = false;
       els.speechNote.textContent = tr("speech.note.unsupported");
     }
+    setupHelp();
 
     state.lastFieldW = els.field.clientWidth;
     state.lastFieldH = els.field.clientHeight;
@@ -1557,6 +1735,11 @@
       findMatch,
       goHome,
       refreshLanguage,
+      triggerHelp,
+      speakHelp,
+      focusWord,
+      clearFocus,
+      lowestFallingWord,
       getSelectedPool,
       getPack: () => ({
         category: state.categoryId,
