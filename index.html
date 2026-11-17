@@ -88,8 +88,26 @@
 
           <p class="rule">
             <span data-i18n="start.rule1">单词堆到屏幕顶端，游戏结束。</span><br>
-            <span data-i18n="start.rule2">500 个常用名词 / 动词 · 没有麦克风也能直接打字。</span>
+            <span data-i18n="start.rule2">20 个主题词库 × 3 级难度 · 500 个核心词 · 没有麦克风也能打字。</span>
           </p>
+
+          <div class="pack-picker">
+            <div class="pack-head">
+              <span class="pack-title" data-i18n="pack.title">词库</span>
+              <span id="packCount" class="pack-count" aria-live="polite">500 个单词</span>
+            </div>
+            <div class="pack-controls">
+              <select id="categorySelect" class="pack-select" aria-label="类别" data-i18n-aria="pack.category">
+                <option value="core" data-i18n="cat.core">综合词库</option>
+              </select>
+              <div id="diffGroup" class="diff-group" role="group" aria-label="难度" data-i18n-aria="pack.level">
+                <button type="button" class="diff-btn is-active" data-level="0" data-i18n="difficulty.all" aria-pressed="true">全部</button>
+                <button type="button" class="diff-btn" data-level="1" data-i18n="difficulty.1" aria-pressed="false">初级</button>
+                <button type="button" class="diff-btn" data-level="2" data-i18n="difficulty.2" aria-pressed="false">中级</button>
+                <button type="button" class="diff-btn" data-level="3" data-i18n="difficulty.3" aria-pressed="false">高级</button>
+              </div>
+            </div>
+          </div>
 
           <button id="startBtn" class="primary-btn" type="button">
             <span data-i18n="start.cta">开始游戏</span>
@@ -149,6 +167,7 @@
 
   <script src="js/i18n.js"></script>
   <script src="js/words.js"></script>
+  <script src="js/lexicon.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

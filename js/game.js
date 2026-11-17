@@ -2,9 +2,12 @@
   "use strict";
 
   const WORD_BANK = Array.isArray(window.PIU_WORDS) ? window.PIU_WORDS.slice() : [];
+  const LEXICON = Array.isArray(window.PIU_LEXICON) ? window.PIU_LEXICON.slice() : [];
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   const HS_KEY = "piupiu.highscore";
   const MUTE_KEY = "piupiu.muted";
+  const PACK_KEY = "piupiu.pack";
+  const LEVEL_KEY = "piupiu.level";
   const PAD = 12;
   const DANGER_Y = 10;
   const ACCENT_HUES = [265, 190, 318, 42, 158, 225, 288, 12];
@@ -85,6 +88,9 @@
     micLabel: $("micLabel"),
     typeForm: $("typeForm"),
     typeInput: $("typeInput"),
+    categorySelect: $("categorySelect"),
+    diffGroup: $("diffGroup"),
+    packCount: $("packCount"),
     score: $("score"),
     combo: $("combo"),
     comboStat: $("comboStat"),
@@ -110,6 +116,10 @@
     words: [],
     settled: [],
     bag: [],
+    pool: [],
+    categories: [],
+    categoryId: "core",
+    difficulty: 0,
     lastWord: "",
     score: 0,
     combo: 0,
@@ -185,7 +195,10 @@
   }
 
   function nextWord() {
-    if (!state.bag.length) state.bag = shuffle(WORD_BANK.slice());
+    if (!state.bag.length) {
+      const pool = state.pool.length ? state.pool : WORD_BANK;
+      state.bag = shuffle(pool.slice());
+    }
     let word = state.bag.pop();
     if (word === state.lastWord && state.bag.length) {
       const alt = state.bag.pop();
@@ -194,6 +207,116 @@
     }
     state.lastWord = word;
     return word;
+  }
+
+  function buildCategories() {
+    const coreLevels = { 1: [], 2: [], 3: [] };
+    for (const word of WORD_BANK) {
+      const bucket = word.length <= 4 ? 1 : word.length <= 6 ? 2 : 3;
+      coreLevels[bucket].push(word);
+    }
+
+    const categories = [
+      { id: "core", icon: "✦", nameKey: "cat.core", levels: coreLevels },
+    ];
+
+    for (const category of LEXICON) {
+      if (!category || !category.id || !category.levels) continue;
+      categories.push(category);
+    }
+    return categories;
+  }
+
+  function getSelectedCategory() {
+    return state.categories.find((category) => category.id === state.categoryId) || state.categories[0];
+  }
+
+  function getSelectedPool() {
+    const category = getSelectedCategory();
+    if (!category) return WORD_BANK.slice();
+
+    const levels = category.levels;
+    let words = [];
+    if (state.difficulty > 0) {
+      words = levels[state.difficulty] || [];
+    } else {
+      for (const level of [1, 2, 3]) words = words.concat(levels[level] || []);
+    }
+
+    let pool = [...new Set(words)];
+    if (!pool.length) {
+      const all = [1, 2, 3].flatMap((level) => levels[level] || []);
+      pool = [...new Set(all.length ? all : WORD_BANK)];
+    }
+    return pool;
+  }
+
+  function renderCategoryOptions() {
+    if (!els.categorySelect) return;
+    els.categorySelect.replaceChildren();
+    for (const category of state.categories) {
+      const option = document.createElement("option");
+      option.value = category.id;
+      option.textContent = `${category.icon} ${tr(category.nameKey)}`;
+      els.categorySelect.appendChild(option);
+    }
+    els.categorySelect.value = state.categoryId;
+  }
+
+  function updatePackUI() {
+    if (!els.categorySelect || !els.diffGroup) return;
+    els.categorySelect.value = state.categoryId;
+
+    els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
+      const level = Number(button.dataset.level);
+      const active = level === state.difficulty;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+
+    const count = getSelectedPool().length;
+    setText(els.packCount, tr("pack.count", { count: formatNumber(count) }));
+  }
+
+  function savePackSelection() {
+    try {
+      localStorage.setItem(PACK_KEY, state.categoryId);
+      localStorage.setItem(LEVEL_KEY, String(state.difficulty));
+    } catch {}
+  }
+
+  function loadPackSelection() {
+    state.categories = buildCategories();
+
+    const savedCategory = readString(PACK_KEY, "core");
+    state.categoryId = state.categories.some((category) => category.id === savedCategory)
+      ? savedCategory
+      : "core";
+
+    const savedLevel = Number(readString(LEVEL_KEY, "0"));
+    state.difficulty =
+      Number.isInteger(savedLevel) && savedLevel >= 0 && savedLevel <= 3 ? savedLevel : 0;
+
+    state.pool = getSelectedPool();
+  }
+
+  function onCategoryChange() {
+    const next = els.categorySelect.value;
+    if (!state.categories.some((category) => category.id === next)) return;
+    state.categoryId = next;
+    if (!getSelectedPool().length) state.difficulty = 0;
+    state.pool = getSelectedPool();
+    savePackSelection();
+    updatePackUI();
+  }
+
+  function onDifficultyClick(button) {
+    const level = Number(button.dataset.level);
+    if (!Number.isInteger(level) || level < 0 || level > 3) return;
+    state.difficulty = level;
+    state.pool = getSelectedPool();
+    savePackSelection();
+    updatePackUI();
   }
 
   function showPanel(panel) {
@@ -291,7 +414,7 @@
     for (const s of state.settled) s.el.remove();
     state.words = [];
     state.settled = [];
-    state.bag = shuffle(WORD_BANK.slice());
+    state.bag = shuffle((state.pool.length ? state.pool : WORD_BANK).slice());
     state.lastWord = "";
     state.score = 0;
     state.combo = 0;
@@ -316,6 +439,7 @@
 
   function startGame() {
     audio();
+    state.pool = getSelectedPool();
     resetGame();
     state.phase = "playing";
     hideOverlay();
@@ -617,6 +741,8 @@
     updatePauseButton();
     updateMuteUI();
     renderBestLine();
+    renderCategoryOptions();
+    updatePackUI();
     els.speechNote.textContent = SpeechRec
       ? tr("speech.note.ok")
       : tr("speech.note.unsupported");
@@ -1060,6 +1186,10 @@
   els.muteBtn.addEventListener("click", toggleMute);
   els.micBtn.addEventListener("click", toggleMic);
   els.typeForm.addEventListener("submit", handleTyped);
+  els.categorySelect.addEventListener("change", onCategoryChange);
+  els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
+    button.addEventListener("click", () => onDifficultyClick(button));
+  });
 
   window.addEventListener("keydown", (event) => {
     const target = event.target;
@@ -1117,6 +1247,9 @@
   /* ------------------------------------------------------------------ */
 
   function init() {
+    loadPackSelection();
+    renderCategoryOptions();
+    updatePackUI();
     renderBestLine();
     updateMuteUI();
 
@@ -1157,6 +1290,23 @@
       findMatch,
       goHome,
       refreshLanguage,
+      getSelectedPool,
+      getPack: () => ({
+        category: state.categoryId,
+        difficulty: state.difficulty,
+        count: state.pool.length,
+        pool: state.pool.slice(),
+      }),
+      getCategories: () =>
+        state.categories.map((category) => ({
+          id: category.id,
+          nameKey: category.nameKey,
+          counts: {
+            1: (category.levels[1] || []).length,
+            2: (category.levels[2] || []).length,
+            3: (category.levels[3] || []).length,
+          },
+        })),
       getFalling: () =>
         state.words.map((w) => ({ word: w.word, x: w.x, y: w.y, w: w.w, h: w.h })),
       getSettled: () =>

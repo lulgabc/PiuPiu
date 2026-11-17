@@ -700,10 +700,114 @@ button:disabled {
 }
 
 .rule {
-  margin: 0 0 22px;
+  margin: 0 0 16px;
   color: var(--muted);
   font-size: 11.5px;
   line-height: 1.75;
+}
+
+.pack-picker {
+  margin: 0 0 20px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.028);
+  text-align: left;
+}
+
+.pack-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pack-title {
+  color: var(--cyan);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.pack-count {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pack-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.pack-select {
+  width: 100%;
+  height: 40px;
+  padding: 0 32px 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  background-color: rgba(8, 12, 24, 0.72);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%239aa6c5' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  outline: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pack-select:hover {
+  border-color: rgba(139, 92, 255, 0.38);
+}
+
+.pack-select:focus-visible {
+  border-color: rgba(139, 92, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(139, 92, 255, 0.12);
+}
+
+.pack-select option {
+  background: #0d1326;
+  color: #f2f5ff;
+}
+
+.diff-group {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(8, 12, 24, 0.7);
+}
+
+.diff-btn {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 7px 8px;
+  white-space: nowrap;
+  transition: background 0.18s, color 0.18s;
+}
+
+.diff-btn:hover {
+  color: var(--ink);
+}
+
+.diff-btn.is-active {
+  background: rgba(139, 92, 255, 0.24);
+  color: #e8e1ff;
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 255, 0.28);
 }
 
 .primary-btn {
@@ -1095,6 +1199,10 @@ button:disabled {
   }
   .field { border-radius: 18px; }
   .panel { border-radius: 21px; }
+  .overlay { padding: 10px; }
+  .pack-controls { grid-template-columns: 1fr; }
+  .diff-group { justify-content: space-between; }
+  .diff-btn { flex: 1; text-align: center; }
   .danger-line span { display: none; }
   .pile-gauge { right: 5px; }
   .word { padding: 0.36em 0.62em 0.4em; border-radius: 11px; }
@@ -1116,8 +1224,10 @@ button:disabled {
   .panel { padding: 22px 18px; }
   .panel h1 { font-size: 54px; }
   .panel h2 { font-size: 34px; }
-  .steps { margin: 18px 0 15px; }
-  .step { padding: 8px 11px; }
+  .steps { margin: 14px 0 12px; }
+  .step { padding: 7px 10px; }
+  .rule { margin-bottom: 14px; }
+  .pack-picker { margin-bottom: 16px; padding: 10px; }
   .result-grid strong { font-size: 19px; }
   #typeInput::placeholder { font-size: 12px; }
   .send-btn { padding: 0 11px; }
@@ -1132,6 +1242,8 @@ button:disabled {
   .tools { gap: 4px; }
   .brand-text { font-size: 16px; }
   .send-btn { display: none; }
+  .pack-select { height: 38px; font-size: 12px; }
+  .diff-btn { font-size: 10px; padding: 6px 5px; }
 }
 
 @media (max-width: 360px) {
@@ -1148,9 +1260,16 @@ button:disabled {
   .stat { min-width: 40px; }
   .panel { padding: 18px 14px; }
   .panel h1 { font-size: 48px; }
-  .steps { gap: 6px; margin: 14px 0 12px; }
+  .steps { display: none; }
   .step { padding: 7px 9px; }
   .rule { margin-bottom: 16px; font-size: 10.5px; line-height: 1.65; }
+  .pack-picker { padding: 9px; }
+  .pack-select { font-size: 11px; }
+  .diff-btn { font-size: 9.5px; padding: 6px 4px; }
+}
+
+@media (max-width: 600px) and (max-height: 740px) {
+  .steps { display: none; }
 }
 
 @media (max-height: 560px) {
