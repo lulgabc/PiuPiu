@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#060814">
+  <meta name="description" content="PiuPiu — 读出下落的英语单词，读对就爆炸。500 个常用名词与动词。">
+  <title>PiuPiu · 英语单词爆破</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A5%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand" aria-label="PiuPiu">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span class="brand-text">Piu<span>Piu</span></span>
+      </div>
+
+      <div class="hud" aria-label="游戏数据">
+        <div class="stat score-stat">
+          <span class="stat-label">得分</span>
+          <strong id="score">0</strong>
+        </div>
+        <div class="stat combo-stat" id="comboStat">
+          <span class="stat-label">连击</span>
+          <strong id="combo">×0</strong>
+        </div>
+        <div class="stat level-stat">
+          <span class="stat-label">等级</span>
+          <strong id="level">1</strong>
+        </div>
+        <div class="stat pile-stat" id="pileStat">
+          <span class="stat-label">堆积</span>
+          <strong id="pile">0%</strong>
+        </div>
+        <div class="stat time-stat">
+          <span class="stat-label">时间</span>
+          <strong id="time">0:00</strong>
+        </div>
+      </div>
+
+      <div class="tools">
+        <button id="muteBtn" class="icon-btn" type="button" title="音效开关" aria-label="音效开关" aria-pressed="false">🔊</button>
+        <button id="pauseBtn" class="icon-btn" type="button" title="暂停 (Esc)" aria-label="暂停" disabled>❚❚</button>
+      </div>
+    </header>
+
+    <main id="field" class="field">
+      <div class="field-stars" aria-hidden="true"></div>
+      <div class="field-grid" aria-hidden="true"></div>
+      <div class="field-floor" aria-hidden="true"></div>
+
+      <div id="dangerLine" class="danger-line" aria-hidden="true"><span>危险线</span></div>
+
+      <div class="pile-gauge" aria-hidden="true">
+        <span class="gauge-label">堆积</span>
+        <div class="gauge-track"><div id="pileFill" class="gauge-fill"></div></div>
+      </div>
+
+      <div id="wordLayer" class="word-layer"></div>
+      <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+
+      <div id="heard" class="heard" aria-live="polite"></div>
+      <div id="toast" class="toast" role="status"></div>
+
+      <div id="overlay" class="overlay">
+        <section id="startPanel" class="panel" aria-labelledby="gameTitle">
+          <p class="eyebrow">ENGLISH WORD BLAST</p>
+          <h1 id="gameTitle">Piu<span>Piu</span></h1>
+          <p class="tagline">读出来，让它爆炸。</p>
+
+          <div class="steps">
+            <div class="step"><span>01</span><p>单词从屏幕顶部随机落下</p></div>
+            <div class="step"><span>02</span><p>对着麦克风大声读出这个单词</p></div>
+            <div class="step"><span>03</span><p>读对立即爆破，没接住就会堆在底部</p></div>
+          </div>
+
+          <p class="rule">单词堆到屏幕顶端，游戏结束。<br>500 个常用名词 / 动词 · 没有麦克风也能直接打字。</p>
+
+          <button id="startBtn" class="primary-btn" type="button">开始游戏 <span>⏎</span></button>
+          <p id="bestLine" class="best">最高分：0</p>
+          <p id="speechNote" class="fineprint">语音识别需要 Chrome / Edge / Safari，并允许麦克风权限。</p>
+        </section>
+
+        <section id="pausePanel" class="panel hidden" aria-labelledby="pauseTitle">
+          <p class="eyebrow">TAKE A BREATH</p>
+          <h2 id="pauseTitle">已暂停</h2>
+          <p class="tagline">单词们正在半空中等你。</p>
+          <button id="resumeBtn" class="primary-btn" type="button">继续游戏</button>
+          <button id="quitBtn" class="ghost-btn" type="button">结束本局</button>
+        </section>
+
+        <section id="overPanel" class="panel hidden" aria-labelledby="overTitle">
+          <p class="eyebrow">THE PILE IS FULL</p>
+          <h2 id="overTitle">游戏结束</h2>
+          <p class="tagline">单词堆到屏幕顶端了。</p>
+
+          <div class="result-grid">
+            <div><span>得分</span><strong id="finalScore">0</strong></div>
+            <div><span>爆破</span><strong id="finalCleared">0</strong></div>
+            <div><span>最高连击</span><strong id="finalCombo">×0</strong></div>
+            <div><span>坚持</span><strong id="finalTime">0:00</strong></div>
+          </div>
+
+          <p class="missed-title">漏掉的单词</p>
+          <div id="missedList" class="missed-list"></div>
+          <p id="recordLine" class="record"></p>
+
+          <button id="restartBtn" class="primary-btn" type="button">再来一局</button>
+          <button id="homeBtn" class="ghost-btn" type="button">回到主页</button>
+        </section>
+      </div>
+    </main>
+
+    <footer class="controls">
+      <button id="micBtn" class="mic-btn" type="button" aria-pressed="false" title="麦克风开关">
+        <span class="mic-dot" aria-hidden="true"></span>
+        <span id="micLabel">语音识别</span>
+      </button>
+
+      <form id="typeForm" class="type-form" autocomplete="off">
+        <input id="typeInput" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false"
+               placeholder="也可以输入单词，按 Enter 爆破…" aria-label="输入单词">
+        <button type="submit" class="send-btn">发射</button>
+      </form>
+
+      <p class="foot-hint">读出单词 · 读对即爆破</p>
+    </footer>
+  </div>
+
+  <script src="js/words.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
