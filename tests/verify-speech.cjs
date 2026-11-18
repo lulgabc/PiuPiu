@@ -18,6 +18,8 @@ assert.match(game, /function syncSpeechPhrases\(/, "on-screen targets should be 
 assert.match(game, /targets\.set\(word\.word, 4\)/, "bias phrases should come from on-screen targets");
 assert.match(game, /state\.bag\.slice\(-5\)/, "upcoming targets should be pre-biased");
 assert.match(game, /phrases-not-supported/, "unsupported contextual biasing should degrade gracefully");
+assert.match(game, /recognition\.processLocally !== true/, "bias should be gated to on-device recognition");
+assert.match(game, /recognition\.phrases = \[\]/, "unsupported bias phrases must be cleared");
 assert.match(game, /recognition\.phrases\s*=/, "bias phrases should be assigned when supported");
 
 // ---------- phrase-aware matching ----------
@@ -44,7 +46,7 @@ assert.match(game, /InvalidStateError/, "start races should be retried");
 assert.match(game, /speechStartRetries/, "start retries should be capped");
 
 console.log("✓ five alternatives and confidence ranking are enabled");
-console.log("✓ on-screen targets are used for contextual phrase biasing when available");
+console.log("✓ on-screen targets are used for on-device contextual biasing when available");
 console.log("✓ phrase reductions, compact forms, optional articles and fragments match");
 console.log("✓ speech latency and first-result timing are measured");
 console.log("✓ restart gaps are reduced, with no-speech and start-race safeguards");

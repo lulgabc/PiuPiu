@@ -127,7 +127,7 @@ npm start
 游戏默认使用浏览器的 Web Speech API（Chrome 通常是云端识别）。在当前目标词库很小、需要低延迟的场景下，项目做了这些优化：
 
 - **5 个候选结果（n-best）**：`maxAlternatives = 5`，同时检查所有候选，并按 confidence 选择最可信的目标匹配，而不是只看第一个结果。
-- **上下文偏置（Contextual Biasing）**：如果浏览器支持 `SpeechRecognition.phrases` 与 `SpeechRecognitionPhrase`，会把当前屏幕上的目标词/短语以 boost 4.0 加入识别提示，并把词袋末尾接下来 5 个目标以 boost 2.0 预热；即使浏览器只在启动时读取一次提示，也能覆盖开局。不支持时自动跳过。
+- **上下文偏置（Contextual Biasing）**：如果浏览器支持 `SpeechRecognition.phrases`、`SpeechRecognitionPhrase`，**且识别运行在设备端（`processLocally === true`）**，会把当前屏幕目标以 boost 4.0、后续 5 个目标以 boost 2.0 加入提示。Chrome 默认的云端识别会返回 `phrases-not-supported`，因此默认不启用；如果服务不支持，会立即清空偏置并重试，避免“启动—报错—重启”循环。
 - **短语容错**：
   - 紧凑形式：`give up` ← `giveup`
   - 常见弱读：`going to` ← `gonna`、`have to` ← `hafta`、`out of` ← `outta`、`there is` ← `there's`

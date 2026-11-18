@@ -1675,6 +1675,12 @@
       state.speechPhrasesSupported = false;
       return;
     }
+    // Chrome's cloud recognizer reports phrases-not-supported. Contextual
+    // biasing is only safe when the recognizer is running on-device.
+    if (recognition.processLocally !== true) {
+      state.speechPhrasesSupported = false;
+      return;
+    }
 
     const targets = new Map();
     for (const word of state.words) targets.set(word.word, 4);
@@ -1718,7 +1724,9 @@
       recognition.interimResults = true;
       recognition.maxAlternatives = 5;
       state.speechPhrasesSupported =
-        "phrases" in recognition && typeof window.SpeechRecognitionPhrase === "function"
+        "phrases" in recognition &&
+        typeof window.SpeechRecognitionPhrase === "function" &&
+        recognition.processLocally === true
           ? null
           : false;
 
@@ -1814,6 +1822,24 @@
         if (event.error === "phrases-not-supported") {
           state.speechPhrasesSupported = false;
           state.speechPhraseKey = "";
+          state.speechPhraseError = "phrases-not-supported";
+          try {
+            recognition.phrases = [];
+          } catch {}
+          if (
+            !state.listening &&
+            state.phase === "playing" &&
+            state.micEnabled &&
+            !state.helpSpeaking &&
+            !state.restartTimer
+          ) {
+            state.restartTimer = window.setTimeout(() => {
+              state.restartTimer = 0;
+              if (state.phase === "playing" && state.micEnabled && !state.listening && !state.helpSpeaking) {
+                startSpeech();
+              }
+            }, 90);
+          }
           return;
         }
         handleSpeechError(event.error);
