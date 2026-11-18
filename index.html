@@ -7,7 +7,26 @@
   <meta name="description" content="PiuPiu — 读出下落的英语单词，读对就爆炸。500 个常用词、PHaVE 动词短语与 PHRASE 短语表。">
   <title>PiuPiu · 英语单词爆破</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A5%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/style.css?v=2.4.0">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PiuPiu">
+  <meta name="application-name" content="PiuPiu">
+  <script>
+    window.addEventListener("beforeinstallprompt", function (event) {
+      event.preventDefault();
+      window.__PIUPIU_INSTALL_PROMPT__ = event;
+    });
+    if (
+      window.navigator.standalone === true ||
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+    ) {
+      document.documentElement.classList.add("is-standalone");
+    }
+  </script>
+  <link rel="stylesheet" href="css/style.css?v=2.5.2">
 </head>
 <body>
   <div id="app">
@@ -140,7 +159,13 @@
             <span data-i18n="start.cta">开始游戏</span>
             <span class="key-hint">⏎</span>
           </button>
-          <p id="bestLine" class="best">最高分：0</p>
+          <div class="start-meta">
+            <p id="bestLine" class="best">最高分：0</p>
+            <button id="installBtn" class="install-btn is-hidden" type="button" data-i18n-title="install.cta" title="安装到手机">
+              <span class="install-btn-icon" aria-hidden="true">📲</span>
+              <span data-i18n="install.cta">安装到手机</span>
+            </button>
+          </div>
           <p id="speechNote" class="fineprint" data-i18n="speech.note.initial">语音识别需要 Chrome / Edge / Safari，并允许麦克风权限。</p>
         </section>
 
@@ -192,6 +217,19 @@
     </footer>
   </div>
 
+  <div id="installSheet" class="install-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="installTitle" aria-hidden="true">
+    <div class="install-card" role="document">
+      <div class="install-head">
+        <span class="install-badge" aria-hidden="true">📲</span>
+        <h2 id="installTitle" data-i18n="install.title">安装 PiuPiu</h2>
+        <button id="installClose" class="install-close" type="button" aria-label="关闭安装说明" data-i18n-aria="install.close">✕</button>
+      </div>
+      <div id="installBody" class="install-body"></div>
+      <p class="install-note" data-i18n="install.note">安装后可全屏打开，并支持离线游玩。</p>
+      <button id="installDone" class="primary-btn install-done" type="button" data-i18n="install.done">知道了</button>
+    </div>
+  </div>
+
   <div id="voicePopover" class="voice-popover is-hidden" role="dialog" aria-label="朗读声音" data-i18n-aria="voice.title">
     <div class="voice-popover-head">
       <span class="voice-title" data-i18n="voice.title">朗读声音</span>
@@ -201,7 +239,7 @@
     <button id="voicePreview" class="voice-preview" type="button" data-i18n="voice.preview" data-i18n-title="voice.previewTitle" title="试听当前声音">试听</button>
   </div>
 
-  <script src="js/i18n.js?v=2.4.0"></script>
+  <script src="js/i18n.js?v=2.5.2"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
   <script src="js/education.js"></script>
@@ -210,6 +248,7 @@
   <script src="js/emojis.js"></script>
   <script src="js/vendor/pixi.min.js?v=2.0.1"></script>
   <script src="js/pixi-ambient.js?v=2.0.1"></script>
-  <script src="js/game.js?v=2.4.0"></script>
+  <script src="js/game.js?v=2.5.2"></script>
+  <script src="js/pwa.js?v=2.5.2"></script>
 </body>
 </html>

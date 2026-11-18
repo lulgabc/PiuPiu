@@ -1255,6 +1255,140 @@ button:disabled {
   margin-top: 8px;
 }
 
+.install-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  background: rgba(3, 5, 12, 0.78);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.install-card {
+  position: relative;
+  width: min(430px, 100%);
+  max-height: 86vh;
+  max-height: min(86dvh, 640px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid rgba(154, 132, 255, 0.26);
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(139, 92, 255, 0.16), transparent 60%),
+    #0d1326;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.install-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 34px;
+}
+
+.install-badge {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(41, 231, 199, 0.2), rgba(139, 92, 255, 0.22));
+  font-size: 18px;
+}
+
+.install-head h2 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+.install-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.install-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+}
+
+.install-close:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(41, 231, 199, 0.18);
+}
+
+.install-body {
+  margin-top: 14px;
+  color: #c9d2e8;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.install-body p {
+  margin: 0;
+}
+
+.install-steps {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.install-steps li {
+  padding-left: 2px;
+}
+
+.install-steps li::marker {
+  color: var(--cyan);
+  font-weight: 800;
+}
+
+.install-note {
+  margin: 14px 0 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: rgba(41, 231, 199, 0.06);
+  color: rgba(191, 252, 236, 0.78);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.install-done {
+  min-height: 44px;
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+html.is-standalone #app {
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+
+@media (display-mode: standalone) {
+  #app {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+}
+
 .voice-title {
   color: var(--cyan);
   font-size: 9px;
@@ -1382,6 +1516,55 @@ button:disabled {
   vertical-align: 2px;
 }
 
+.start-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.install-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(41, 231, 199, 0.24);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(41, 231, 199, 0.11), rgba(41, 231, 199, 0.045));
+  color: #bffcec;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 0.18s, border-color 0.18s, background 0.18s;
+}
+
+.install-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(41, 231, 199, 0.52);
+  background: linear-gradient(180deg, rgba(41, 231, 199, 0.17), rgba(41, 231, 199, 0.07));
+}
+
+.install-btn:active {
+  transform: translateY(1px);
+}
+
+.install-btn:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(41, 231, 199, 0.18);
+}
+
+.install-btn-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
 .ghost-btn {
   margin-top: 12px;
   padding: 8px 14px;
@@ -1397,7 +1580,7 @@ button:disabled {
 }
 
 .best {
-  margin: 16px 0 0;
+  margin: 0;
   color: #c3cbe3;
   font-size: 11px;
   letter-spacing: 0.05em;
@@ -2006,5 +2189,25 @@ button:disabled {
   .voice-preview {
     height: 32px;
     font-size: 10px;
+  }
+
+  .start-meta {
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .install-btn {
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: 10.5px;
+  }
+
+  .install-card {
+    padding: 17px;
+    border-radius: 17px;
+  }
+
+  .install-body {
+    font-size: 12px;
   }
 }

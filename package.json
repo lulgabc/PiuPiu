@@ -1,10 +1,10 @@
 {
   "name": "piupiu",
-  "version": "2.4.0",
+  "version": "2.5.2",
   "private": true,
-  "description": "PiuPiu — a child-friendly falling-word English pronunciation game with emoji faces, playful effects, spoken hints with selectable natural and child voices, star-beam rewards, eight PixiJS ambience scenes, PHaVE and PHRASE lists, themed packs, K-12 reading lists, BNC/COCA word families, and Chinese, French and English UI.",
+  "description": "PiuPiu — a child-friendly falling-word English pronunciation game with emoji faces, playful effects, spoken hints with selectable natural and child voices, star-beam rewards, eight PixiJS ambience scenes, PHaVE and PHRASE lists, themed packs, K-12 reading lists, BNC/COCA word families, Chinese/French/English UI, and PWA installation with an offline app shell.",
   "scripts": {
     "start": "python3 -m http.server 4173",
-    "test": "node tests/verify-words.cjs && node tests/verify-lexicon.cjs && node tests/verify-education.cjs && node tests/verify-families.cjs && node tests/verify-emojis.cjs && node tests/verify-i18n.cjs && node tests/verify-phrases.cjs && node tests/verify-ambient.cjs && node tests/verify-reward-progress.cjs && node tests/verify-speech.cjs && node tests/verify-voice.cjs"
+    "test": "node tests/verify-words.cjs && node tests/verify-lexicon.cjs && node tests/verify-education.cjs && node tests/verify-families.cjs && node tests/verify-emojis.cjs && node tests/verify-i18n.cjs && node tests/verify-phrases.cjs && node tests/verify-ambient.cjs && node tests/verify-reward-progress.cjs && node tests/verify-speech.cjs && node tests/verify-voice.cjs && node tests/verify-pwa.cjs"
   }
 }
