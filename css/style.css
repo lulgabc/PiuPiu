@@ -445,7 +445,7 @@ button:disabled {
 
 .field-stars {
   position: absolute;
-  inset: 0;
+  inset: -420px;
   z-index: 0;
   pointer-events: none;
   opacity: 0.6;
@@ -1900,13 +1900,13 @@ html.is-standalone #app {
 }
 
 @keyframes starsDrift {
-  from { background-position: 0 0; }
-  to { background-position: 420px 420px; }
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(420px, 420px, 0); }
 }
 
 @keyframes wordIn {
-  from { opacity: 0; filter: blur(5px); }
-  to { opacity: 1; filter: blur(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes missBlink {
@@ -2270,4 +2270,76 @@ html.is-standalone #app {
   .fineprint {
     margin-top: 4px;
   }
+}
+
+/* Touch devices (iPad/iPhone) drop expensive live blurs and full-screen
+   paint animations; the gradients and solid fills keep the same look. */
+html.is-touch body::before {
+  filter: none;
+}
+
+html.is-touch .stat {
+  background: rgba(13, 19, 38, 0.84);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.is-touch .word {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.is-touch .word:not(.settled):not(.miss) {
+  background:
+    linear-gradient(180deg, rgba(9, 13, 26, 0.58), rgba(9, 13, 26, 0.38)),
+    linear-gradient(
+      180deg,
+      hsla(var(--hue, 265), 92%, 74%, 0.3),
+      hsla(var(--hue, 265), 82%, 48%, 0.16)
+    );
+}
+
+html.is-touch .heard {
+  background: rgba(7, 11, 24, 0.9);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.is-touch .praise {
+  background: rgba(74, 52, 9, 0.86);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.is-touch .reward-label {
+  background: rgba(78, 58, 12, 0.84);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.is-touch .overlay {
+  background: radial-gradient(circle at 50% 36%, rgba(139, 92, 255, 0.16), rgba(4, 6, 14, 0.94) 62%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.is-touch .install-sheet {
+  background: rgba(3, 5, 12, 0.9);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.is-touch .field-stars {
+  animation: none;
+  will-change: auto;
+}
+
+html.is-touch .word.focused,
+html.is-touch .word-layer.has-focus .word:not(.focused) {
+  filter: none;
+}
+
+html.is-touch .brand-mark,
+html.is-touch .mic-btn.listening .mic-dot {
+  animation: none;
 }

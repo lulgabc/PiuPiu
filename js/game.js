@@ -19,6 +19,7 @@
   const VOICE_KEY = "piupiu.voice";
   const PAD = 12;
   const DANGER_Y = 10;
+  const GAME_FPS = 60;
   const ACCENT_HUES = [265, 190, 318, 42, 158, 225, 288, 12];
 
   // Pronunciation-spelling pairs the recognizer can confuse. They sound the
@@ -729,6 +730,12 @@
     updateHUD(true);
   }
 
+  function setAmbientRunning(running) {
+    if (window.PiuAmbient && typeof window.PiuAmbient.setRunning === "function") {
+      window.PiuAmbient.setRunning(running);
+    }
+  }
+
   function startGame() {
     closeVoicePopover();
     audio();
@@ -737,6 +744,7 @@
     state.phase = "playing";
     window.dispatchEvent(new CustomEvent("piupiu:roundstart"));
     hideOverlay();
+    setAmbientRunning(true);
     els.pauseBtn.disabled = false;
     updatePauseButton();
     state.lastFrame = 0;
@@ -749,6 +757,10 @@
 
   function frame(timestamp) {
     if (state.phase !== "playing") return;
+    if (state.lastFrame && timestamp - state.lastFrame < 1000 / GAME_FPS - 1) {
+      state.raf = requestAnimationFrame(frame);
+      return;
+    }
     if (!state.lastFrame) state.lastFrame = timestamp;
     const dt = Math.min(0.05, Math.max(0, (timestamp - state.lastFrame) / 1000));
     state.lastFrame = timestamp;
@@ -926,6 +938,7 @@
     stopHelpSpeech();
     clearFocus();
     stopSpeech();
+    setAmbientRunning(false);
     cancelAnimationFrame(state.raf);
     state.raf = 0;
     hidePraise();
@@ -957,6 +970,7 @@
     stopHelpSpeech();
     clearFocus();
     stopSpeech();
+    setAmbientRunning(false);
     updatePauseButton();
     updateMicUI();
     showPanel(els.pausePanel);
@@ -966,6 +980,7 @@
     if (state.phase !== "paused") return;
     state.phase = "playing";
     hideOverlay();
+    setAmbientRunning(true);
     updatePauseButton();
     state.lastFrame = 0;
     state.raf = requestAnimationFrame(frame);
@@ -977,6 +992,7 @@
   function goHome() {
     state.phase = "menu";
     stopSpeech();
+    setAmbientRunning(false);
     resetGame();
     els.pauseBtn.disabled = true;
     updatePauseButton();

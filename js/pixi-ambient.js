@@ -26,7 +26,18 @@
   const autoLabel = IS_DEMO ? document.getElementById("autoLabel") : null;
 
   const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const COARSE = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 1;
+  const SMALL_SCREEN =
+    Math.min(window.innerWidth || 9999, window.innerHeight || 9999) < 760;
+  const LOW_POWER = params.get("lowpower") === "1" || COARSE || SMALL_SCREEN;
+  const QUALITY = LOW_POWER ? 0.55 : 1;
+  const MAX_FPS = LOW_POWER ? 30 : 60;
+  const MAX_DPR = LOW_POWER ? 1.3 : 2;
   const AUTO_DELAY = IS_DEMO ? 16000 : 22000;
+
+  function qcount(count, min = 4) {
+    return Math.max(min, Math.round(count * QUALITY));
+  }
 
   if (!IS_DEMO && REDUCED) {
     stageEl.style.display = "none";
@@ -116,6 +127,48 @@
   let roundsStarted = 0;
   let autoTimer = 0;
   let copyTimer = 0;
+  let booted = false;
+  let bootStarted = false;
+  let desiredRunning = IS_DEMO;
+
+  function ensureBoot() {
+    if (bootStarted) return;
+    bootStarted = true;
+    boot().catch((error) => {
+      console.error("PiuPiu Pixi ambient failed:", error);
+      if (IS_DEMO) {
+        stageEl.innerHTML =
+          '<div style="position:absolute;inset:0;display:grid;place-items:center;color:#93a0c0;font-size:13px">PixiJS 初始化失败，请刷新重试</div>';
+      } else {
+        stageEl.style.display = "none";
+      }
+    });
+  }
+
+  function setRunning(run) {
+    const next = Boolean(run);
+    if (next === desiredRunning) return;
+    desiredRunning = next;
+    if (next) ensureBoot();
+    if (!booted) return;
+    if (desiredRunning) {
+      app.ticker.start();
+    } else {
+      app.renderer.render(app.stage);
+      app.ticker.stop();
+    }
+  }
+
+  const publicApi = {
+    setRunning,
+    get running() {
+      return booted && desiredRunning;
+    },
+    get lowPower() {
+      return LOW_POWER;
+    },
+  };
+  window.PiuAmbient = publicApi;
 
   function seasonForMonth() {
     const month = new Date().getMonth();
@@ -966,8 +1019,10 @@
   };
 
   function makeBackground(key) {
-    const bw = Math.min(1600, Math.max(880, Math.round(W)));
-    const bh = Math.min(1040, Math.max(540, Math.round(H)));
+    const maxW = LOW_POWER ? 1280 : 1600;
+    const maxH = LOW_POWER ? 900 : 1040;
+    const bw = Math.min(maxW, Math.max(880, Math.round(W)));
+    const bh = Math.min(maxH, Math.max(540, Math.round(H)));
     return makeTexture(bw, bh, (ctx, w, h) => {
       BACKGROUNDS[key](ctx, w, h);
     });
@@ -1024,7 +1079,7 @@
     const bokeh = [];
     const bokehLayer = new PIXI.Container();
     root.addChild(bokehLayer);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < qcount(16, 8); i++) {
       const size = rand(26, 84);
       const sprite = addGlow(
         bokehLayer,
@@ -1049,7 +1104,7 @@
     const petals = [];
     const petalLayer = new PIXI.Container();
     root.addChild(petalLayer);
-    const count = REDUCED ? 26 : 62;
+    const count = REDUCED ? 26 : qcount(62, 28);
     for (let i = 0; i < count; i++) {
       const depth = Math.random();
       const sprite = new PIXI.Sprite(TEX.petal);
@@ -1077,7 +1132,7 @@
     const foreground = [];
     const fgLayer = new PIXI.Container();
     root.addChild(fgLayer);
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < qcount(7); i++) {
       const sprite = new PIXI.Sprite(TEX.petal);
       sprite.anchor.set(0.5);
       const size = rand(28, 46);
@@ -1263,7 +1318,7 @@
     const bubbles = [];
     const bubbleLayer = new PIXI.Container();
     root.addChild(bubbleLayer);
-    for (let i = 0; i < 34; i++) {
+    for (let i = 0; i < qcount(34, 18); i++) {
       const size = rand(5, 20);
       const sprite = new PIXI.Sprite(TEX.bubble);
       sprite.anchor.set(0.5);
@@ -1291,14 +1346,14 @@
       [0.82, 0.4, 13, 0x7cf7dc, 0.5],
       [0.5, 0.9, 30, 0x6f9dff, 0.3],
     ];
-    for (const spec of jellySpecs) {
+    for (const spec of LOW_POWER ? jellySpecs.slice(0, 3) : jellySpecs) {
       const jelly = createJellyfish(W * spec[0], H * spec[1], spec[2], spec[3], spec[4]);
       root.addChild(jelly.container);
       jellies.push(jelly);
     }
 
     const fish = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < qcount(5, 3); i++) {
       const size = rand(10, 20);
       const sprite = createFish(size, 0x2b9fb5, rand(0.34, 0.52));
       sprite.position.set(rand(0, W), rand(H * 0.45, H * 0.78));
@@ -1316,7 +1371,7 @@
     const plankton = [];
     const planktonLayer = new PIXI.Container();
     root.addChild(planktonLayer);
-    for (let i = 0; i < 36; i++) {
+    for (let i = 0; i < qcount(36, 20); i++) {
       const sprite = addGlow(planktonLayer, rand(0, W), rand(H * 0.25, H), rand(2, 5), 0x9ff4ff, rand(0.08, 0.3));
       plankton.push({
         sprite,
@@ -1408,7 +1463,7 @@
     const motes = [];
     const moteLayer = new PIXI.Container();
     root.addChild(moteLayer);
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < qcount(24, 14); i++) {
       const sprite = addGlow(moteLayer, rand(0, W), rand(H * 0.3, H), rand(2, 5), 0xffd39a, rand(0.08, 0.28));
       motes.push({
         sprite,
@@ -1423,7 +1478,7 @@
     const leaves = [];
     const leafLayer = new PIXI.Container();
     root.addChild(leafLayer);
-    const count = REDUCED ? 26 : 56;
+    const count = REDUCED ? 26 : qcount(56, 28);
     for (let i = 0; i < count; i++) {
       const depth = Math.random();
       const ginkgo = Math.random() > 0.42;
@@ -1521,7 +1576,8 @@
       glow.position.set(0, H * (spec.base + spec.len * 0.35));
       ribbon.addChild(glow);
 
-      for (let i = 0; i < spec.count; i++) {
+      const ribbonCount = LOW_POWER ? Math.max(20, Math.round(spec.count * 0.38)) : spec.count;
+      for (let i = 0; i < ribbonCount; i++) {
         const k = i / (spec.count - 1);
         const top =
           H *
@@ -1565,7 +1621,7 @@
     const stars = [];
     const starLayer = new PIXI.Container();
     root.addChild(starLayer);
-    for (let i = 0; i < (REDUCED ? 45 : 95); i++) {
+    for (let i = 0; i < (REDUCED ? 45 : qcount(95, 48)); i++) {
       const size = rand(1.6, i % 11 === 0 ? 6 : 3.6);
       const sprite = addGlow(starLayer, rand(0, W), rand(0, H * 0.72), size, 0xdceaff, rand(0.2, 0.9));
       stars.push({
@@ -1582,7 +1638,7 @@
     const snow = [];
     const snowLayer = new PIXI.Container();
     root.addChild(snowLayer);
-    const count = REDUCED ? 46 : 130;
+    const count = REDUCED ? 46 : qcount(130, 62);
     for (let i = 0; i < count; i++) {
       const depth = Math.random();
       const sprite = new PIXI.Sprite(TEX.snow);
@@ -1652,7 +1708,7 @@
     const dust = [];
     const dustLayer = new PIXI.Container();
     root.addChild(dustLayer);
-    for (let i = 0; i < (REDUCED ? 20 : 46); i++) {
+    for (let i = 0; i < (REDUCED ? 20 : qcount(46, 24)); i++) {
       const sprite = addGlow(
         dustLayer,
         rand(0, W),
@@ -1676,7 +1732,7 @@
     const sparks = [];
     const sparkLayer = new PIXI.Container();
     root.addChild(sparkLayer);
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < qcount(28, 14); i++) {
       const sprite = addGlow(
         sparkLayer,
         rand(0, W),
@@ -1736,7 +1792,7 @@
     const stars = [];
     const starLayer = new PIXI.Container();
     root.addChild(starLayer);
-    for (let i = 0; i < (REDUCED ? 24 : 52); i++) {
+    for (let i = 0; i < (REDUCED ? 24 : qcount(52, 28)); i++) {
       const sprite = addGlow(starLayer, rand(0, W), rand(0, H * 0.55), rand(1.2, 3.4), 0xdceaff, rand(0.18, 0.7));
       stars.push({
         sprite,
@@ -1750,7 +1806,7 @@
     const leafLayer = new PIXI.Container();
     root.addChild(leafLayer);
     const tints = [0x9fb56a, 0xb8c48a, 0xd8c99a, 0x7f9a5f, 0xc7b97a];
-    for (let i = 0; i < (REDUCED ? 12 : 28); i++) {
+    for (let i = 0; i < (REDUCED ? 12 : qcount(28, 14)); i++) {
       const size = rand(5, 11);
       const sprite = new PIXI.Sprite(TEX.leafOval);
       sprite.anchor.set(0.5);
@@ -1776,7 +1832,7 @@
     const fireflies = [];
     const fireflyLayer = new PIXI.Container();
     root.addChild(fireflyLayer);
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < qcount(18, 10); i++) {
       const sprite = addGlow(
         fireflyLayer,
         rand(0, W),
@@ -1836,7 +1892,7 @@
     const embers = [];
     const emberLayer = new PIXI.Container();
     root.addChild(emberLayer);
-    for (let i = 0; i < (REDUCED ? 18 : 48); i++) {
+    for (let i = 0; i < (REDUCED ? 18 : qcount(48, 24)); i++) {
       const sprite = addGlow(
         emberLayer,
         rand(W * 0.32, W * 0.86),
@@ -1860,7 +1916,7 @@
     const dust = [];
     const dustLayer = new PIXI.Container();
     root.addChild(dustLayer);
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < qcount(20, 10); i++) {
       const sprite = addGlow(dustLayer, rand(0, W), rand(H * 0.2, H * 0.9), rand(2, 5), 0xffc27a, rand(0.05, 0.16));
       dust.push({
         sprite,
@@ -1875,7 +1931,7 @@
     const leaves = [];
     const leafLayer = new PIXI.Container();
     root.addChild(leafLayer);
-    for (let i = 0; i < (REDUCED ? 6 : 14); i++) {
+    for (let i = 0; i < (REDUCED ? 6 : qcount(14, 8)); i++) {
       const size = rand(5, 10);
       const sprite = new PIXI.Sprite(TEX.leafOval);
       sprite.anchor.set(0.5);
@@ -1977,7 +2033,7 @@
     const stars = [];
     const starLayer = new PIXI.Container();
     root.addChild(starLayer);
-    for (let i = 0; i < (REDUCED ? 60 : 150); i++) {
+    for (let i = 0; i < (REDUCED ? 60 : qcount(150, 76)); i++) {
       const big = i % 17 === 0;
       const sprite = addGlow(
         starLayer,
@@ -2189,6 +2245,7 @@
 
     currentKey = null;
     switchScene(key, true);
+    if (!desiredRunning && !document.hidden) app.renderer.render(app.stage);
   }
 
   /* ------------------------------- UI ------------------------------- */
@@ -2255,12 +2312,13 @@
     await app.init({
       resizeTo: stageEl,
       backgroundAlpha: 0,
-      antialias: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
+      antialias: !LOW_POWER,
+      resolution: Math.min(window.devicePixelRatio || 1, MAX_DPR),
       autoDensity: true,
-      powerPreference: "high-performance",
+      powerPreference: LOW_POWER ? "low-power" : "high-performance",
       preference: "webgl",
     });
+    app.ticker.maxFPS = MAX_FPS;
 
     stageEl.appendChild(app.canvas);
     W = app.screen.width || stageEl.clientWidth || 1200;
@@ -2275,12 +2333,14 @@
     grain = new PIXI.TilingSprite({ texture: TEX.grain, width: W, height: H });
     grain.alpha = 0.045;
     grain.blendMode = "overlay";
+    grain.visible = !LOW_POWER;
     app.stage.addChild(grain);
 
     vignette = new PIXI.Sprite(TEX.vignette);
     vignette.width = W;
     vignette.height = H;
     vignette.alpha = 0.92;
+    vignette.visible = !LOW_POWER;
     app.stage.addChild(vignette);
 
     buildDock();
@@ -2302,21 +2362,25 @@
         : seasonForMonth();
     switchScene(initial, true);
     if (!IS_DEMO) window.addEventListener("piupiu:roundstart", handleRoundStart);
+    booted = true;
+    if (!desiredRunning) {
+      app.renderer.render(app.stage);
+      app.ticker.stop();
+    }
 
     if (DEBUG) {
       if (IS_DEMO) {
         window.__PIXI_DEMO__ = { app, switchScene, SCENES };
-      } else {
-        window.PiuAmbient = {
-          app,
-          scenes: ORDER.slice(),
-          setScene: (key) => switchScene(key, false),
-          next: () => switchScene(ORDER[(ORDER.indexOf(currentKey) + 1) % ORDER.length], false),
-          get current() {
-            return currentKey;
-          },
-        };
       }
+      Object.assign(publicApi, {
+        app,
+        scenes: ORDER.slice(),
+        setScene: (key) => switchScene(key, false),
+        next: () => switchScene(ORDER[(ORDER.indexOf(currentKey) + 1) % ORDER.length], false),
+        get current() {
+          return currentKey;
+        },
+      });
     }
 
     app.ticker.add((ticker) => {
@@ -2338,20 +2402,21 @@
       if (document.hidden) {
         app.ticker.stop();
         window.clearTimeout(autoTimer);
-      } else {
+      } else if (desiredRunning) {
         app.ticker.start();
         scheduleAuto();
       }
     });
   }
 
-  boot().catch((error) => {
-    console.error("PiuPiu Pixi ambient failed:", error);
-    if (IS_DEMO) {
-      stageEl.innerHTML =
-        '<div style="position:absolute;inset:0;display:grid;place-items:center;color:#93a0c0;font-size:13px">PixiJS 初始化失败，请刷新重试</div>';
-    } else {
-      stageEl.style.display = "none";
-    }
-  });
+  // Low-power devices create the WebGL scene after the first paint (or on
+  // the first start if the player is faster than the browser). This keeps
+  // opening the menu instant without making every round wait for WebGL.
+  if (IS_DEMO || !LOW_POWER) {
+    ensureBoot();
+  } else if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(ensureBoot, { timeout: 1200 });
+  } else {
+    window.setTimeout(ensureBoot, 450);
+  }
 })();
