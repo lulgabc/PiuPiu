@@ -143,6 +143,8 @@
       "speech.note.ok": "语音识别需要允许麦克风权限；也可以随时改用下方输入框。",
       "speech.note.unsupported":
         "当前浏览器不支持语音识别，请直接输入单词来玩。推荐 Chrome / Edge / Safari。",
+      "speech.note.ios":
+        "iPhone / iPad：如果帮助发音很小，请关闭侧边静音键并调高媒体音量；发音时游戏会暂时释放麦克风。",
       "pause.eyebrow": "😴 休息一下",
       "pause.title": "已暂停",
       "pause.tagline": "单词们正在半空中等你。",
@@ -368,6 +370,8 @@
         "La reconnaissance vocale demande l'accès au micro ; le champ de saisie reste disponible.",
       "speech.note.unsupported":
         "La reconnaissance vocale n'est pas disponible dans ce navigateur. Tape les mots pour jouer. Chrome / Edge / Safari recommandés.",
+      "speech.note.ios":
+        "iPhone / iPad : si l'aide est trop faible, désactivez le mode silencieux et augmentez le volume multimédia ; le micro est libéré pendant la prononciation.",
       "pause.eyebrow": "😴 UNE PAUSE",
       "pause.title": "En pause",
       "pause.tagline": "Les mots t'attendent en plein vol.",
@@ -593,6 +597,8 @@
         "Speech recognition asks for mic access; the text field below always works.",
       "speech.note.unsupported":
         "Speech recognition isn't available in this browser. Type the words to play. Chrome / Edge / Safari recommended.",
+      "speech.note.ios":
+        "iPhone / iPad: if the hint is too quiet, turn off the side mute switch and raise media volume; the mic is released while the hint plays.",
       "pause.eyebrow": "😴 TAKE A BREATH",
       "pause.title": "Paused",
       "pause.tagline": "The words are waiting mid-air.",

@@ -12,7 +12,9 @@ const i18n = fs.readFileSync(path.join(root, "js/i18n.js"), "utf8");
 assert.match(game, /createDynamicsCompressor/, "the sound bus should use a compressor");
 assert.match(game, /state\.masterGain/, "all sounds should share a master gain");
 assert.match(game, /function soundOut\(ctx\)/, "audio nodes should connect through the master bus");
-assert.match(game, /master\.gain\.value = 0\.9/, "the master volume should leave headroom");
+assert.match(game, /master\.gain\.value = 1/, "the master volume should be at full scale");
+assert.match(game, /const AUDIO_BOOST = TOUCH_DEVICE \|\| IS_IOS \? 1\.8 : 1/, "touch devices should get a louder effect bus");
+assert.match(game, /volume \* AUDIO_BOOST/, "tone/noise gains should use the mobile boost");
 
 // ---------- cartoon / playful palette ----------
 for (const fn of [

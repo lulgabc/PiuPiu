@@ -37,6 +37,12 @@
     ["bubble", "🍭"],
   ];
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const TOUCH_DEVICE =
+    window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 1;
+  const IS_IOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const AUDIO_BOOST = TOUCH_DEVICE || IS_IOS ? 1.8 : 1;
   const HS_KEY = "piupiu.highscore";
   const MUTE_KEY = "piupiu.muted";
   const PACK_KEY = "piupiu.pack";
@@ -611,7 +617,7 @@
     if (!state.audioCtx) {
       state.audioCtx = new Ctx();
       const master = state.audioCtx.createGain();
-      master.gain.value = 0.9;
+      master.gain.value = 1;
       if (typeof state.audioCtx.createDynamicsCompressor === "function") {
         const compressor = state.audioCtx.createDynamicsCompressor();
         compressor.threshold.value = -18;
@@ -643,7 +649,7 @@
     osc.frequency.setValueAtTime(freq, start);
     if (slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), start + duration);
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(volume * AUDIO_BOOST, start + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     osc.connect(gain).connect(soundOut(ctx));
     osc.start(start);
@@ -663,7 +669,7 @@
     filter.type = "highpass";
     filter.frequency.value = 800;
     const gain = ctx.createGain();
-    gain.gain.value = volume;
+    gain.gain.value = volume * AUDIO_BOOST;
     src.connect(filter).connect(gain).connect(soundOut(ctx));
     src.start(ctx.currentTime + delay);
   }
@@ -700,7 +706,7 @@
 
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(volume, start + duration * 0.25);
+    gain.gain.exponentialRampToValueAtTime(volume * AUDIO_BOOST, start + duration * 0.25);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
     src.connect(filter).connect(gain).connect(soundOut(ctx));
@@ -1461,6 +1467,12 @@
     els.muteBtn.setAttribute("aria-label", state.muted ? tr("mute.on") : tr("mute.off"));
   }
 
+  function updateSpeechNote() {
+    if (!els.speechNote) return;
+    const base = SpeechRec ? tr("speech.note.ok") : tr("speech.note.unsupported");
+    els.speechNote.textContent = IS_IOS ? `${base} ${tr("speech.note.ios")}` : base;
+  }
+
   function refreshLanguage() {
     updateHUD(true);
     updateMicUI();
@@ -1470,9 +1482,7 @@
     renderCategoryOptions();
     updatePackUI();
     renderVoiceOptions();
-    els.speechNote.textContent = SpeechRec
-      ? tr("speech.note.ok")
-      : tr("speech.note.unsupported");
+    updateSpeechNote();
     if (state.phase === "over") renderOverPanel();
     hideHeard();
     hidePraise();
@@ -2071,6 +2081,7 @@
     const Utterance = window.SpeechSynthesisUtterance;
     if (!synth || !Utterance) return;
     applyVoiceChoice();
+    const wasSpeaking = Boolean(synth.speaking || synth.pending);
     try {
       synth.cancel();
     } catch {}
@@ -2080,9 +2091,13 @@
     utterance.pitch = helpPitch;
     utterance.volume = 1;
     if (helpVoice) utterance.voice = helpVoice;
-    try {
-      synth.speak(utterance);
-    } catch {}
+    const startSpeak = () => {
+      try {
+        synth.speak(utterance);
+      } catch {}
+    };
+    if (IS_IOS && wasSpeaking) window.setTimeout(startSpeak, 60);
+    else startSpeak();
   }
 
   function onVoiceChange() {
@@ -2119,11 +2134,22 @@
     state.helpSpeaking = true;
     state.helpWord = word.word;
     state.helpGuardUntil = 0;
+
+    // iOS routes web audio through a quieter record/playback session while
+    // SpeechRecognition owns the microphone. Release the mic for the hint so
+    // the system voice comes back through the speaker at normal volume.
+    const releaseMic = IS_IOS && state.micEnabled;
+    const wasSpeaking = Boolean(synth.speaking || synth.pending);
     try {
       synth.cancel();
     } catch {}
+
     updateMicUI();
-    if (state.micEnabled && !state.listening && !state.speechStarting) startSpeech();
+    if (releaseMic) {
+      stopSpeech();
+    } else if (state.micEnabled && !state.listening && !state.speechStarting) {
+      startSpeech();
+    }
 
     applyVoiceChoice();
     const utterance = new Utterance(word.word);
@@ -2149,13 +2175,21 @@
     utterance.onend = done;
     utterance.onerror = done;
 
-    try {
-      synth.speak(utterance);
-    } catch {
-      done();
-      toast(tr("help.unsupported"), "warn");
-      return;
-    }
+    const startSpeak = () => {
+      if (token !== state.helpSpeakToken) return;
+      try {
+        synth.speak(utterance);
+      } catch {
+        done();
+        toast(tr("help.unsupported"), "warn");
+      }
+    };
+
+    // A short pause after cancel/abort avoids Safari silently swallowing the
+    // next utterance; giving the audio route a moment also restores volume.
+    const delay = IS_IOS ? (releaseMic ? 150 : wasSpeaking ? 60 : 0) : 0;
+    if (delay) window.setTimeout(startSpeak, delay);
+    else startSpeak();
 
     window.setTimeout(() => {
       if (token === state.helpSpeakToken && state.helpSpeaking) done();
@@ -2848,11 +2882,10 @@
 
     if (SpeechRec) {
       setupSpeech();
-      els.speechNote.textContent = tr("speech.note.ok");
     } else {
       state.micEnabled = false;
-      els.speechNote.textContent = tr("speech.note.unsupported");
     }
+    updateSpeechNote();
     setupHelp();
 
     state.lastFieldW = els.field.clientWidth;
