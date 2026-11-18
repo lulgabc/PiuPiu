@@ -122,6 +122,27 @@ npm start
 - 没有下落单词时会提示稍等；浏览器不支持语音合成时仍会高亮该单词。
 - 静音按钮控制游戏音效；帮助语音由系统语音服务播放，可在系统层面调整音量。
 
+## 语音识别优化
+
+游戏默认使用浏览器的 Web Speech API（Chrome 通常是云端识别）。在当前目标词库很小、需要低延迟的场景下，项目做了这些优化：
+
+- **5 个候选结果（n-best）**：`maxAlternatives = 5`，同时检查所有候选，并按 confidence 选择最可信的目标匹配，而不是只看第一个结果。
+- **上下文偏置（Contextual Biasing）**：如果浏览器支持 `SpeechRecognition.phrases` 与 `SpeechRecognitionPhrase`，会把当前屏幕上的目标词/短语以 boost 4.0 加入识别提示，并把词袋末尾接下来 5 个目标以 boost 2.0 预热；即使浏览器只在启动时读取一次提示，也能覆盖开局。不支持时自动跳过。
+- **短语容错**：
+  - 紧凑形式：`give up` ← `giveup`
+  - 常见弱读：`going to` ← `gonna`、`have to` ← `hafta`、`out of` ← `outta`、`there is` ← `there's`
+  - 省略冠词：`the extent to which` ← `extent to which`
+  - 包含在更长句子中：`give up` ← `give up now`
+  - 撇号/同音词/词形变化仍沿用原有容错。
+- **更早采用中间结果**：`interimResults = true`，中间结果一旦稳定匹配目标即可消除，不必等待最终结果。
+- **更短的重连空窗**：正常结束约 **90ms** 后重启；连续 no-speech 时退避到 **260ms**，避免空转；帮助语音结束后约 **100ms** 恢复识别。
+- **启动竞态保护**：遇到 `InvalidStateError` 时最多重试 3 次，避免与浏览器内部状态冲突。
+- **延迟观测**：在 `?debug=1` 下可使用 `__PIU__.getSpeechStats()` 查看首个中间结果、匹配延迟的 p50 / p95、候选数、短语偏置是否启用等。
+
+**仍然存在的限制：** Web Speech API 的声学模型、端点和网络延迟由浏览器/服务商控制，网页无法直接调参；`phrases` 属于较新的实验能力，Safari/Firefox 可能不支持。n-best 的低置信候选也有误匹配可能。
+
+如果未来要追求稳定低延迟或离线识别，可考虑浏览器端流式模型（Vosk WASM、sherpa-onnx WASM、Moonshine/Whisper WebGPU）；代价是 20–100MB+ 模型下载、内存/CPU 占用和更复杂的音频前端。以当前游戏的短词/短语目标，保留 Web Speech API + 目标感知匹配通常是延迟与准确率更平衡的方案。
+
 ## 奖励消除
 
 - HUD 新增 **「正确」计数**，每读对一个单词 +1。
@@ -233,6 +254,7 @@ PiuPiu/
 ├── tests/verify-families.cjs # BNC/COCA 25 个词族列表与 headword 校验
 ├── tests/verify-phrases.cjs  # PHaVE / PHRASE 数量、频段、唯一性与翻译校验
 ├── tests/verify-reward-progress.cjs # 星光进度条结构、动画、逻辑与三语标签校验
+├── tests/verify-speech.cjs   # 语音 n-best、上下文偏置、短语容错与延迟指标校验
 ├── tests/verify-emojis.cjs   # emoji 映射、覆盖率和重复键校验
 ├── tests/verify-i18n.cjs     # 三语翻译完整性与插值占位符校验
 ├── tests/verify-ambient.cjs  # 8 场景、游戏接入与旧环境清理校验
@@ -247,7 +269,7 @@ PiuPiu/
 npm test
 ```
 
-检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。另外校验短语词表：PHaVE 150 个、PHRASE 499 个、频段数量、跨表唯一性，以及分组和级别标签的三语翻译。还会校验顶部星光进度条：五格节点、进度语义、满格动画、累积/归零逻辑、移动端与减少动态效果规则。最后校验 Pixi 环境引擎：8 个场景与顺序、每局固定主题、新局换题事件、WebGL 初始化、游戏内挂载、旧环境层已移除、无 emoji 素材，以及后台暂停和减少动态效果规则。
+检查核心词数量、主题词库类别数、每级词数、Dolch/Fry/Dale-Chall 词数与分级、BNC/COCA 25 个列表、emoji 映射覆盖率、是否混入虚词，以及三语翻译的 key 完整性、插值占位符一致性和界面引用缺失。另外校验短语词表：PHaVE 150 个、PHRASE 499 个、频段数量、跨表唯一性，以及分组和级别标签的三语翻译。语音测试会校验 5 候选、上下文偏置、弱读/紧凑短语、重连与延迟指标。还会校验顶部星光进度条：五格节点、进度语义、满格动画、累积/归零逻辑、移动端与减少动态效果规则。最后校验 Pixi 环境引擎：8 个场景与顺序、每局固定主题、新局换题事件、WebGL 初始化、游戏内挂载、旧环境层已移除、无 emoji 素材，以及后台暂停和减少动态效果规则。
 
 ## 调试
 
@@ -264,6 +286,8 @@ PiuAmbient.scenes;             // 8 个场景
 PiuAmbient.current;            // 当前场景
 PiuAmbient.setScene("egypt");
 PiuAmbient.next();
+
+__PIU__.getSpeechStats();       // 语音延迟 / p50 / p95 / 候选统计
 ```
 
 ## 已知限制

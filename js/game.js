@@ -67,6 +67,27 @@
     write: ["right"],
   };
 
+  // Common reductions the recognizer may return for phrase targets.
+  const PHRASE_REDUCTIONS = {
+    "going to": ["gonna"],
+    "want to": ["wanna"],
+    "got to": ["gotta"],
+    "have to": ["hafta", "haffta"],
+    "has to": ["hasta"],
+    "have got to": ["gotta"],
+    "have got": ["got"],
+    "used to": ["usta"],
+    "kind of": ["kinda"],
+    "sort of": ["sorta"],
+    "out of": ["outta"],
+    "a lot of": ["a lotta", "alotta"],
+    "let me": ["lemme"],
+    "give me": ["gimme"],
+    "there is": ["there's"],
+    "that is": ["that's"],
+  };
+  const OPTIONAL_ARTICLES = new Set(["a", "an", "the"]);
+
   const $ = (id) => document.getElementById(id);
 
   const i18n = window.PiuI18n;
@@ -161,6 +182,22 @@
     speechStarting: false,
     speechError: false,
     speechNetworkErrors: 0,
+    speechPhraseKey: "",
+    speechPhrasesSupported: null,
+    speechPhraseError: "",
+    speechNoSpeech: false,
+    speechStartRetries: 0,
+    speechMetrics: {
+      sessions: 0,
+      results: 0,
+      finals: 0,
+      matches: 0,
+      firstInterim: null,
+      lastResultLatency: null,
+      lastMatchLatency: null,
+      lastSpeechStart: 0,
+      samples: [],
+    },
     restartTimer: 0,
     heardTimer: 0,
     praiseTimer: 0,
@@ -647,6 +684,7 @@
     state.settled = [];
     state.bag = shuffle((state.pool.length ? state.pool : WORD_BANK).slice());
     state.lastWord = "";
+    syncSpeechPhrases();
     state.score = 0;
     state.combo = 0;
     state.bestCombo = 0;
@@ -781,6 +819,7 @@
     };
     el.style.transform = `translate3d(${x}px, ${obj.y}px, 0)`;
     state.words.push(obj);
+    syncSpeechPhrases();
   }
 
   function updateWordFace(word, dt) {
@@ -822,6 +861,7 @@
     if (index === -1) return;
     if (state.focusedWord === word) clearFocus();
     state.words.splice(index, 1);
+    syncSpeechPhrases();
 
     const finalY = Math.max(0, y);
     word.y = finalY;
@@ -1100,10 +1140,17 @@
       add(`${base}es`);
     }
     add(base.replace(/'/g, ""));
+    add(base.replace(/\s+/g, ""));
     if (base.length >= 3 && base.endsWith("y") && !/[aeiou]y$/.test(base)) {
       add(`${base.slice(0, -1)}ies`);
     }
     for (const alias of HOMOPHONES[base] || []) forms.add(alias);
+    if (base.includes(" ")) {
+      for (const alias of PHRASE_REDUCTIONS[base] || []) add(alias);
+      const parts = base.split(" ");
+      const trimmed = parts.filter((part) => !OPTIONAL_ARTICLES.has(part));
+      if (trimmed.length >= 2 && trimmed.length < parts.length) add(trimmed.join(" "));
+    }
     return forms;
   }
 
@@ -1130,12 +1177,27 @@
     }
 
     for (const word of candidates) {
+      const key = word.word.toLowerCase();
       const forms = formsFor(word.word);
 
       if (forms.has(normalized)) return word;
 
       for (const token of tokens) {
         if (forms.has(token)) return word;
+      }
+
+      const keyTokens = key.split(" ");
+      if (keyTokens.length >= 2) {
+        for (let i = 0; i + keyTokens.length <= tokens.length; i++) {
+          let phraseHit = true;
+          for (let j = 0; j < keyTokens.length; j++) {
+            if (tokens[i + j] !== keyTokens[j]) {
+              phraseHit = false;
+              break;
+            }
+          }
+          if (phraseHit) return word;
+        }
       }
 
       if (word.word.length >= 6) {
@@ -1350,6 +1412,7 @@
     if (index === -1) return;
     if (state.focusedWord === word) clearFocus();
     state.words.splice(index, 1);
+    syncSpeechPhrases();
 
     const fRect = els.field.getBoundingClientRect();
     const wRect = word.el.getBoundingClientRect();
@@ -1557,7 +1620,7 @@
           if (state.phase === "playing" && state.micEnabled && !state.helpSpeaking) {
             startSpeech();
           }
-        }, 350);
+        }, 100);
       }
     };
 
@@ -1599,6 +1662,53 @@
   /* speech recognition                                                  */
   /* ------------------------------------------------------------------ */
 
+  function syncSpeechPhrases() {
+    const recognition = state.speech;
+    if (!recognition) return;
+    if (state.speechPhrasesSupported === false) return;
+    if (!("phrases" in recognition)) {
+      state.speechPhrasesSupported = false;
+      return;
+    }
+    const Phrase = window.SpeechRecognitionPhrase;
+    if (typeof Phrase !== "function") {
+      state.speechPhrasesSupported = false;
+      return;
+    }
+
+    const targets = new Map();
+    for (const word of state.words) targets.set(word.word, 4);
+    // The bag's tail is what nextWord() will spawn next; bias upcoming targets
+    // even if the browser only applies the phrase list when recognition starts.
+    if (state.phase === "playing") {
+      for (const word of state.bag.slice(-5)) {
+        if (!targets.has(word)) targets.set(word, 2);
+      }
+    }
+    const key = [...targets.keys()].join("\u0001");
+    if (key === state.speechPhraseKey) return;
+    state.speechPhraseKey = key;
+
+    try {
+      const phrases = [...targets].map(([target, boost]) => new Phrase(target, boost));
+      try {
+        recognition.phrases = phrases;
+      } catch (assignError) {
+        const current = recognition.phrases;
+        if (current && typeof current.splice === "function") {
+          current.splice(0, current.length, ...phrases);
+        } else {
+          throw assignError;
+        }
+      }
+      state.speechPhrasesSupported = true;
+    } catch (err) {
+      state.speechPhrasesSupported = false;
+      state.speechPhraseKey = "";
+      state.speechPhraseError = err && err.message ? err.message : String(err);
+    }
+  }
+
   function setupSpeech() {
     if (!SpeechRec) return;
     try {
@@ -1606,34 +1716,106 @@
       recognition.lang = "en-US";
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
+      recognition.maxAlternatives = 5;
+      state.speechPhrasesSupported =
+        "phrases" in recognition && typeof window.SpeechRecognitionPhrase === "function"
+          ? null
+          : false;
 
       recognition.onstart = () => {
         state.listening = true;
         state.speechStarting = false;
         state.speechError = false;
+        state.speechNoSpeech = false;
+        state.speechStartRetries = 0;
+        state.speechMetrics.sessions += 1;
+        syncSpeechPhrases();
+        updateMicUI();
+      };
+
+      recognition.onaudiostart = () => {
+        if (!state.speechMetrics.lastSpeechStart) {
+          state.speechMetrics.lastSpeechStart = performance.now();
+        }
+      };
+
+      recognition.onspeechstart = () => {
+        state.speechMetrics.lastSpeechStart = performance.now();
+        state.speechMetrics.firstInterim = null;
+      };
+
+      recognition.onspeechend = () => {
         updateMicUI();
       };
 
       recognition.onresult = (event) => {
         if (state.phase !== "playing") return;
+        const now = performance.now();
+        const metrics = state.speechMetrics;
+        state.speechNoSpeech = false;
+        metrics.results += 1;
+        if (metrics.lastSpeechStart && metrics.firstInterim === null) {
+          metrics.firstInterim = Math.round(now - metrics.lastSpeechStart);
+        }
+
         let latest = "";
+        let latestConfidence = -1;
+        let bestHit = null;
+        let bestHitConfidence = -1;
+        let bestHitRank = Infinity;
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
-          if (!result || !result[0]) continue;
-          const transcript = (result[0].transcript || "").trim();
-          if (!transcript) continue;
-          latest = transcript;
-          const hit = findMatch(transcript);
-          if (hit) {
-            explodeWord(hit);
-            return;
+          if (!result) continue;
+          if (result.isFinal) metrics.finals += 1;
+          for (let j = 0; j < result.length; j++) {
+            const alt = result[j];
+            if (!alt) continue;
+            const transcript = (alt.transcript || "").trim();
+            if (!transcript) continue;
+            const confidence = Number.isFinite(alt.confidence) ? alt.confidence : 0;
+            if (confidence > latestConfidence) {
+              latest = transcript;
+              latestConfidence = confidence;
+            }
+            const hit = findMatch(transcript);
+            if (
+              hit &&
+              (bestHit === null ||
+                confidence > bestHitConfidence ||
+                (confidence === bestHitConfidence && j < bestHitRank))
+            ) {
+              bestHit = hit;
+              bestHitConfidence = confidence;
+              bestHitRank = j;
+            }
           }
         }
-        if (latest) showHeard(tr("heard.prefix", { text: latest }));
+
+        if (bestHit) {
+          metrics.matches += 1;
+          if (metrics.lastSpeechStart) {
+            const latency = Math.round(now - metrics.lastSpeechStart);
+            metrics.lastMatchLatency = latency;
+            metrics.samples.push(latency);
+            if (metrics.samples.length > 50) metrics.samples.shift();
+          }
+          explodeWord(bestHit);
+          return;
+        }
+
+        if (latest) {
+          if (metrics.lastSpeechStart) metrics.lastResultLatency = Math.round(now - metrics.lastSpeechStart);
+          showHeard(tr("heard.prefix", { text: latest }));
+        }
       };
 
       recognition.onerror = (event) => {
+        if (event.error === "phrases-not-supported") {
+          state.speechPhrasesSupported = false;
+          state.speechPhraseKey = "";
+          return;
+        }
         handleSpeechError(event.error);
       };
 
@@ -1642,16 +1824,19 @@
         state.speechStarting = false;
         updateMicUI();
         if (state.phase === "playing" && state.micEnabled && !state.helpSpeaking && !state.restartTimer) {
+          const delay = state.speechNoSpeech ? 260 : 90;
+          state.speechNoSpeech = false;
           state.restartTimer = window.setTimeout(() => {
             state.restartTimer = 0;
             if (state.phase === "playing" && state.micEnabled && !state.listening && !state.helpSpeaking) {
               startSpeech();
             }
-          }, 300);
+          }, delay);
         }
       };
 
       state.speech = recognition;
+      syncSpeechPhrases();
     } catch (err) {
       console.warn("Speech recognition unavailable:", err);
       state.micEnabled = false;
@@ -1662,6 +1847,7 @@
   function startSpeech() {
     if (!state.speech || !state.micEnabled) return;
     if (state.listening || state.speechStarting) return;
+    syncSpeechPhrases();
     state.speechStarting = true;
     try {
       state.speech.start();
@@ -1669,7 +1855,23 @@
       state.speechStarting = false;
       if (err && err.name === "NotAllowedError") {
         handleSpeechError("not-allowed");
-      } else if (err && err.name !== "InvalidStateError") {
+      } else if (err && err.name === "InvalidStateError") {
+        if (
+          state.speechStartRetries < 3 &&
+          state.phase === "playing" &&
+          state.micEnabled &&
+          !state.helpSpeaking &&
+          !state.restartTimer
+        ) {
+          state.speechStartRetries += 1;
+          state.restartTimer = window.setTimeout(() => {
+            state.restartTimer = 0;
+            if (state.phase === "playing" && state.micEnabled && !state.listening && !state.helpSpeaking) {
+              startSpeech();
+            }
+          }, 140);
+        }
+      } else if (err) {
         console.warn("Could not start speech recognition:", err);
       }
     }
@@ -1681,6 +1883,8 @@
       state.restartTimer = 0;
     }
     state.speechStarting = false;
+    state.speechStartRetries = 0;
+    state.speechNoSpeech = false;
     if (state.speech) {
       try {
         state.speech.abort();
@@ -1691,7 +1895,11 @@
   }
 
   function handleSpeechError(code) {
-    if (code === "no-speech" || code === "aborted") return;
+    if (code === "no-speech") {
+      state.speechNoSpeech = true;
+      return;
+    }
+    if (code === "aborted") return;
     if (code === "not-allowed" || code === "service-not-allowed") {
       state.micEnabled = false;
       state.listening = false;
@@ -2050,6 +2258,22 @@
               }))
             : null,
         })),
+      getSpeechStats: () => {
+        const rawSamples = state.speechMetrics.samples.slice();
+        const sorted = rawSamples.slice().sort((a, b) => a - b);
+        const percentile = (p) =>
+          sorted.length
+            ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))]
+            : null;
+        return {
+          ...state.speechMetrics,
+          samples: rawSamples.slice(-10),
+          p50: percentile(0.5),
+          p95: percentile(0.95),
+          phraseBias: state.speechPhrasesSupported,
+          phraseError: state.speechPhraseError,
+        };
+      },
       getFalling: () =>
         state.words.map((w) => ({
           word: w.word,
