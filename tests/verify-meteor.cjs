@@ -9,8 +9,8 @@ const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
 
 // ---------- meteor every ten clears ----------
 assert.match(game, /const METEOR_EVERY = 10/, "the meteor should fire every 10 clears");
-assert.match(game, /const METEOR_ROUNDS = 2/, "the meteor should circle the four edges twice");
-assert.match(game, /const METEOR_MAX_HITS = 40/, "a safety cap prevents an endless bounce");
+assert.match(game, /const METEOR_TARGET = 3/, "one meteor should clear at most three frozen words");
+assert.match(game, /const METEOR_MAX_FLIGHT = 9000/, "a safety stop prevents an endless bounce");
 assert.match(game, /const METEOR_SIZE = 46/);
 assert.match(game, /state\.cleared % METEOR_EVERY === 0\) startMeteor\(cx, cy\)/, "the cleared word becomes the meteor at 10, 20, 30…");
 assert.match(game, /function startMeteor\(cx, cy\)/, "the meteor needs a launch routine");
@@ -18,8 +18,9 @@ assert.match(game, /Math\.max\(fieldW, fieldH\) \* 1\.7/, "the meteor should fly
 assert.match(game, /const steps = Math\.min\(12/, "fast meteor movement needs substeps so it cannot tunnel through frozen words");
 assert.match(game, /function updateMeteor\(dt\)/, "the meteor should move in the game frame");
 assert.match(game, /updateMeteor\(dt\);/, "the game loop must animate the meteor");
-assert.match(game, /meteor\.edgeHits\[side\] \+= 1/, "each edge hit should be counted");
-assert.match(game, /every\(\(count\) => count >= METEOR_ROUNDS\)/, "the meteor should stop after every edge is hit twice");
+assert.match(game, /if \(!state\.settled\.length\) return;/, "no meteor is needed when the bottom is already clear");
+assert.match(game, /meteor\.cleared >= METEOR_TARGET \|\| !state\.settled\.length/, "the meteor stops at three words or an empty bottom");
+assert.match(game, /target\.el\.remove\(\);\s*meteor\.cleared \+= 1;\s*meteor\.hitCooldown = METEOR_HIT_COOLDOWN;/, "only one frozen word is cleared per contact, then bouncing continues");
 assert.match(game, /function finishMeteor\(\)/, "the meteor needs an impact routine");
 assert.match(game, /function sweepMeteorSettled\(meteor\)/, "the meteor should sweep settled words on contact");
 assert.match(game, /meteor\.cleared \+= 1/, "each touched frozen word should be counted");
@@ -57,7 +58,7 @@ for (const key of ["meteor.start", "meteor.clear", "meteor.empty", "speed.title"
   }
 }
 
-console.log("✓ every 10 clears turns the word into a meteor that hits all four edges twice");
-console.log("✓ the meteor clears only the frozen words it touches");
+console.log("✓ every 10 clears turns the word into a meteor that clears one frozen word per hit");
+console.log("✓ the meteor stops after three frozen words or when the bottom is clear");
 console.log("✓ the speed pill on the start screen cycles normal / fast / turbo and persists");
 console.log("✓ meteor and speed labels translated in zh / fr / en");

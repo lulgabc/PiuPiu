@@ -18,8 +18,10 @@
   const EFFECT_HUES = { explode: 42, crack: 330, fly: 190, drop: 265, spin: 150 };
   const GOLDEN_CHANCE = 0.045;
   const METEOR_EVERY = 10;
-  const METEOR_ROUNDS = 2; // every side must be hit twice
-  const METEOR_MAX_HITS = 40; // safety cap if a corner keeps double-counting
+  const METEOR_TARGET = 3; // clear at most three frozen words per meteor
+  const METEOR_MAX_FLIGHT = 9000; // safety stop if it keeps missing
+  const METEOR_HIT_PAD = 12;
+  const METEOR_HIT_COOLDOWN = 0.14;
   const METEOR_SIZE = 46;
 
   // A few words trigger their own tiny sound-and-emoji surprise. These are
@@ -2297,6 +2299,7 @@
     const fieldW = els.field.clientWidth;
     const fieldH = els.field.clientHeight;
     if (!fieldW || !fieldH) return;
+    if (!state.settled.length) return;
 
     const quadrant = Math.floor(Math.random() * 4);
     const angle = Math.PI / 4 + (Math.random() - 0.5) * (Math.PI / 7.5) + quadrant * (Math.PI / 2);
@@ -2317,6 +2320,8 @@
       bounces: 0,
       edgeHits: { top: 0, right: 0, bottom: 0, left: 0 },
       cleared: 0,
+      hitCooldown: 0,
+      startedAt: performance.now(),
       size: METEOR_SIZE,
     };
     state.meteor = meteor;
@@ -2379,10 +2384,14 @@
         playMeteorHit(meteor.bounces);
       }
 
-      swept += sweepMeteorSettled(meteor);
+      if (meteor.hitCooldown > 0) {
+        meteor.hitCooldown = Math.max(0, meteor.hitCooldown - stepDt);
+      }
+      if (meteor.hitCooldown <= 0) {
+        swept += sweepMeteorSettled(meteor);
+      }
 
-      const sidesDone = Object.values(meteor.edgeHits).every((count) => count >= METEOR_ROUNDS);
-      if (sidesDone || meteor.bounces >= METEOR_MAX_HITS) {
+      if (meteor.cleared >= METEOR_TARGET || !state.settled.length) {
         if (swept) updateHUD(true);
         finishMeteor();
         return;
@@ -2390,30 +2399,43 @@
     }
 
     if (swept) updateHUD(true);
+    if (performance.now() - meteor.startedAt >= METEOR_MAX_FLIGHT) {
+      finishMeteor();
+      return;
+    }
     const rotation = (Math.atan2(meteor.vy, meteor.vx) * 180) / Math.PI + 45;
     meteor.el.style.transform = `translate3d(${meteor.x}px, ${meteor.y}px, 0) rotate(${rotation}deg)`;
   }
 
   function sweepMeteorSettled(meteor) {
-    let removed = 0;
-    for (const settled of state.settled.slice()) {
+    let target = null;
+    let closest = Infinity;
+    for (const settled of state.settled) {
       const overlaps =
-        meteor.x < settled.x + settled.w &&
-        meteor.x + meteor.size > settled.x &&
-        meteor.y < settled.y + settled.h &&
-        meteor.y + meteor.size > settled.y;
+        meteor.x - METEOR_HIT_PAD < settled.x + settled.w &&
+        meteor.x + meteor.size + METEOR_HIT_PAD > settled.x &&
+        meteor.y - METEOR_HIT_PAD < settled.y + settled.h &&
+        meteor.y + meteor.size + METEOR_HIT_PAD > settled.y;
       if (!overlaps) continue;
-
-      const index = state.settled.indexOf(settled);
-      if (index !== -1) state.settled.splice(index, 1);
-      spawnStars(settled.x + settled.w / 2, settled.y + settled.h / 2, 42, 6);
-      spawnSparks(settled.x + settled.w / 2, settled.y + settled.h / 2, 42, 5);
-      settled.el.remove();
-      meteor.cleared += 1;
-      removed += 1;
-      playMeteorSweep(meteor.cleared);
+      const dx = meteor.x + meteor.size / 2 - (settled.x + settled.w / 2);
+      const dy = meteor.y + meteor.size / 2 - (settled.y + settled.h / 2);
+      const distance = dx * dx + dy * dy;
+      if (distance < closest) {
+        closest = distance;
+        target = settled;
+      }
     }
-    return removed;
+    if (!target) return 0;
+
+    const index = state.settled.indexOf(target);
+    if (index !== -1) state.settled.splice(index, 1);
+    spawnStars(target.x + target.w / 2, target.y + target.h / 2, 42, 6);
+    spawnSparks(target.x + target.w / 2, target.y + target.h / 2, 42, 5);
+    target.el.remove();
+    meteor.cleared += 1;
+    meteor.hitCooldown = METEOR_HIT_COOLDOWN;
+    playMeteorSweep(meteor.cleared);
+    return 1;
   }
 
   function finishMeteor() {
