@@ -16,6 +16,7 @@
   const PACK_KEY = "piupiu.pack";
   const LEVEL_KEY = "piupiu.level";
   const BAND_KEY = "piupiu.band";
+  const VOICE_KEY = "piupiu.voice";
   const PAD = 12;
   const DANGER_Y = 10;
   const ACCENT_HUES = [265, 190, 318, 42, 158, 225, 288, 12];
@@ -66,6 +67,13 @@
     wood: ["would"],
     write: ["right"],
   };
+
+  // Help-voice heuristics. System voice names differ across macOS, Windows,
+  // Chrome and Edge; prefer known natural voices and avoid novelty voices.
+  const FEMALE_VOICE = /samantha|ava|allison|susan|karen|moira|tessa|fiona|aria|jenny|michelle|emma|olivia|zira|hazel|serena|kate|amy|libby|sonia|natasha|shelley|sandy|flo|siri|google us english|\bfemale\b/i;
+  const MALE_VOICE = /alex|daniel|fred|guy|brian|david|mark|george|ryan|joe|tom|oliver|arthur|aaron|matthew|james|\bmale\b/i;
+  const CHILD_VOICE = /child|kid|junior|eddy|young/i;
+  const NOVELTY_VOICE = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|grandma|grandpa|rocko|ralph|deranged|hysterical|bruce/i;
 
   // Common reductions the recognizer may return for phrase targets.
   const PHRASE_REDUCTIONS = {
@@ -118,6 +126,11 @@
     typeForm: $("typeForm"),
     typeInput: $("typeInput"),
     categorySelect: $("categorySelect"),
+    voiceToggle: $("voiceToggle"),
+    voicePopover: $("voicePopover"),
+    voiceClose: $("voiceClose"),
+    voiceSelect: $("voiceSelect"),
+    voicePreview: $("voicePreview"),
     diffGroup: $("diffGroup"),
     levelSelect: $("levelSelect"),
     packCount: $("packCount"),
@@ -159,6 +172,8 @@
     categoryId: "core",
     difficulty: 0,
     band: "all",
+    voiceChoice: readString(VOICE_KEY, "auto"),
+    voicePreviewTimer: 0,
     lastWord: "",
     score: 0,
     combo: 0,
@@ -218,6 +233,9 @@
 
   let effectBag = [];
   let helpVoice = null;
+  let helpPitch = 1;
+  let helpRate = 0.92;
+  let voiceCatalog = [];
 
   /* ------------------------------------------------------------------ */
   /* utilities                                                           */
@@ -712,6 +730,7 @@
   }
 
   function startGame() {
+    closeVoicePopover();
     audio();
     state.pool = getSelectedPool();
     resetGame();
@@ -1564,20 +1583,169 @@
     state.focusTimer = window.setTimeout(clearFocus, 3000);
   }
 
-  function pickHelpVoice() {
-    const synth = window.speechSynthesis;
-    if (!synth) return null;
-    try {
-      const voices = synth.getVoices() || [];
-      helpVoice =
-        voices.find((voice) => /^en[-_]US/i.test(voice.lang) && voice.localService) ||
-        voices.find((voice) => /^en[-_]US/i.test(voice.lang)) ||
-        voices.find((voice) => /^en/i.test(voice.lang)) ||
-        null;
-    } catch {
-      helpVoice = null;
+  function voiceValue(voice) {
+    return `system:${voice.voiceURI || voice.name}`;
+  }
+
+  function scoreVoice(voice) {
+    const name = voice.name || "";
+    let score = 0;
+    if (/premium|enhanced|neural|natural|siri/i.test(name)) score += 100;
+    if (/samantha|ava|allison|aria|jenny|guy|michelle|emma|karen|moira|tessa|fiona|daniel|alex|google us english/i.test(name)) score += 50;
+    if (voice.localService) score += 25;
+    if (/^en[-_]US/i.test(voice.lang)) score += 15;
+    else if (/^en[-_]GB/i.test(voice.lang)) score += 10;
+    if (NOVELTY_VOICE.test(name)) score -= 200;
+    if (CHILD_VOICE.test(name)) score += 8;
+    return score;
+  }
+
+  function chooseVoice(choice) {
+    const best = voiceCatalog[0] || null;
+    if (choice.startsWith("system:")) {
+      const found = voiceCatalog.find((voice) => voiceValue(voice) === choice);
+      return { voice: found || best, pitch: 1, rate: 0.92 };
     }
-    return helpVoice;
+    if (choice === "female") {
+      const found = voiceCatalog.find((voice) => FEMALE_VOICE.test(voice.name));
+      return { voice: found || best, pitch: found ? 1 : 1.05, rate: 0.93 };
+    }
+    if (choice === "male") {
+      const found = voiceCatalog.find((voice) => MALE_VOICE.test(voice.name));
+      return { voice: found || best, pitch: found ? 1 : 0.94, rate: 0.9 };
+    }
+    if (choice === "child") {
+      const found = voiceCatalog.find((voice) => CHILD_VOICE.test(voice.name));
+      if (found) return { voice: found, pitch: 1.04, rate: 0.96 };
+      const female = voiceCatalog.find((voice) => FEMALE_VOICE.test(voice.name));
+      return { voice: female || best, pitch: 1.22, rate: 0.95 };
+    }
+    return { voice: best, pitch: 1, rate: 0.92 };
+  }
+
+  function applyVoiceChoice() {
+    const picked = chooseVoice(state.voiceChoice);
+    helpVoice = picked.voice || null;
+    helpPitch = picked.pitch;
+    helpRate = picked.rate;
+  }
+
+  function renderVoiceOptions() {
+    if (!els.voiceSelect) return;
+    const select = els.voiceSelect;
+    select.replaceChildren();
+
+    const addOption = (value, labelKey) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = tr(labelKey);
+      select.appendChild(option);
+    };
+    addOption("auto", "voice.auto");
+    addOption("female", "voice.female");
+    addOption("male", "voice.male");
+    addOption("child", "voice.child");
+
+    if (voiceCatalog.length) {
+      const group = document.createElement("optgroup");
+      group.label = tr("voice.systemGroup");
+      for (const voice of voiceCatalog) {
+        const option = document.createElement("option");
+        option.value = voiceValue(voice);
+        option.textContent = `${voice.name} · ${voice.lang}`;
+        group.appendChild(option);
+      }
+      select.appendChild(group);
+    }
+
+    const exists = [...select.options].some((option) => option.value === state.voiceChoice);
+    select.value = exists ? state.voiceChoice : "auto";
+  }
+
+  function refreshVoiceCatalog() {
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      if (els.voiceToggle) els.voiceToggle.classList.add("is-hidden");
+      closeVoicePopover();
+      return;
+    }
+    if (els.voiceToggle) els.voiceToggle.classList.remove("is-hidden");
+    try {
+      voiceCatalog = (synth.getVoices() || [])
+        .filter((voice) => /^en([-_]|$)/i.test(voice.lang) && !NOVELTY_VOICE.test(voice.name))
+        .sort((a, b) => scoreVoice(b) - scoreVoice(a));
+    } catch {
+      voiceCatalog = [];
+    }
+
+    if (voiceCatalog.length && state.voiceChoice.startsWith("system:")) {
+      const exists = voiceCatalog.some((voice) => voiceValue(voice) === state.voiceChoice);
+      if (!exists) {
+        state.voiceChoice = "auto";
+        try {
+          localStorage.setItem(VOICE_KEY, "auto");
+        } catch {}
+      }
+    }
+
+    applyVoiceChoice();
+    renderVoiceOptions();
+  }
+
+  function openVoicePopover() {
+    if (!els.voicePopover || !els.voiceToggle) return;
+    renderVoiceOptions();
+    els.voicePopover.classList.remove("is-hidden");
+    els.voiceToggle.setAttribute("aria-expanded", "true");
+
+    const rect = els.voiceToggle.getBoundingClientRect();
+    const width = Math.min(320, window.innerWidth - 24);
+    const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+    const estimatedHeight = 170;
+    let top = rect.bottom + 8;
+    if (top + estimatedHeight > window.innerHeight - 12) {
+      top = Math.max(12, rect.top - estimatedHeight - 8);
+    }
+    els.voicePopover.style.width = `${width}px`;
+    els.voicePopover.style.left = `${left}px`;
+    els.voicePopover.style.top = `${top}px`;
+    if (els.voiceSelect) els.voiceSelect.focus({ preventScroll: true });
+  }
+
+  function closeVoicePopover() {
+    if (!els.voicePopover) return;
+    els.voicePopover.classList.add("is-hidden");
+    if (els.voiceToggle) els.voiceToggle.setAttribute("aria-expanded", "false");
+  }
+
+  function previewVoice() {
+    const synth = window.speechSynthesis;
+    const Utterance = window.SpeechSynthesisUtterance;
+    if (!synth || !Utterance) return;
+    applyVoiceChoice();
+    try {
+      synth.cancel();
+    } catch {}
+    const utterance = new Utterance(tr("voice.sample"));
+    utterance.lang = "en-US";
+    utterance.rate = helpRate;
+    utterance.pitch = helpPitch;
+    utterance.volume = 1;
+    if (helpVoice) utterance.voice = helpVoice;
+    try {
+      synth.speak(utterance);
+    } catch {}
+  }
+
+  function onVoiceChange() {
+    if (!els.voiceSelect) return;
+    state.voiceChoice = els.voiceSelect.value;
+    try {
+      localStorage.setItem(VOICE_KEY, state.voiceChoice);
+    } catch {}
+    applyVoiceChoice();
+    window.clearTimeout(state.voicePreviewTimer);
+    state.voicePreviewTimer = window.setTimeout(previewVoice, 260);
   }
 
   function stopHelpSpeech() {
@@ -1609,12 +1777,12 @@
     updateMicUI();
     if (state.micEnabled && !state.listening && !state.speechStarting) startSpeech();
 
+    applyVoiceChoice();
     const utterance = new Utterance(word.word);
     utterance.lang = "en-US";
-    utterance.rate = 0.82;
-    utterance.pitch = 1.05;
+    utterance.rate = helpRate;
+    utterance.pitch = helpPitch;
     utterance.volume = 1;
-    if (!helpVoice) pickHelpVoice();
     if (helpVoice) utterance.voice = helpVoice;
 
     let finished = false;
@@ -1659,9 +1827,13 @@
   }
 
   function setupHelp() {
-    if (!window.speechSynthesis) return;
-    pickHelpVoice();
-    window.speechSynthesis.onvoiceschanged = pickHelpVoice;
+    if (!window.speechSynthesis) {
+      if (els.voiceToggle) els.voiceToggle.classList.add("is-hidden");
+      closeVoicePopover();
+      return;
+    }
+    refreshVoiceCatalog();
+    window.speechSynthesis.onvoiceschanged = refreshVoiceCatalog;
   }
 
   /* ------------------------------------------------------------------ */
@@ -2127,6 +2299,33 @@
   els.typeForm.addEventListener("submit", handleTyped);
   els.categorySelect.addEventListener("change", onCategoryChange);
   els.levelSelect.addEventListener("change", onLevelChange);
+  if (els.voiceSelect) els.voiceSelect.addEventListener("change", onVoiceChange);
+  if (els.voicePreview) {
+    els.voicePreview.addEventListener("click", () => {
+      window.clearTimeout(state.voicePreviewTimer);
+      state.voicePreviewTimer = 0;
+      previewVoice();
+    });
+  }
+  if (els.voiceToggle) {
+    els.voiceToggle.addEventListener("click", () => {
+      if (els.voicePopover.classList.contains("is-hidden")) openVoicePopover();
+      else closeVoicePopover();
+    });
+  }
+  if (els.voiceClose) els.voiceClose.addEventListener("click", closeVoicePopover);
+  document.addEventListener("pointerdown", (event) => {
+    if (!els.voicePopover || els.voicePopover.classList.contains("is-hidden")) return;
+    const target = event.target;
+    if (
+      target &&
+      typeof target.closest === "function" &&
+      (target.closest("#voicePopover") || target.closest("#voiceToggle"))
+    ) {
+      return;
+    }
+    closeVoicePopover();
+  });
   els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
     button.addEventListener("click", () => onDifficultyClick(button));
   });
@@ -2134,6 +2333,15 @@
   window.addEventListener("keydown", (event) => {
     const target = event.target;
     const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
+    if (
+      event.key === "Escape" &&
+      els.voicePopover &&
+      !els.voicePopover.classList.contains("is-hidden")
+    ) {
+      event.preventDefault();
+      closeVoicePopover();
+      return;
+    }
     if (event.key === "Escape" || (event.key.toLowerCase() === "p" && !typing)) {
       if (state.phase === "playing" || state.phase === "paused") {
         event.preventDefault();
@@ -2152,7 +2360,13 @@
       return;
     }
 
-    if (event.key === "Enter" && state.phase === "menu" && !typing && target.tagName !== "BUTTON") {
+    if (
+      event.key === "Enter" &&
+      state.phase === "menu" &&
+      !typing &&
+      target.tagName !== "BUTTON" &&
+      target.tagName !== "SELECT"
+    ) {
       event.preventDefault();
       startGame();
     }
@@ -2181,6 +2395,12 @@
   window.addEventListener("beforeunload", () => {
     stopHelpSpeech();
     stopSpeech();
+  });
+
+  window.addEventListener("resize", () => {
+    if (els.voicePopover && !els.voicePopover.classList.contains("is-hidden")) {
+      openVoicePopover();
+    }
   });
 
   window.addEventListener("resize", () => {
