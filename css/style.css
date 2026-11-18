@@ -89,6 +89,155 @@ button:disabled {
   min-height: 46px;
 }
 
+.reward-progress {
+  --p: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 2px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.reward-progress-label {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: rgba(255, 225, 150, 0.7);
+  text-shadow: 0 0 14px rgba(255, 190, 92, 0.24);
+  white-space: nowrap;
+}
+
+.reward-progress-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 214, 120, 0.18);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(10, 14, 30, 0.72);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 18px rgba(139, 92, 255, 0.08);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.reward-progress-fill {
+  position: absolute;
+  inset: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffbe5c 0%, #ff8a5c 38%, #ff6aa9 70%, #b98bff 100%);
+  box-shadow:
+    0 0 14px rgba(255, 170, 90, 0.45),
+    0 0 26px rgba(255, 106, 169, 0.18);
+  transform: scaleX(var(--p, 0));
+  transform-origin: left center;
+  transition: transform 0.42s cubic-bezier(0.22, 0.9, 0.28, 1);
+  will-change: transform;
+}
+
+.reward-progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 18%, rgba(255, 255, 255, 0.55) 50%, transparent 82%);
+  opacity: 0;
+  transform: translateX(-120%);
+}
+
+.reward-progress-nodes {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  pointer-events: none;
+}
+
+.reward-node {
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 9px;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 0 0 transparent;
+  transform: scale(0.9);
+  transition: color 0.25s ease, text-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.reward-node.is-lit {
+  color: #fff5bd;
+  text-shadow:
+    0 0 10px rgba(255, 214, 90, 0.95),
+    0 0 22px rgba(255, 170, 92, 0.55);
+  transform: scale(1.18);
+}
+
+.reward-progress-count {
+  flex: 0 0 auto;
+  min-width: 30px;
+  color: rgba(255, 231, 160, 0.86);
+  font-size: 11px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.reward-progress.is-tick .reward-progress-track {
+  animation: rewardTrackTick 0.36s ease-out;
+}
+
+.reward-progress.is-tick .reward-progress-count {
+  animation: rewardCountTick 0.36s ease-out;
+}
+
+.reward-progress.is-ready .reward-progress-track {
+  border-color: rgba(255, 232, 160, 0.82);
+  box-shadow:
+    0 0 22px rgba(255, 200, 90, 0.55),
+    0 0 52px rgba(255, 106, 169, 0.3),
+    inset 0 0 12px rgba(255, 240, 180, 0.22);
+}
+
+.reward-progress.is-ready .reward-progress-label {
+  color: #fff7c8;
+  text-shadow: 0 0 16px rgba(255, 214, 90, 0.65);
+}
+
+.reward-progress.is-ready .reward-progress-fill::after {
+  opacity: 1;
+  animation: rewardSweep 0.78s ease-out;
+}
+
+.reward-progress.is-ready .reward-progress-count {
+  color: #fff7c8;
+  text-shadow: 0 0 14px rgba(255, 224, 120, 0.9);
+}
+
+@keyframes rewardTrackTick {
+  0% { transform: scaleY(1); }
+  35% { transform: scaleY(1.45); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes rewardCountTick {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rewardSweep {
+  0% { opacity: 0; transform: translateX(-120%); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(120%); }
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -1667,5 +1816,44 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .pixi-ambient {
     display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .reward-progress {
+    gap: 7px;
+    min-height: 24px;
+  }
+
+  .reward-progress-label {
+    font-size: 8px;
+    letter-spacing: 0.12em;
+  }
+
+  .reward-progress-track {
+    height: 10px;
+  }
+
+  .reward-progress-count {
+    min-width: 26px;
+    font-size: 10px;
+  }
+
+  .reward-node {
+    font-size: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reward-progress-fill,
+  .reward-node,
+  .reward-progress-count {
+    transition-duration: 0.01ms;
+  }
+
+  .reward-progress.is-tick .reward-progress-track,
+  .reward-progress.is-tick .reward-progress-count,
+  .reward-progress.is-ready .reward-progress-fill::after {
+    animation: none;
   }
 }

@@ -103,6 +103,9 @@
     score: $("score"),
     correct: $("correct"),
     correctStat: $("correctStat"),
+    rewardProgress: $("rewardProgress"),
+    rewardTrack: $("rewardTrack"),
+    rewardCount: $("rewardCount"),
     combo: $("combo"),
     comboStat: $("comboStat"),
     level: $("level"),
@@ -122,6 +125,8 @@
     recordLine: $("recordLine"),
     missedList: $("missedList"),
   };
+
+  const rewardNodes = [...document.querySelectorAll(".reward-node")];
 
   const state = {
     phase: "menu", // menu | playing | paused | over
@@ -165,6 +170,9 @@
     helpSpeakToken: 0,
     toastTimer: 0,
     lastHud: {},
+    rewardProgress: 0,
+    rewardBarTimer: 0,
+    rewardTickTimer: 0,
     lastFieldH: 0,
     lastFieldW: 0,
   };
@@ -659,6 +667,7 @@
     els.typeInput.value = "";
     els.typeInput.classList.remove("wrong");
     els.correctStat.classList.remove("reward");
+    resetRewardProgress();
     updateHUD(true);
   }
 
@@ -1002,6 +1011,55 @@
     els.pauseBtn.setAttribute("aria-label", paused ? tr("pause.resume") : tr("pause.pause"));
   }
 
+  function setRewardProgress(value, options = {}) {
+    if (!els.rewardProgress || !els.rewardTrack || !els.rewardCount) return;
+    const { ready = false, tick = false } = options;
+    const clamped = Math.max(0, Math.min(5, Math.round(value)));
+    state.rewardProgress = clamped;
+    els.rewardProgress.style.setProperty("--p", String(clamped / 5));
+    els.rewardCount.textContent = `${clamped}/5`;
+    els.rewardTrack.setAttribute("aria-valuenow", String(clamped));
+    rewardNodes.forEach((node, index) => {
+      node.classList.toggle("is-lit", index < clamped);
+    });
+    els.rewardProgress.classList.toggle("is-ready", Boolean(ready));
+
+    if (tick) {
+      window.clearTimeout(state.rewardTickTimer);
+      els.rewardProgress.classList.remove("is-tick");
+      void els.rewardProgress.offsetWidth;
+      els.rewardProgress.classList.add("is-tick");
+      state.rewardTickTimer = window.setTimeout(() => {
+        els.rewardProgress.classList.remove("is-tick");
+        state.rewardTickTimer = 0;
+      }, 380);
+    }
+  }
+
+  function resetRewardProgress() {
+    window.clearTimeout(state.rewardBarTimer);
+    window.clearTimeout(state.rewardTickTimer);
+    state.rewardBarTimer = 0;
+    state.rewardTickTimer = 0;
+    if (els.rewardProgress) els.rewardProgress.classList.remove("is-tick");
+    setRewardProgress(0);
+  }
+
+  function advanceRewardProgress() {
+    const progress = state.cleared % 5;
+    window.clearTimeout(state.rewardBarTimer);
+    state.rewardBarTimer = 0;
+    if (progress === 0) {
+      setRewardProgress(5, { ready: true, tick: true });
+      state.rewardBarTimer = window.setTimeout(() => {
+        state.rewardBarTimer = 0;
+        setRewardProgress(0);
+      }, 900);
+    } else {
+      setRewardProgress(progress, { tick: true });
+    }
+  }
+
   function updateMuteUI() {
     els.muteBtn.textContent = state.muted ? "🔇" : "🔊";
     els.muteBtn.setAttribute("aria-pressed", String(state.muted));
@@ -1313,6 +1371,7 @@
     const points = Math.round(basePoints * multiplier);
     state.score += points;
     state.cleared += 1;
+    advanceRewardProgress();
 
     const effect = nextEffect();
     state.lastEffect = effect;
@@ -1937,6 +1996,7 @@
 
     state.lastFieldW = els.field.clientWidth;
     state.lastFieldH = els.field.clientHeight;
+    resetRewardProgress();
     updateHUD(true);
     updateMicUI();
     updatePauseButton();
