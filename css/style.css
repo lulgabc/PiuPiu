@@ -275,7 +275,7 @@ button:disabled {
 .hud {
   display: flex;
   align-items: stretch;
-  gap: 6px;
+  gap: 7px;
   margin-left: auto;
 }
 
@@ -283,28 +283,31 @@ button:disabled {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
-  min-width: 58px;
-  padding: 5px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  border-radius: 11px;
-  background: rgba(13, 19, 38, 0.62);
+  gap: 3px;
+  min-width: 64px;
+  padding: 6px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(25, 34, 62, 0.84), rgba(9, 14, 28, 0.76));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(8px);
   transition: border-color 0.2s, color 0.2s;
 }
 
 .stat-label {
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   line-height: 1;
-  color: var(--muted);
+  color: #c9d3ec;
 }
 
 .stat strong {
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.1;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.05;
+  color: #f5f8ff;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1476,11 +1479,6 @@ html.is-standalone #app {
   box-shadow: inset 0 0 0 1px rgba(139, 92, 255, 0.28);
 }
 
-.speed-group .speed-btn {
-  flex: 1 1 0;
-  text-align: center;
-}
-
 .primary-btn {
   width: 100%;
   min-height: 52px;
@@ -1982,7 +1980,9 @@ html.is-standalone #app {
 
 @media (max-width: 860px) {
   .foot-hint { display: none; }
-  .stat { min-width: 52px; padding: 5px 8px; }
+  .stat { min-width: 56px; padding: 5px 8px; }
+  .stat-label { font-size: 10.5px; }
+  .stat strong { font-size: 19px; }
 }
 
 @media (max-width: 720px) {
@@ -1991,9 +1991,9 @@ html.is-standalone #app {
   .brand-mark { width: 28px; height: 28px; font-size: 15px; border-radius: 8px; }
   .brand-text { font-size: 19px; }
   .hud { gap: 4px; }
-  .stat { min-width: 46px; padding: 4px 7px; border-radius: 9px; }
-  .stat-label { font-size: 7px; }
-  .stat strong { font-size: 13px; }
+  .stat { min-width: 48px; padding: 5px 6px; border-radius: 10px; }
+  .stat-label { font-size: 10.5px; letter-spacing: 0.04em; }
+  .stat strong { font-size: 18px; }
   .icon-btn { width: 34px; height: 34px; border-radius: 9px; }
   .lang-select {
     width: 44px;
@@ -2021,11 +2021,34 @@ html.is-standalone #app {
 }
 
 @media (max-width: 560px) {
-  .level-stat,
-  .time-stat { display: none; }
-  .brand-mark { display: none; }
-  .brand-text { font-size: 18px; }
-  .hud { margin-left: auto; }
+  .topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "brand spacer tools"
+      "hud hud hud";
+    row-gap: 6px;
+    align-items: center;
+  }
+  .brand { grid-area: brand; }
+  .brand-mark { display: grid; width: 30px; height: 30px; font-size: 16px; }
+  .brand-text { display: none; }
+  .tools { grid-area: tools; }
+  .hud {
+    grid-area: hud;
+    width: 100%;
+    margin-left: 0;
+    gap: 4px;
+  }
+  .stat {
+    flex: 1 1 0;
+    min-width: 0;
+    align-items: center;
+    padding: 5px 2px;
+    text-align: center;
+  }
+  .stat-label { font-size: 11px; letter-spacing: 0.02em; color: #dbe4f7; }
+  .stat strong { font-size: 18px; }
   .mic-btn { padding: 0 10px; font-size: 10px; }
   .panel { padding: 22px 18px; }
   .panel h1 { font-size: 54px; }
@@ -2040,10 +2063,8 @@ html.is-standalone #app {
 }
 
 @media (max-width: 400px) {
-  .score-stat { min-width: 42px; }
-  .correct-stat { min-width: 42px; }
-  .combo-stat { min-width: 42px; }
-  .stat { padding: 4px 6px; }
+  .hud { gap: 3px; }
+  .stat { min-width: 0; padding: 5px 1px; }
   .icon-btn { width: 31px; height: 31px; }
   .lang-select { width: 42px; height: 31px; font-size: 10px; }
   .tools { gap: 4px; }
@@ -2055,7 +2076,8 @@ html.is-standalone #app {
 
 @media (max-width: 360px) {
   .brand-text { display: none; }
-  .combo-stat { display: none; }
+  .stat-label { font-size: 10px; }
+  .stat strong { font-size: 16px; }
   .brand-mark {
     display: grid;
     width: 26px;
@@ -2509,13 +2531,71 @@ html.is-touch .mic-btn.listening .mic-dot {
   font-size: 18px;
 }
 
+.start-pills {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.start-pills .pack-pill {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.speed-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 214, 90, 0.28);
+  border-radius: 12px;
+  background: rgba(255, 214, 90, 0.07);
+  color: #ffe3a0;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.speed-pill:hover {
+  border-color: rgba(255, 214, 90, 0.55);
+  background: rgba(255, 214, 90, 0.13);
+}
+
+.speed-pill:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(255, 214, 90, 0.16);
+}
+
+.speed-pill[data-speed="turbo"] {
+  border-color: rgba(255, 122, 158, 0.45);
+  background: rgba(255, 77, 141, 0.1);
+  color: #ffb3c8;
+}
+
+.speed-pill-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.speed-pill-cycle {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+}
+
 .pack-pill {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   min-height: 42px;
-  margin-top: 10px;
   padding: 0 12px;
   border: 1px solid rgba(41, 231, 199, 0.22);
   border-radius: 12px;

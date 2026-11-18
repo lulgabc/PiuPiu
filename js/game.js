@@ -58,6 +58,7 @@
   const PACK_KEY = "piupiu.pack";
   const SPEED_KEY = "piupiu.speed";
   const SPEED_LEVELS = { normal: 1, fast: 1.3, turbo: 1.65 };
+  const SPEED_ORDER = ["normal", "fast", "turbo"];
   const LEVEL_KEY = "piupiu.level";
   const BAND_KEY = "piupiu.band";
   const VOICE_KEY = "piupiu.voice";
@@ -191,7 +192,8 @@
     voicePreview: $("voicePreview"),
     diffGroup: $("diffGroup"),
     levelSelect: $("levelSelect"),
-    speedGroup: $("speedGroup"),
+    speedBtn: $("speedBtn"),
+    speedLabel: $("speedLabel"),
     packCount: $("packCount"),
     score: $("score"),
     correct: $("correct"),
@@ -579,23 +581,23 @@
   }
 
   function updateSpeedUI() {
-    if (!els.speedGroup) return;
-    els.speedGroup.querySelectorAll("[data-speed]").forEach((button) => {
-      const active = button.dataset.speed === state.speed;
-      button.classList.toggle("is-active", active);
-      button.setAttribute("aria-pressed", String(active));
-    });
+    if (!els.speedBtn) return;
+    const key = SPEED_LEVELS[state.speed] ? state.speed : "normal";
+    els.speedBtn.dataset.speed = key;
+    setText(els.speedLabel, tr(`speed.${key}`));
+    const label = tr("speed.pillAria", { speed: tr(`speed.${key}`) });
+    els.speedBtn.setAttribute("aria-label", label);
+    els.speedBtn.setAttribute("title", label);
   }
 
-  function onSpeedClick(button) {
-    const key = button && button.dataset ? button.dataset.speed : "";
-    if (!key || !(key in SPEED_LEVELS)) return;
-    state.speed = key;
+  function cycleSpeed() {
+    const index = SPEED_ORDER.indexOf(state.speed);
+    state.speed = SPEED_ORDER[(index + 1) % SPEED_ORDER.length] || "normal";
     try {
-      localStorage.setItem(SPEED_KEY, key);
+      localStorage.setItem(SPEED_KEY, state.speed);
     } catch {}
     updateSpeedUI();
-    toast(tr("speed.set", { speed: tr(`speed.${key}`) }));
+    toast(tr("speed.set", { speed: tr(`speed.${state.speed}`) }));
   }
 
   function savePackSelection() {
@@ -985,6 +987,11 @@
   function playMeteorHit(bounces) {
     tone(420 + bounces * 70, 0.075, "square", 0.022);
     noiseBurst(0.03, 0.01);
+  }
+
+  function playMeteorSweep(count) {
+    tone(660 + Math.min(count, 8) * 70, 0.075, "triangle", 0.026);
+    noiseBurst(0.035, 0.012);
   }
 
   function playMeteorFinish() {
@@ -2293,7 +2300,7 @@
 
     const quadrant = Math.floor(Math.random() * 4);
     const angle = Math.PI / 4 + (Math.random() - 0.5) * (Math.PI / 7.5) + quadrant * (Math.PI / 2);
-    const speed = Math.min(1200, Math.max(520, Math.max(fieldW, fieldH) * 0.85));
+    const speed = Math.min(2400, Math.max(1040, Math.max(fieldW, fieldH) * 1.7));
     const el = document.createElement("div");
     el.className = "meteor";
     el.setAttribute("aria-hidden", "true");
@@ -2309,6 +2316,7 @@
       vy: Math.sin(angle) * speed,
       bounces: 0,
       edgeHits: { top: 0, right: 0, bottom: 0, left: 0 },
+      cleared: 0,
       size: METEOR_SIZE,
     };
     state.meteor = meteor;
@@ -2332,47 +2340,80 @@
 
     const maxX = Math.max(0, fieldW - meteor.size);
     const maxY = Math.max(0, fieldH - meteor.size);
-    meteor.x += meteor.vx * dt;
-    meteor.y += meteor.vy * dt;
+    const travel = Math.hypot(meteor.vx, meteor.vy) * dt;
+    const steps = Math.min(12, Math.max(1, Math.ceil(travel / 12)));
+    const stepDt = dt / steps;
+    let swept = 0;
 
-    const hits = [];
-    if (meteor.x <= 0) {
-      meteor.x = 0;
-      meteor.vx = Math.abs(meteor.vx);
-      hits.push("left");
-    } else if (meteor.x >= maxX) {
-      meteor.x = maxX;
-      meteor.vx = -Math.abs(meteor.vx);
-      hits.push("right");
-    }
-    if (meteor.y <= 0) {
-      meteor.y = 0;
-      meteor.vy = Math.abs(meteor.vy);
-      hits.push("top");
-    } else if (meteor.y >= maxY) {
-      meteor.y = maxY;
-      meteor.vy = -Math.abs(meteor.vy);
-      hits.push("bottom");
+    for (let step = 0; step < steps; step += 1) {
+      meteor.x += meteor.vx * stepDt;
+      meteor.y += meteor.vy * stepDt;
+
+      const hits = [];
+      if (meteor.x <= 0) {
+        meteor.x = 0;
+        meteor.vx = Math.abs(meteor.vx);
+        hits.push("left");
+      } else if (meteor.x >= maxX) {
+        meteor.x = maxX;
+        meteor.vx = -Math.abs(meteor.vx);
+        hits.push("right");
+      }
+      if (meteor.y <= 0) {
+        meteor.y = 0;
+        meteor.vy = Math.abs(meteor.vy);
+        hits.push("top");
+      } else if (meteor.y >= maxY) {
+        meteor.y = maxY;
+        meteor.vy = -Math.abs(meteor.vy);
+        hits.push("bottom");
+      }
+
+      for (const side of hits) {
+        meteor.bounces += 1;
+        meteor.edgeHits[side] += 1;
+        const bx = meteor.x + meteor.size / 2;
+        const by = meteor.y + meteor.size / 2;
+        spawnSparks(bx, by, 42, 5);
+        createFlash(bx, by, 38);
+        playMeteorHit(meteor.bounces);
+      }
+
+      swept += sweepMeteorSettled(meteor);
+
+      const sidesDone = Object.values(meteor.edgeHits).every((count) => count >= METEOR_ROUNDS);
+      if (sidesDone || meteor.bounces >= METEOR_MAX_HITS) {
+        if (swept) updateHUD(true);
+        finishMeteor();
+        return;
+      }
     }
 
-    for (const side of hits) {
-      meteor.bounces += 1;
-      meteor.edgeHits[side] += 1;
-      const bx = meteor.x + meteor.size / 2;
-      const by = meteor.y + meteor.size / 2;
-      spawnSparks(bx, by, 42, 5);
-      createFlash(bx, by, 38);
-      playMeteorHit(meteor.bounces);
-    }
-
-    const sidesDone = Object.values(meteor.edgeHits).every((count) => count >= METEOR_ROUNDS);
-    if (sidesDone || meteor.bounces >= METEOR_MAX_HITS) {
-      finishMeteor();
-      return;
-    }
-
+    if (swept) updateHUD(true);
     const rotation = (Math.atan2(meteor.vy, meteor.vx) * 180) / Math.PI + 45;
     meteor.el.style.transform = `translate3d(${meteor.x}px, ${meteor.y}px, 0) rotate(${rotation}deg)`;
+  }
+
+  function sweepMeteorSettled(meteor) {
+    let removed = 0;
+    for (const settled of state.settled.slice()) {
+      const overlaps =
+        meteor.x < settled.x + settled.w &&
+        meteor.x + meteor.size > settled.x &&
+        meteor.y < settled.y + settled.h &&
+        meteor.y + meteor.size > settled.y;
+      if (!overlaps) continue;
+
+      const index = state.settled.indexOf(settled);
+      if (index !== -1) state.settled.splice(index, 1);
+      spawnStars(settled.x + settled.w / 2, settled.y + settled.h / 2, 42, 6);
+      spawnSparks(settled.x + settled.w / 2, settled.y + settled.h / 2, 42, 5);
+      settled.el.remove();
+      meteor.cleared += 1;
+      removed += 1;
+      playMeteorSweep(meteor.cleared);
+    }
+    return removed;
   }
 
   function finishMeteor() {
@@ -2380,15 +2421,9 @@
     if (!meteor) return;
     const cx = meteor.x + meteor.size / 2;
     const cy = meteor.y + meteor.size / 2;
+    const count = meteor.cleared;
     meteor.el.remove();
     state.meteor = null;
-
-    const count = state.settled.length;
-    for (const settled of state.settled) {
-      spawnStars(settled.x + settled.w / 2, settled.y + settled.h / 2, 42, 5);
-      settled.el.remove();
-    }
-    state.settled = [];
 
     createFlash(cx, cy, 42);
     spawnStars(cx, cy, 42, 30);
@@ -2396,6 +2431,10 @@
     updateHUD(true);
     playMeteorFinish();
     toast(count ? tr("meteor.clear", { count }) : tr("meteor.empty"));
+
+    if (state.settled.some((settled) => settled.y <= DANGER_Y)) {
+      endGame();
+    }
   }
 
   function cancelMeteor() {
@@ -3491,11 +3530,7 @@
   els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
     button.addEventListener("click", () => onDifficultyClick(button));
   });
-  if (els.speedGroup) {
-    els.speedGroup.querySelectorAll("[data-speed]").forEach((button) => {
-      button.addEventListener("click", () => onSpeedClick(button));
-    });
-  }
+  if (els.speedBtn) els.speedBtn.addEventListener("click", cycleSpeed);
 
   window.addEventListener("keydown", (event) => {
     const target = event.target;
@@ -3698,6 +3733,7 @@
               y: state.meteor.y,
               bounces: state.meteor.bounces,
               edgeHits: { ...state.meteor.edgeHits },
+              cleared: state.meteor.cleared,
               vx: state.meteor.vx,
               vy: state.meteor.vy,
             }

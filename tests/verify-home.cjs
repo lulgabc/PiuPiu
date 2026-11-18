@@ -42,6 +42,12 @@ assert.match(css, /body\.phase-menu \.controls \{/, "menu mode should hide the i
 assert.match(css, /body\.phase-menu #pauseBtn \{/, "menu mode should hide pause");
 assert.match(css, /\.start-mascot \{/, "the mascot should be styled");
 assert.match(css, /\.pack-pill \{/, "the pack pill should be styled");
+assert.match(html, /id="speedBtn"/, "the falling-speed pill belongs on the start screen");
+assert.match(css, /\.speed-pill \{/, "the speed pill should be styled");
+assert.ok(css.includes(".stat-label {\n  font-size: 11px;"), "HUD labels should be readable, not tiny");
+assert.ok(css.includes(".stat strong {\n  font-size: 20px;"), "HUD values should stand out");
+assert.match(css, /@media \(max-width: 560px\)[\s\S]*?grid-template-areas/, "phones should stack the HUD for full-width stats");
+assert.equal(css.includes(".combo-stat { display: none; }"), false, "every stat should stay visible on phones");
 assert.match(css, /\.setup-sheet \{/, "the settings drawer should be styled");
 
 // ---------- short child-facing copy ----------
