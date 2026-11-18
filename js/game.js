@@ -639,6 +639,18 @@
     return state.masterGain || ctx.destination;
   }
 
+  // Safari infers the iOS audio-session category from the APIs a page uses.
+  // Declaring it explicitly keeps the microphone and the loudspeaker on the
+  // same route instead of letting iOS fall back to the quiet receiver route.
+  function setAudioSession(type) {
+    if (!IS_IOS) return;
+    const session = navigator.audioSession;
+    if (!session) return;
+    try {
+      if (session.type !== type) session.type = type;
+    } catch {}
+  }
+
   function tone(freq, duration, type = "sine", volume = 0.04, delay = 0, slideTo = null) {
     const ctx = audio();
     if (!ctx) return;
@@ -2438,6 +2450,7 @@
   function startSpeech() {
     if (!state.speech || !state.micEnabled) return;
     if (state.listening || state.speechStarting) return;
+    setAudioSession("play-and-record");
     syncSpeechPhrases();
     state.speechStarting = true;
     try {
@@ -2482,6 +2495,7 @@
       } catch {}
     }
     state.listening = false;
+    setAudioSession("playback");
     updateMicUI();
   }
 

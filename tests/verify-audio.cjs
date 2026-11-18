@@ -15,6 +15,9 @@ assert.match(game, /function soundOut\(ctx\)/, "audio nodes should connect throu
 assert.match(game, /master\.gain\.value = 1/, "the master volume should be at full scale");
 assert.match(game, /const AUDIO_BOOST = TOUCH_DEVICE \|\| IS_IOS \? 1\.8 : 1/, "touch devices should get a louder effect bus");
 assert.match(game, /volume \* AUDIO_BOOST/, "tone/noise gains should use the mobile boost");
+assert.match(game, /navigator\.audioSession/, "iOS audio-session intent should be declared");
+assert.match(game, /setAudioSession\("play-and-record"\)/, "recognition should request speaker playback");
+assert.match(game, /setAudioSession\("playback"\)/, "releasing the microphone should restore media volume");
 
 // ---------- cartoon / playful palette ----------
 for (const fn of [
