@@ -205,6 +205,8 @@
     focusedWord: null,
     helpSpeaking: false,
     helpSpeakToken: 0,
+    helpWord: "",
+    helpGuardUntil: 0,
     toastTimer: 0,
     lastHud: {},
     rewardProgress: 0,
@@ -1128,6 +1130,15 @@
   /* matching & explosions                                               */
   /* ------------------------------------------------------------------ */
 
+  function normalizeSpeech(text) {
+    return text
+      .toLowerCase()
+      .replace(/[’‘]/g, "'")
+      .replace(/[^a-z' ]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function formsFor(word) {
     const base = word.toLowerCase();
     const forms = new Set([base]);
@@ -1156,12 +1167,7 @@
 
   function findMatch(text) {
     if (!text) return null;
-    const normalized = text
-      .toLowerCase()
-      .replace(/[’‘]/g, "'")
-      .replace(/[^a-z' ]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    const normalized = normalizeSpeech(text);
     if (!normalized) return null;
 
     const tokens = normalized.split(" ").filter(Boolean);
@@ -1577,6 +1583,7 @@
   function stopHelpSpeech() {
     state.helpSpeakToken += 1;
     state.helpSpeaking = false;
+    state.helpGuardUntil = 0;
     if (window.speechSynthesis) {
       try {
         window.speechSynthesis.cancel();
@@ -1594,11 +1601,13 @@
 
     const token = ++state.helpSpeakToken;
     state.helpSpeaking = true;
-    if (state.micEnabled) stopSpeech();
+    state.helpWord = word.word;
+    state.helpGuardUntil = 0;
     try {
       synth.cancel();
     } catch {}
     updateMicUI();
+    if (state.micEnabled && !state.listening && !state.speechStarting) startSpeech();
 
     const utterance = new Utterance(word.word);
     utterance.lang = "en-US";
@@ -1614,13 +1623,10 @@
       finished = true;
       if (token !== state.helpSpeakToken) return;
       state.helpSpeaking = false;
+      state.helpGuardUntil = performance.now() + 200;
       updateMicUI();
-      if (state.phase === "playing" && state.micEnabled) {
-        window.setTimeout(() => {
-          if (state.phase === "playing" && state.micEnabled && !state.helpSpeaking) {
-            startSpeech();
-          }
-        }, 100);
+      if (state.phase === "playing" && state.micEnabled && !state.listening && !state.speechStarting) {
+        startSpeech();
       }
     };
 
@@ -1637,7 +1643,7 @@
 
     window.setTimeout(() => {
       if (token === state.helpSpeakToken && state.helpSpeaking) done();
-    }, 6000);
+    }, 4000);
   }
 
   function triggerHelp() {
@@ -1758,7 +1764,10 @@
 
       recognition.onresult = (event) => {
         if (state.phase !== "playing") return;
+        if (state.helpSpeaking) return;
         const now = performance.now();
+        const guardHelpEcho = state.helpGuardUntil > now;
+        const helpKey = guardHelpEcho ? normalizeSpeech(state.helpWord) : "";
         const metrics = state.speechMetrics;
         state.speechNoSpeech = false;
         metrics.results += 1;
@@ -1781,6 +1790,7 @@
             if (!alt) continue;
             const transcript = (alt.transcript || "").trim();
             if (!transcript) continue;
+            if (guardHelpEcho && normalizeSpeech(transcript) === helpKey) continue;
             const confidence = Number.isFinite(alt.confidence) ? alt.confidence : 0;
             if (confidence > latestConfidence) {
               latest = transcript;

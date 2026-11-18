@@ -1,6 +1,6 @@
 {
   "name": "piupiu",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "private": true,
   "description": "PiuPiu — a child-friendly falling-word English pronunciation game with emoji faces, playful effects, spoken hints, star-beam rewards, eight PixiJS ambience scenes, PHaVE and PHRASE lists, themed packs, K-12 reading lists, BNC/COCA word families, and Chinese, French and English UI.",
   "scripts": {
