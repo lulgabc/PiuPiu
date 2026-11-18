@@ -222,6 +222,7 @@
     boardList: $("boardList"),
     boardEmpty: $("boardEmpty"),
     sessionTotal: $("sessionTotal"),
+    overBoardBtn: $("overBoardBtn"),
     speechNote: $("speechNote"),
     finalScore: $("finalScore"),
     finalCleared: $("finalCleared"),
@@ -1564,9 +1565,9 @@
   function renderPlayerUI() {
     if (!els.playerBtn) return;
     const profile = currentProfile();
-    setText(els.playerAvatar, profile ? profile.avatar : "🦊");
+    setText(els.playerAvatar, profile ? profile.avatar : "＋");
     setText(els.playerName, profile ? profile.name : tr("player.none"));
-    setText(els.playerTotal, `⭐ ${formatNumber(profile ? profile.total : 0)}`);
+    setText(els.playerTotal, profile ? `⭐ ${formatNumber(profile.total)}` : "");
     const label = profile
       ? tr("player.openAria", { name: profile.name, score: formatNumber(profile.total) })
       : tr("player.none");
@@ -3202,6 +3203,7 @@
   }
 
   if (els.boardBtn) els.boardBtn.addEventListener("click", openBoard);
+  if (els.overBoardBtn) els.overBoardBtn.addEventListener("click", openBoard);
   if (els.boardClose) els.boardClose.addEventListener("click", closeBoard);
   if (els.boardDone) els.boardDone.addEventListener("click", closeBoard);
   if (els.boardSheet) {

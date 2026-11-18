@@ -132,6 +132,9 @@ assert.match(html, /id="playerBtn"/, "the start screen needs a player shortcut")
 assert.match(html, /id="playerSheet"/, "the player picker dialog is required");
 assert.match(html, /id="boardSheet"/, "the leaderboard dialog is required");
 assert.match(html, /id="sessionTotal"/, "the end panel should show the running total");
+assert.match(html, /id="overBoardBtn"/, "the end panel should link to the leaderboard");
+assert.match(game, /overBoardBtn\) els\.overBoardBtn\.addEventListener/, "the end-panel board link should open the leaderboard");
+assert.match(game, /profile \? profile\.avatar : "＋"/, "the empty player pill should invite creation");
 assert.match(html, /js\/profiles\.js/, "index.html must load profiles.js");
 assert.match(sw, /\.\/js\/profiles\.js/, "the service worker must precache profiles.js");
 

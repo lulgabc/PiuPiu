@@ -2958,6 +2958,11 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
   background: rgba(139, 92, 255, 0.15);
 }
 
+.player-pill.is-empty {
+  border-style: dashed;
+  border-color: rgba(154, 132, 255, 0.38);
+}
+
 .player-pill:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 3px rgba(154, 132, 255, 0.2);
@@ -2999,10 +3004,37 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
 
 .session-total {
   min-height: 16px;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   color: #9fe9dc;
   font-size: 11px;
   font-weight: 700;
+}
+
+.over-board-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  margin: 0 auto 10px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 214, 90, 0.22);
+  border-radius: 9px;
+  background: rgba(255, 214, 90, 0.05);
+  color: #ffe3a0;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.over-board-link:hover {
+  border-color: rgba(255, 214, 90, 0.45);
+  background: rgba(255, 214, 90, 0.1);
+}
+
+.over-board-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(255, 214, 90, 0.16);
 }
 
 /* Player picker */
