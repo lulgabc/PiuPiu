@@ -6,6 +6,11 @@
   const EDUCATION = Array.isArray(window.PIU_EDUCATION) ? window.PIU_EDUCATION.slice() : [];
   const FAMILIES = Array.isArray(window.PIU_FAMILIES) ? window.PIU_FAMILIES.slice() : [];
   const PHRASES = Array.isArray(window.PIU_PHRASES) ? window.PIU_PHRASES.slice() : [];
+  const NUMBERS = Array.isArray(window.PIU_NUMBERS) ? window.PIU_NUMBERS.slice() : [];
+  const NUMBER_WORDS =
+    window.PIU_NUMBER_WORDS && typeof window.PIU_NUMBER_WORDS === "object"
+      ? window.PIU_NUMBER_WORDS
+      : {};
   const EMOJI =
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
   const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
@@ -374,6 +379,11 @@
         levels: coreLevels,
       },
     ];
+
+    for (const category of NUMBERS) {
+      if (!category || !category.id || !Array.isArray(category.bands)) continue;
+      categories.push({ ...category, education: false, group: category.group || "themes" });
+    }
 
     for (const category of LEXICON) {
       if (!category || !category.id || !category.levels) continue;
@@ -1509,9 +1519,12 @@
     return text
       .toLowerCase()
       .replace(/[’‘]/g, "'")
-      .replace(/[^a-z' ]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+      .replace(/[^a-z' 0-9]/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((token) => NUMBER_WORDS[token] || token)
+      .join(" ");
   }
 
   function formsFor(word) {
@@ -1527,6 +1540,14 @@
     }
     add(base.replace(/'/g, ""));
     add(base.replace(/\s+/g, ""));
+    if (base.includes("-")) {
+      add(base.replace(/-/g, " "));
+      add(base.replace(/-/g, ""));
+    }
+    if (base === "one hundred") {
+      add("a hundred");
+      add("hundred");
+    }
     if (base.length >= 3 && base.endsWith("y") && !/[aeiou]y$/.test(base)) {
       add(`${base.slice(0, -1)}ies`);
     }
@@ -1550,11 +1571,18 @@
 
     const candidates = state.words.slice().sort((a, b) => b.y - a.y);
 
+    // A whole-utterance match wins first. Hyphenated number words are spoken
+    // with a space, so "twenty one" should clear twenty-one rather than twenty.
+    for (const word of candidates) {
+      const key = word.word.toLowerCase();
+      if (normalized === key || normalized === key.replace(/-/g, " ")) return word;
+    }
+
     // Prefer an exact spelling match before plural / homophone / split-compound
     // matching, so two similar targets are not confused with each other.
     for (const word of candidates) {
       const key = word.word.toLowerCase();
-      if (tokens.includes(key) || normalized === key) return word;
+      if (tokens.includes(key)) return word;
     }
 
     for (const word of candidates) {
