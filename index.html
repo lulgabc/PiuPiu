@@ -32,9 +32,9 @@
       document.documentElement.classList.add("is-touch");
     }
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2.6.0">
+  <link rel="stylesheet" href="css/style.css?v=2.7.0">
 </head>
-<body>
+<body class="phase-menu">
   <div id="app">
     <header class="topbar">
       <div class="brand" aria-label="PiuPiu">
@@ -121,58 +121,49 @@
       <div id="toast" class="toast" role="status"></div>
 
       <div id="overlay" class="overlay">
-        <section id="startPanel" class="panel" aria-labelledby="gameTitle">
-          <p class="eyebrow" data-i18n="start.eyebrow">🚀 英语单词爆破</p>
+        <section id="startPanel" class="panel start-panel" aria-labelledby="gameTitle">
+          <div class="start-mascot" aria-hidden="true">
+            <span class="mascot-spark">✦</span>
+            <span class="mascot-face">
+              <span class="mascot-eye left"></span>
+              <span class="mascot-eye right"></span>
+              <span class="mascot-mouth"></span>
+              <span class="mascot-cheek left"></span>
+              <span class="mascot-cheek right"></span>
+            </span>
+          </div>
+
           <h1 id="gameTitle">Piu<span>Piu</span></h1>
-          <p class="tagline" data-i18n="start.tagline">读出来，让它爆炸。</p>
+          <p class="tagline start-tagline" data-i18n="start.tagline">读出来，就爆炸！</p>
 
-          <div class="steps">
-            <div class="step"><span class="step-icon" aria-hidden="true">⬇️</span><p data-i18n="start.step1">单词或短语从屏幕顶部随机落下</p></div>
-            <div class="step"><span class="step-icon" aria-hidden="true">🎤</span><p data-i18n="start.step2">对着麦克风大声读出这个英语单词或短语</p></div>
-            <div class="step"><span class="step-icon" aria-hidden="true">💥</span><p data-i18n="start.step3">读对立即爆破，没接住就会堆在底部</p></div>
+          <div id="playSteps" class="play-steps">
+            <div class="play-step"><span class="play-icon" aria-hidden="true">🌧️</span><span class="play-label" data-i18n="start.step1">落下来</span></div>
+            <div class="play-step"><span class="play-icon" aria-hidden="true">🎤</span><span class="play-label" data-i18n="start.step2">大声读</span></div>
+            <div class="play-step"><span class="play-icon" aria-hidden="true">💥</span><span class="play-label" data-i18n="start.step3">爆炸</span></div>
           </div>
 
-          <p class="rule">
-            <span data-i18n="start.rule1">单词或短语堆到屏幕顶端，游戏结束。</span><br>
-            <span data-i18n="start.rule2">20 个主题词库 + K-12 阅读词表 + BNC/COCA 词族 + PHaVE/PHRASE 短语 · 500 个核心词 · 没有麦克风也能打字。</span>
-          </p>
-
-          <div class="pack-picker">
-            <div class="pack-head">
-              <span class="pack-title" data-i18n="pack.title">词库</span>
-              <span class="pack-head-right">
-                <span id="packCount" class="pack-count" aria-live="polite">500 个单词</span>
-                <button id="voiceToggle" class="voice-toggle" type="button" aria-expanded="false" aria-controls="voicePopover" aria-label="朗读声音" data-i18n-aria="voice.title" data-i18n-title="voice.title" title="朗读声音"><span class="voice-toggle-icon" aria-hidden="true">🔊</span><span class="voice-toggle-label" data-i18n="voice.short">声音</span></button>
-              </span>
-            </div>
-            <div class="pack-controls">
-              <select id="categorySelect" class="pack-select" aria-label="类别" data-i18n-aria="pack.category">
-                <option value="core" data-i18n="cat.core">综合词库</option>
-              </select>
-              <div id="diffGroup" class="diff-group" role="group" aria-label="难度" data-i18n-aria="pack.level">
-                <button type="button" class="diff-btn is-active" data-level="0" data-i18n="difficulty.all" aria-pressed="true">全部</button>
-                <button type="button" class="diff-btn" data-level="1" data-i18n="difficulty.1" aria-pressed="false">初级</button>
-                <button type="button" class="diff-btn" data-level="2" data-i18n="difficulty.2" aria-pressed="false">中级</button>
-                <button type="button" class="diff-btn" data-level="3" data-i18n="difficulty.3" aria-pressed="false">高级</button>
-              </div>
-              <select id="levelSelect" class="pack-select level-select is-hidden" aria-label="级别" data-i18n-aria="pack.band"></select>
-            </div>
-          </div>
-
-          <p class="help-hint" data-i18n="help.hint">🔊 空格 / 点击屏幕：听最下面的单词或短语。</p>
-
-          <button id="startBtn" class="primary-btn" type="button">
+          <button id="startBtn" class="primary-btn start-cta" type="button">
             <span data-i18n="start.cta">开始游戏</span>
-            <span class="key-hint">⏎</span>
+            <span class="key-hint" aria-hidden="true">▶</span>
           </button>
-          <div class="start-meta">
-            <p id="bestLine" class="best">最高分：0</p>
-            <button id="installBtn" class="install-btn is-hidden" type="button" data-i18n-title="install.cta" title="安装到手机">
-              <span class="install-btn-icon" aria-hidden="true">📲</span>
-              <span data-i18n="install.cta">安装到手机</span>
+
+          <button id="packBtn" class="pack-pill" type="button" aria-haspopup="dialog" aria-controls="setupSheet" data-i18n-aria="setup.packAria">
+            <span class="pack-pill-icon" aria-hidden="true">🌍</span>
+            <span id="packSummary" class="pack-pill-text">综合词库 · 全部</span>
+            <span class="pack-pill-chevron" aria-hidden="true">›</span>
+          </button>
+
+          <div class="home-meta">
+            <p id="bestLine" class="best home-best">🏆 0</p>
+            <button id="installBtn" class="home-install is-hidden" type="button" data-i18n-title="install.cta" data-i18n-aria="install.cta" title="安装到手机" aria-label="安装到手机">
+              <span aria-hidden="true">📲</span>
+              <span data-i18n="install.short">安装</span>
+            </button>
+            <button id="setupBtn" class="home-settings" type="button" aria-haspopup="dialog" aria-controls="setupSheet" data-i18n-aria="setup.openAria">
+              <span aria-hidden="true">⚙</span>
+              <span data-i18n="setup.parentButton">家长</span>
             </button>
           </div>
-          <p id="speechNote" class="fineprint" data-i18n="speech.note.initial">语音识别需要 Chrome / Edge / Safari，并允许麦克风权限。</p>
         </section>
 
         <section id="pausePanel" class="panel hidden" aria-labelledby="pauseTitle">
@@ -236,16 +227,54 @@
     </div>
   </div>
 
-  <div id="voicePopover" class="voice-popover is-hidden" role="dialog" aria-label="朗读声音" data-i18n-aria="voice.title">
-    <div class="voice-popover-head">
-      <span class="voice-title" data-i18n="voice.title">朗读声音</span>
-      <button id="voiceClose" class="voice-close" type="button" aria-label="关闭" data-i18n-aria="voice.close">✕</button>
+  <div id="setupSheet" class="setup-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="setupTitle" aria-hidden="true">
+    <div class="setup-card" role="document">
+      <div class="setup-head">
+        <h2 id="setupTitle" data-i18n="setup.title">游戏设置</h2>
+        <button id="setupClose" class="setup-close" type="button" aria-label="关闭设置" data-i18n-aria="setup.close">✕</button>
+      </div>
+
+      <section id="setupPackSection" class="setup-section">
+        <div class="setup-section-head">
+          <h3 data-i18n="pack.title">词库</h3>
+          <span id="packCount" class="pack-count" aria-live="polite">500 个单词</span>
+        </div>
+        <select id="categorySelect" class="pack-select" aria-label="类别" data-i18n-aria="pack.category">
+          <option value="core" data-i18n="cat.core">综合词库</option>
+        </select>
+        <div class="pack-controls">
+          <div id="diffGroup" class="diff-group" role="group" aria-label="难度" data-i18n-aria="pack.level">
+            <button type="button" class="diff-btn is-active" data-level="0" data-i18n="difficulty.all" aria-pressed="true">全部</button>
+            <button type="button" class="diff-btn" data-level="1" data-i18n="difficulty.1" aria-pressed="false">初级</button>
+            <button type="button" class="diff-btn" data-level="2" data-i18n="difficulty.2" aria-pressed="false">中级</button>
+            <button type="button" class="diff-btn" data-level="3" data-i18n="difficulty.3" aria-pressed="false">高级</button>
+          </div>
+          <select id="levelSelect" class="pack-select level-select is-hidden" aria-label="级别" data-i18n-aria="pack.band"></select>
+        </div>
+      </section>
+
+      <section id="setupVoiceSection" class="setup-section">
+        <h3 data-i18n="voice.title">朗读声音</h3>
+        <div class="setup-voice-row">
+          <select id="voiceSelect" class="pack-select voice-select" aria-label="朗读声音" data-i18n-aria="voice.aria"></select>
+          <button id="voicePreview" class="voice-preview" type="button" data-i18n="voice.preview" data-i18n-title="voice.previewTitle" title="试听当前声音">试听</button>
+        </div>
+      </section>
+
+      <section id="setupParentSection" class="setup-section setup-parent">
+        <h3 data-i18n="setup.parent">家长说明</h3>
+        <p class="setup-note" data-i18n="start.rule1">单词或短语堆到屏幕顶端，游戏结束。</p>
+        <p class="setup-note" data-i18n="start.rule2">20 个主题词库 + K-12 阅读词表 + BNC/COCA 词族 + PHaVE/PHRASE 短语 · 500 个核心词 · 没有麦克风也能打字。</p>
+        <p id="speechNote" class="setup-note" data-i18n="speech.note.initial">语音识别需要 Chrome / Edge / Safari，并允许麦克风权限。</p>
+        <p class="setup-note" data-i18n="help.hint">🔊 空格 / 点击屏幕：听最下面的单词或短语。</p>
+      </section>
+
+      <button id="setupDone" class="primary-btn setup-done" type="button" data-i18n="setup.done">完成</button>
     </div>
-    <select id="voiceSelect" class="pack-select voice-select" aria-label="朗读声音" data-i18n-aria="voice.aria"></select>
-    <button id="voicePreview" class="voice-preview" type="button" data-i18n="voice.preview" data-i18n-title="voice.previewTitle" title="试听当前声音">试听</button>
   </div>
 
-  <script src="js/i18n.js?v=2.6.0"></script>
+
+  <script src="js/i18n.js?v=2.7.0"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
   <script src="js/education.js"></script>
@@ -253,8 +282,8 @@
   <script src="js/phrases.js?v=2.2.0"></script>
   <script src="js/emojis.js"></script>
   <script src="js/vendor/pixi.min.js?v=2.0.1"></script>
-  <script src="js/pixi-ambient.js?v=2.6.0"></script>
-  <script src="js/game.js?v=2.6.0"></script>
-  <script src="js/pwa.js?v=2.6.0"></script>
+  <script src="js/pixi-ambient.js?v=2.7.0"></script>
+  <script src="js/game.js?v=2.7.0"></script>
+  <script src="js/pwa.js?v=2.7.0"></script>
 </body>
 </html>

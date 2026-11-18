@@ -55,7 +55,7 @@ assert.equal(
 );
 
 assert.equal(i18n.getLang(), "zh", "Node default should stay zh");
-assert.equal(i18n.t("start.best", { score: "1,234" }), "最高分：1,234");
+assert.equal(i18n.t("start.best", { score: "1,234" }), "🏆 1,234");
 assert.equal(i18n.setLang("fr"), "fr");
 assert.equal(i18n.t("hud.score"), "Score");
 assert.equal(i18n.setLang("de"), "fr", "unsupported language should be ignored");

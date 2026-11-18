@@ -51,7 +51,7 @@ assert.match(index, /id="installBtn"/, "the main screen needs an install shortcu
 assert.match(index, /id="installSheet"/, "manual install instructions need a dialog");
 assert.match(index, /id="installClose"/, "the install dialog needs a close button");
 assert.match(index, /id="installDone"/, "the install dialog needs a done button");
-assert.match(index, /data-i18n="install\.cta"/, "the install shortcut should be translated");
+assert.match(index, /data-i18n="install\.short"/, "the install shortcut should be translated");
 assert.match(index, /js\/pwa\.js\?v=[\d.]+/, "the PWA controller should be loaded");
 assert.match(css, /@media \(max-height: 900px\)/, "short screens should compact the start panel");
 assert.match(css, /\.start-meta/, "the install shortcut and best score should share a row");

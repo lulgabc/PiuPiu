@@ -17,6 +17,7 @@
   const LEVEL_KEY = "piupiu.level";
   const BAND_KEY = "piupiu.band";
   const VOICE_KEY = "piupiu.voice";
+  const INTRO_KEY = "piupiu.introSeen";
   const PAD = 12;
   const DANGER_Y = 10;
   const GAME_FPS = 60;
@@ -127,6 +128,16 @@
     typeForm: $("typeForm"),
     typeInput: $("typeInput"),
     categorySelect: $("categorySelect"),
+    packBtn: $("packBtn"),
+    packSummary: $("packSummary"),
+    setupBtn: $("setupBtn"),
+    setupSheet: $("setupSheet"),
+    setupClose: $("setupClose"),
+    setupDone: $("setupDone"),
+    setupPackSection: $("setupPackSection"),
+    setupVoiceSection: $("setupVoiceSection"),
+    setupParentSection: $("setupParentSection"),
+    playSteps: $("playSteps"),
     voiceToggle: $("voiceToggle"),
     voicePopover: $("voicePopover"),
     voiceClose: $("voiceClose"),
@@ -467,6 +478,17 @@
     const count = getSelectedPool().length;
     const countKey = category && category.countKey ? category.countKey : "pack.count";
     setText(els.packCount, tr(countKey, { count: formatNumber(count) }));
+
+    if (els.packSummary && category) {
+      let modeKey = "difficulty.all";
+      if (banded) {
+        const band = category.bands.find((item) => item.id === state.band);
+        modeKey = state.band !== "all" && band ? band.labelKey : "difficulty.all";
+      } else if (state.difficulty > 0) {
+        modeKey = `difficulty.${state.difficulty}`;
+      }
+      setText(els.packSummary, `${tr(category.nameKey)} · ${tr(modeKey)}`);
+    }
   }
 
   function savePackSelection() {
@@ -730,6 +752,53 @@
     updateHUD(true);
   }
 
+  let setupOpener = null;
+
+  function syncPhaseClass() {
+    document.body.classList.remove("phase-menu", "phase-playing", "phase-paused", "phase-over");
+    document.body.classList.add(`phase-${state.phase}`);
+  }
+
+  function openSetup(section = "pack") {
+    if (!els.setupSheet) return;
+    setupOpener = section === "parent" ? els.setupBtn : els.packBtn;
+    els.setupSheet.classList.remove("is-hidden");
+    els.setupSheet.setAttribute("aria-hidden", "false");
+    const card = els.setupSheet.querySelector(".setup-card");
+    const target = section === "parent" ? els.setupParentSection : els.setupPackSection;
+    if (card) card.scrollTop = target ? Math.max(0, target.offsetTop - 12) : 0;
+    window.setTimeout(() => {
+      if (els.setupClose && !els.setupSheet.classList.contains("is-hidden")) {
+        els.setupClose.focus({ preventScroll: true });
+      }
+    }, 0);
+  }
+
+  function closeSetup() {
+    if (!els.setupSheet || els.setupSheet.classList.contains("is-hidden")) return;
+    els.setupSheet.classList.add("is-hidden");
+    els.setupSheet.setAttribute("aria-hidden", "true");
+    if (setupOpener && document.contains(setupOpener) && !setupOpener.classList.contains("is-hidden")) {
+      setupOpener.focus({ preventScroll: true });
+    }
+  }
+
+  function maybeShowIntro() {
+    if (!els.playSteps) return;
+    let seen = false;
+    try {
+      seen = localStorage.getItem(INTRO_KEY) === "1";
+    } catch {}
+    if (seen) return;
+    els.playSteps.classList.add("is-intro");
+    window.setTimeout(() => {
+      els.playSteps.classList.remove("is-intro");
+      try {
+        localStorage.setItem(INTRO_KEY, "1");
+      } catch {}
+    }, 3200);
+  }
+
   function setAmbientRunning(running) {
     if (window.PiuAmbient && typeof window.PiuAmbient.setRunning === "function") {
       window.PiuAmbient.setRunning(running);
@@ -738,10 +807,12 @@
 
   function startGame() {
     closeVoicePopover();
+    closeSetup();
     audio();
     state.pool = getSelectedPool();
     resetGame();
     state.phase = "playing";
+    syncPhaseClass();
     window.dispatchEvent(new CustomEvent("piupiu:roundstart"));
     hideOverlay();
     setAmbientRunning(true);
@@ -935,6 +1006,7 @@
   function endGame() {
     if (state.phase === "over") return;
     state.phase = "over";
+    syncPhaseClass();
     stopHelpSpeech();
     clearFocus();
     stopSpeech();
@@ -965,6 +1037,7 @@
   function pauseGame() {
     if (state.phase !== "playing") return;
     state.phase = "paused";
+    syncPhaseClass();
     cancelAnimationFrame(state.raf);
     state.raf = 0;
     stopHelpSpeech();
@@ -979,6 +1052,7 @@
   function resumeGame() {
     if (state.phase !== "paused") return;
     state.phase = "playing";
+    syncPhaseClass();
     hideOverlay();
     setAmbientRunning(true);
     updatePauseButton();
@@ -991,6 +1065,7 @@
 
   function goHome() {
     state.phase = "menu";
+    syncPhaseClass();
     stopSpeech();
     setAmbientRunning(false);
     resetGame();
@@ -1049,7 +1124,11 @@
   /* ------------------------------------------------------------------ */
 
   function renderBestLine() {
-    setText(els.bestLine, tr("start.best", { score: formatNumber(state.highScore) }));
+    const score = formatNumber(state.highScore);
+    const label = tr("start.bestLabel", { score });
+    setText(els.bestLine, tr("start.best", { score }));
+    els.bestLine.setAttribute("aria-label", label);
+    els.bestLine.setAttribute("title", label);
   }
 
   function renderMissedList() {
@@ -1152,6 +1231,7 @@
     renderBestLine();
     renderCategoryOptions();
     updatePackUI();
+    renderVoiceOptions();
     els.speechNote.textContent = SpeechRec
       ? tr("speech.note.ok")
       : tr("speech.note.unsupported");
@@ -1681,10 +1761,12 @@
   function refreshVoiceCatalog() {
     const synth = window.speechSynthesis;
     if (!synth) {
+      if (els.setupVoiceSection) els.setupVoiceSection.classList.add("is-hidden");
       if (els.voiceToggle) els.voiceToggle.classList.add("is-hidden");
       closeVoicePopover();
       return;
     }
+    if (els.setupVoiceSection) els.setupVoiceSection.classList.remove("is-hidden");
     if (els.voiceToggle) els.voiceToggle.classList.remove("is-hidden");
     try {
       voiceCatalog = (synth.getVoices() || [])
@@ -1844,6 +1926,7 @@
 
   function setupHelp() {
     if (!window.speechSynthesis) {
+      if (els.setupVoiceSection) els.setupVoiceSection.classList.add("is-hidden");
       if (els.voiceToggle) els.voiceToggle.classList.add("is-hidden");
       closeVoicePopover();
       return;
@@ -2342,6 +2425,16 @@
     }
     closeVoicePopover();
   });
+  if (els.packBtn) els.packBtn.addEventListener("click", () => openSetup("pack"));
+  if (els.setupBtn) els.setupBtn.addEventListener("click", () => openSetup("parent"));
+  if (els.setupClose) els.setupClose.addEventListener("click", closeSetup);
+  if (els.setupDone) els.setupDone.addEventListener("click", closeSetup);
+  if (els.setupSheet) {
+    els.setupSheet.addEventListener("click", (event) => {
+      if (event.target === els.setupSheet) closeSetup();
+    });
+  }
+
   els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
     button.addEventListener("click", () => onDifficultyClick(button));
   });
@@ -2349,6 +2442,15 @@
   window.addEventListener("keydown", (event) => {
     const target = event.target;
     const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
+    if (
+      event.key === "Escape" &&
+      els.setupSheet &&
+      !els.setupSheet.classList.contains("is-hidden")
+    ) {
+      event.preventDefault();
+      closeSetup();
+      return;
+    }
     if (
       event.key === "Escape" &&
       els.voicePopover &&
@@ -2451,6 +2553,7 @@
   /* ------------------------------------------------------------------ */
 
   function init() {
+    syncPhaseClass();
     loadPackSelection();
     renderCategoryOptions();
     updatePackUI();
@@ -2480,6 +2583,7 @@
     updateHUD(true);
     updateMicUI();
     updatePauseButton();
+    maybeShowIntro();
   }
 
   /* Debug helpers, available with ?debug=1 for automated checks. */
