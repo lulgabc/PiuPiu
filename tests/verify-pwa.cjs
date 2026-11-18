@@ -10,6 +10,7 @@ const index = read("index.html");
 const pwa = read("js/pwa.js");
 const sw = read("sw.js");
 const i18n = read("js/i18n.js");
+const css = read("css/style.css");
 
 // ---------- manifest ----------
 assert.equal(manifest.short_name, "PiuPiu", "the home-screen name should be short");
@@ -52,6 +53,8 @@ assert.match(index, /id="installClose"/, "the install dialog needs a close butto
 assert.match(index, /id="installDone"/, "the install dialog needs a done button");
 assert.match(index, /data-i18n="install\.cta"/, "the install shortcut should be translated");
 assert.match(index, /js\/pwa\.js\?v=[\d.]+/, "the PWA controller should be loaded");
+assert.match(css, /@media \(max-height: 900px\)/, "short screens should compact the start panel");
+assert.match(css, /\.start-meta/, "the install shortcut and best score should share a row");
 
 // ---------- install controller ----------
 assert.match(index, /__PIUPIU_INSTALL_PROMPT__/, "the install event should be captured before the app scripts load");
