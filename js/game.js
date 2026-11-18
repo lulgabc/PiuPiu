@@ -11,6 +11,7 @@
     window.PIU_NUMBER_WORDS && typeof window.PIU_NUMBER_WORDS === "object"
       ? window.PIU_NUMBER_WORDS
       : {};
+  const Profiles = window.PiuProfiles && typeof window.PiuProfiles === "object" ? window.PiuProfiles : null;
   const EMOJI =
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
   const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
@@ -202,6 +203,25 @@
     praise: $("praise"),
     toast: $("toast"),
     bestLine: $("bestLine"),
+    playerBtn: $("playerBtn"),
+    playerAvatar: $("playerAvatar"),
+    playerName: $("playerName"),
+    playerTotal: $("playerTotal"),
+    playerSheet: $("playerSheet"),
+    playerClose: $("playerClose"),
+    playerDone: $("playerDone"),
+    playerForm: $("playerForm"),
+    playerList: $("playerList"),
+    playerNameInput: $("playerNameInput"),
+    playerError: $("playerError"),
+    avatarPicker: $("avatarPicker"),
+    boardBtn: $("boardBtn"),
+    boardSheet: $("boardSheet"),
+    boardClose: $("boardClose"),
+    boardDone: $("boardDone"),
+    boardList: $("boardList"),
+    boardEmpty: $("boardEmpty"),
+    sessionTotal: $("sessionTotal"),
     speechNote: $("speechNote"),
     finalScore: $("finalScore"),
     finalCleared: $("finalCleared"),
@@ -223,6 +243,10 @@
     categoryId: "core",
     difficulty: 0,
     band: "all",
+    profiles: [],
+    userId: "",
+    pendingLegacyBest: 0,
+    roundRecorded: false,
     voiceChoice: readString(VOICE_KEY, "auto"),
     voicePreviewTimer: 0,
     lastWord: "",
@@ -320,6 +344,7 @@
   }
 
   function setText(el, text) {
+    if (!el) return;
     if (el.textContent !== text) el.textContent = text;
   }
 
@@ -974,6 +999,7 @@
     state.lastWord = "";
     syncSpeechPhrases();
     state.score = 0;
+    state.roundRecorded = true;
     state.combo = 0;
     state.bestCombo = 0;
     state.cleared = 0;
@@ -1053,6 +1079,11 @@
   }
 
   function startGame() {
+    if (Profiles && !currentProfile()) {
+      toast(tr("player.need"), "warn");
+      openPlayerSheet();
+      return;
+    }
     closeVoicePopover();
     closeSetup();
     audio();
@@ -1290,6 +1321,7 @@
       } catch {}
     }
 
+    finishProfileRound();
     renderOverPanel();
     renderBestLine();
     updateHUD(true);
@@ -1330,6 +1362,8 @@
   }
 
   function goHome() {
+    const wasRound = state.phase === "playing" || state.phase === "paused";
+    if (wasRound) finishProfileRound();
     state.phase = "menu";
     syncPhaseClass();
     stopSpeech();
@@ -1389,6 +1423,349 @@
   /* localized dynamic UI                                                */
   /* ------------------------------------------------------------------ */
 
+  /* ------------------------------------------------------------------ */
+  /* players & cumulative scores                                         */
+  /* ------------------------------------------------------------------ */
+
+  let selectedAvatar = Profiles ? Profiles.AVATARS[0] : "🦊";
+  let playerSheetOpener = null;
+  let boardOpener = null;
+
+  function currentProfile() {
+    return Profiles ? Profiles.find(state.profiles, state.userId) : null;
+  }
+
+  function mirrorHighScore(value) {
+    try {
+      localStorage.setItem(HS_KEY, String(value));
+    } catch {}
+  }
+
+  function renderAvatarPicker() {
+    if (!els.avatarPicker || !Profiles) return;
+    els.avatarPicker.replaceChildren();
+    for (const avatar of Profiles.AVATARS) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = avatar === selectedAvatar ? "avatar-choice is-selected" : "avatar-choice";
+      button.dataset.avatar = avatar;
+      button.textContent = avatar;
+      button.setAttribute("role", "radio");
+      button.setAttribute("aria-checked", String(avatar === selectedAvatar));
+      button.setAttribute("aria-label", avatar);
+      els.avatarPicker.appendChild(button);
+    }
+  }
+
+  function renderPlayerList() {
+    if (!els.playerList || !Profiles) return;
+    els.playerList.replaceChildren();
+    for (const profile of Profiles.rank(state.profiles)) {
+      const row = document.createElement("div");
+      row.className = profile.id === state.userId ? "player-option is-current" : "player-option";
+
+      const main = document.createElement("button");
+      main.type = "button";
+      main.className = "player-option-main";
+      main.dataset.selectPlayer = profile.id;
+
+      const avatar = document.createElement("span");
+      avatar.className = "player-option-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.textContent = profile.avatar;
+
+      const text = document.createElement("span");
+      text.className = "player-option-text";
+      const name = document.createElement("span");
+      name.className = "player-option-name";
+      name.textContent = profile.name;
+      const meta = document.createElement("span");
+      meta.className = "player-option-meta";
+      meta.textContent = `${tr("board.best", { score: formatNumber(profile.best) })} · ${tr("board.correct", { count: formatNumber(profile.correct) })}`;
+      text.append(name, meta);
+
+      const total = document.createElement("span");
+      total.className = "player-option-total";
+      total.textContent = `⭐ ${formatNumber(profile.total)}`;
+
+      main.append(avatar, text, total);
+      if (profile.id === state.userId) {
+        const badge = document.createElement("span");
+        badge.className = "player-option-current";
+        badge.textContent = tr("player.current");
+        main.appendChild(badge);
+      }
+
+      row.appendChild(main);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "player-option-delete";
+      remove.dataset.deletePlayer = profile.id;
+      remove.textContent = "✕";
+      remove.setAttribute("aria-label", tr("player.delete") + " " + profile.name);
+      remove.title = tr("player.delete");
+      row.appendChild(remove);
+
+      els.playerList.appendChild(row);
+    }
+  }
+
+  function renderBoard() {
+    if (!els.boardList || !Profiles) return;
+    const ranked = Profiles.rank(state.profiles);
+    els.boardList.replaceChildren();
+    if (els.boardEmpty) els.boardEmpty.classList.toggle("is-hidden", ranked.length > 0);
+
+    const medals = ["🥇", "🥈", "🥉"];
+    ranked.forEach((profile, index) => {
+      const row = document.createElement("li");
+      row.className = profile.id === state.userId ? "board-row is-current" : "board-row";
+
+      const rank = document.createElement("span");
+      rank.className = "board-rank";
+      rank.textContent = medals[index] || String(index + 1);
+
+      const avatar = document.createElement("span");
+      avatar.className = "board-row-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.textContent = profile.avatar;
+
+      const text = document.createElement("span");
+      text.className = "board-row-text";
+      const name = document.createElement("span");
+      name.className = "board-row-name";
+      name.textContent = profile.name;
+      if (profile.id === state.userId) {
+        const me = document.createElement("span");
+        me.className = "board-me";
+        me.textContent = tr("player.current");
+        name.appendChild(me);
+      }
+      const meta = document.createElement("span");
+      meta.className = "board-row-meta";
+      meta.textContent = `${tr("board.best", { score: formatNumber(profile.best) })} · ${tr("board.correct", { count: formatNumber(profile.correct) })}`;
+      text.append(name, meta);
+
+      const total = document.createElement("span");
+      total.className = "board-row-total";
+      total.textContent = `⭐ ${formatNumber(profile.total)}`;
+
+      row.setAttribute(
+        "aria-label",
+        `${profile.name}: ${tr("board.total", { score: formatNumber(profile.total) })}, ${tr("board.best", { score: formatNumber(profile.best) })}, ${tr("board.correct", { count: formatNumber(profile.correct) })}${profile.id === state.userId ? `, ${tr("player.current")}` : ""}`,
+      );
+
+      row.append(rank, avatar, text, total);
+      els.boardList.appendChild(row);
+    });
+  }
+
+  function renderPlayerUI() {
+    if (!els.playerBtn) return;
+    const profile = currentProfile();
+    setText(els.playerAvatar, profile ? profile.avatar : "🦊");
+    setText(els.playerName, profile ? profile.name : tr("player.none"));
+    setText(els.playerTotal, `⭐ ${formatNumber(profile ? profile.total : 0)}`);
+    const label = profile
+      ? tr("player.openAria", { name: profile.name, score: formatNumber(profile.total) })
+      : tr("player.none");
+    els.playerBtn.setAttribute("aria-label", label);
+    els.playerBtn.setAttribute("title", label);
+    els.playerBtn.classList.toggle("is-empty", !profile);
+    if (profile) state.highScore = profile.best;
+    renderBestLine();
+  }
+
+  function updateSessionTotal() {
+    if (!els.sessionTotal) return;
+    const profile = currentProfile();
+    setText(
+      els.sessionTotal,
+      profile ? tr("over.session", { score: formatNumber(profile.total) }) : "",
+    );
+  }
+
+  function updatePlayerTotals() {
+    const profile = currentProfile();
+    setText(els.playerTotal, `⭐ ${formatNumber(profile ? profile.total : 0)}`);
+    if (els.boardSheet && !els.boardSheet.classList.contains("is-hidden")) renderBoard();
+    if (state.phase === "over") updateSessionTotal();
+  }
+
+  function addProfilePoints(points) {
+    const profile = currentProfile();
+    if (!profile || !Profiles) return;
+    Profiles.addPoints(state.profiles, profile.id, points, 1);
+    Profiles.save(state.profiles);
+    updatePlayerTotals();
+  }
+
+  function finishProfileRound() {
+    if (!state.roundRecorded) return;
+    state.roundRecorded = false;
+    const profile = currentProfile();
+    if (!profile || !Profiles) return;
+    Profiles.finishRound(state.profiles, profile.id, state.score);
+    Profiles.save(state.profiles);
+    state.highScore = profile.best;
+    mirrorHighScore(profile.best);
+    renderBestLine();
+    updatePlayerTotals();
+  }
+
+  function selectProfile(profile, { close = true } = {}) {
+    if (!profile || !Profiles) return;
+    state.userId = profile.id;
+    Profiles.setActiveId(profile.id);
+    state.highScore = profile.best;
+    mirrorHighScore(profile.best);
+    renderPlayerUI();
+    renderPlayerList();
+    if (state.phase === "over") renderOverPanel();
+    if (close) closePlayerSheet();
+  }
+
+  function createPlayerFromForm(event) {
+    if (event) event.preventDefault();
+    if (!Profiles) return;
+    const result = Profiles.create(state.profiles, els.playerNameInput.value, selectedAvatar, {
+      best: state.pendingLegacyBest,
+    });
+    if (result.error) {
+      const key =
+        result.error === "duplicate"
+          ? "player.errorDuplicate"
+          : result.error === "full"
+            ? "player.errorFull"
+            : "player.errorEmpty";
+      setText(els.playerError, tr(key));
+      els.playerNameInput.focus();
+      return;
+    }
+
+    state.pendingLegacyBest = 0;
+    Profiles.save(state.profiles);
+    selectedAvatar = Profiles.AVATARS[state.profiles.length % Profiles.AVATARS.length];
+    els.playerNameInput.value = "";
+    setText(els.playerError, "");
+    selectProfile(result.profile, { close: false });
+    renderAvatarPicker();
+    renderPlayerList();
+    toast(tr("player.created", { name: result.profile.name }));
+    closePlayerSheet();
+  }
+
+  function deleteProfile(profile) {
+    if (!profile || !Profiles) return;
+    if (!window.confirm(tr("player.deleteConfirm", { name: profile.name }))) return;
+    state.profiles = Profiles.remove(state.profiles, profile.id);
+    Profiles.save(state.profiles);
+
+    if (state.userId === profile.id) {
+      const next = Profiles.rank(state.profiles)[0] || null;
+      state.userId = next ? next.id : "";
+      Profiles.setActiveId(state.userId);
+      state.highScore = next ? next.best : 0;
+      if (next) mirrorHighScore(next.best);
+      else {
+        try {
+          localStorage.removeItem(HS_KEY);
+        } catch {}
+      }
+    }
+
+    renderPlayerUI();
+    renderPlayerList();
+    renderBoard();
+    toast(tr("player.deleted", { name: profile.name }));
+    if (!state.profiles.length && els.playerNameInput) {
+      els.playerNameInput.focus();
+    }
+  }
+
+  function openPlayerSheet() {
+    if (!els.playerSheet) return;
+    playerSheetOpener = document.activeElement && document.activeElement.focus ? document.activeElement : els.playerBtn;
+    renderPlayerList();
+    renderAvatarPicker();
+    setText(els.playerError, "");
+    els.playerSheet.classList.remove("is-hidden");
+    els.playerSheet.setAttribute("aria-hidden", "false");
+    if (!currentProfile() && els.playerNameInput) {
+      window.setTimeout(() => {
+        if (!els.playerSheet.classList.contains("is-hidden")) {
+          els.playerNameInput.focus({ preventScroll: true });
+        }
+      }, 40);
+    }
+  }
+
+  function closePlayerSheet() {
+    if (!els.playerSheet || els.playerSheet.classList.contains("is-hidden")) return;
+    els.playerSheet.classList.add("is-hidden");
+    els.playerSheet.setAttribute("aria-hidden", "true");
+    setText(els.playerError, "");
+    if (playerSheetOpener && document.contains(playerSheetOpener) && !playerSheetOpener.classList.contains("is-hidden")) {
+      playerSheetOpener.focus({ preventScroll: true });
+    }
+  }
+
+  function openBoard() {
+    if (!els.boardSheet) return;
+    boardOpener = document.activeElement && document.activeElement.focus ? document.activeElement : els.boardBtn;
+    renderBoard();
+    els.boardSheet.classList.remove("is-hidden");
+    els.boardSheet.setAttribute("aria-hidden", "false");
+    window.setTimeout(() => {
+      if (els.boardClose && !els.boardSheet.classList.contains("is-hidden")) {
+        els.boardClose.focus({ preventScroll: true });
+      }
+    }, 0);
+  }
+
+  function closeBoard() {
+    if (!els.boardSheet || els.boardSheet.classList.contains("is-hidden")) return;
+    els.boardSheet.classList.add("is-hidden");
+    els.boardSheet.setAttribute("aria-hidden", "true");
+    if (boardOpener && document.contains(boardOpener) && !boardOpener.classList.contains("is-hidden")) {
+      boardOpener.focus({ preventScroll: true });
+    }
+  }
+
+  function loadPlayerState() {
+    if (!Profiles) return;
+    state.profiles = Profiles.load();
+    state.userId = Profiles.getActiveId(state.profiles);
+    if (state.profiles.length && !state.userId) {
+      const first = Profiles.rank(state.profiles)[0];
+      state.userId = first.id;
+      Profiles.setActiveId(first.id);
+    }
+
+    const active = currentProfile();
+    if (active) {
+      state.highScore = active.best;
+      mirrorHighScore(active.best);
+      selectedAvatar = Profiles.AVATARS[state.profiles.length % Profiles.AVATARS.length];
+    } else if (state.highScore > 0) {
+      state.pendingLegacyBest = state.highScore;
+    }
+
+    renderAvatarPicker();
+    renderPlayerList();
+    renderPlayerUI();
+  }
+
+  function maybeShowPlayerPicker() {
+    if (!Profiles) return;
+    // New devices need a first player; shared devices let each child pick.
+    if (state.profiles.length === 1) return;
+    window.setTimeout(() => {
+      if (state.phase === "menu") openPlayerSheet();
+    }, 420);
+  }
+
   function renderBestLine() {
     const score = formatNumber(state.highScore);
     const label = tr("start.bestLabel", { score });
@@ -1424,6 +1801,7 @@
     els.recordLine.textContent = state.newRecord
       ? tr("over.record")
       : tr("over.best", { score: formatNumber(state.highScore) });
+    updateSessionTotal();
   }
 
   function updatePauseButton() {
@@ -1501,6 +1879,10 @@
     updatePauseButton();
     updateMuteUI();
     renderBestLine();
+    renderPlayerUI();
+    renderPlayerList();
+    renderBoard();
+    renderAvatarPicker();
     renderCategoryOptions();
     updatePackUI();
     renderVoiceOptions();
@@ -1844,6 +2226,7 @@
     const points = Math.round(basePoints * multiplier) + (golden ? 25 : 0);
     state.score += points;
     state.cleared += 1;
+    addProfilePoints(points);
     advanceRewardProgress();
 
     const effect = nextEffect();
@@ -2779,6 +3162,54 @@
     });
   }
 
+  if (els.playerBtn) els.playerBtn.addEventListener("click", openPlayerSheet);
+  if (els.playerClose) els.playerClose.addEventListener("click", closePlayerSheet);
+  if (els.playerDone) els.playerDone.addEventListener("click", closePlayerSheet);
+  if (els.playerForm) els.playerForm.addEventListener("submit", createPlayerFromForm);
+  if (els.playerSheet) {
+    els.playerSheet.addEventListener("click", (event) => {
+      if (event.target === els.playerSheet) closePlayerSheet();
+    });
+  }
+  if (els.playerList) {
+    els.playerList.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      const remove = target.closest("[data-delete-player]");
+      if (remove) {
+        deleteProfile(Profiles ? Profiles.find(state.profiles, remove.dataset.deletePlayer) : null);
+        return;
+      }
+      const pick = target.closest("[data-select-player]");
+      if (pick) {
+        selectProfile(Profiles ? Profiles.find(state.profiles, pick.dataset.selectPlayer) : null);
+      }
+    });
+  }
+  if (els.avatarPicker) {
+    els.avatarPicker.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      const choice = target.closest("[data-avatar]");
+      if (!choice) return;
+      selectedAvatar = choice.dataset.avatar;
+      for (const button of els.avatarPicker.querySelectorAll(".avatar-choice")) {
+        const active = button.dataset.avatar === selectedAvatar;
+        button.classList.toggle("is-selected", active);
+        button.setAttribute("aria-checked", String(active));
+      }
+    });
+  }
+
+  if (els.boardBtn) els.boardBtn.addEventListener("click", openBoard);
+  if (els.boardClose) els.boardClose.addEventListener("click", closeBoard);
+  if (els.boardDone) els.boardDone.addEventListener("click", closeBoard);
+  if (els.boardSheet) {
+    els.boardSheet.addEventListener("click", (event) => {
+      if (event.target === els.boardSheet) closeBoard();
+    });
+  }
+
   if (els.packBtn) els.packBtn.addEventListener("click", () => openSetup("pack"));
   if (els.setupBtn) els.setupBtn.addEventListener("click", () => openSetup("parent"));
   if (els.setupClose) els.setupClose.addEventListener("click", closeSetup);
@@ -2796,6 +3227,19 @@
   window.addEventListener("keydown", (event) => {
     const target = event.target;
     const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
+    const playerOpen = els.playerSheet && !els.playerSheet.classList.contains("is-hidden");
+    const boardOpen = els.boardSheet && !els.boardSheet.classList.contains("is-hidden");
+    if (event.key === "Escape" && playerOpen) {
+      event.preventDefault();
+      closePlayerSheet();
+      return;
+    }
+    if (event.key === "Escape" && boardOpen) {
+      event.preventDefault();
+      closeBoard();
+      return;
+    }
+    if (playerOpen || boardOpen) return;
     if (
       event.key === "Escape" &&
       els.setupSheet &&
@@ -2912,6 +3356,7 @@
     renderCategoryOptions();
     updatePackUI();
     renderBestLine();
+    loadPlayerState();
     updateMuteUI();
 
     if (!WORD_BANK.length) {
@@ -2937,6 +3382,7 @@
     updateMicUI();
     updatePauseButton();
     maybeShowIntro();
+    maybeShowPlayerPicker();
   }
 
   /* Debug helpers, available with ?debug=1 for automated checks. */
@@ -2959,6 +3405,32 @@
       clearFocus,
       lowestFallingWord,
       getSelectedPool,
+      getProfiles: () =>
+        state.profiles.map((profile) => ({
+          id: profile.id,
+          name: profile.name,
+          avatar: profile.avatar,
+          total: profile.total,
+          best: profile.best,
+          correct: profile.correct,
+          rounds: profile.rounds,
+        })),
+      getActiveProfile: () => {
+        const profile = currentProfile();
+        return profile ? { ...profile } : null;
+      },
+      selectPlayer: (id) => selectProfile(Profiles ? Profiles.find(state.profiles, id) : null),
+      createPlayer: (name, avatar) => {
+        selectedAvatar = avatar && Profiles && Profiles.AVATARS.includes(avatar) ? avatar : selectedAvatar;
+        if (els.playerNameInput) els.playerNameInput.value = name == null ? "" : String(name);
+        createPlayerFromForm(null);
+        return currentProfile();
+      },
+      deletePlayer: (id) => deleteProfile(Profiles ? Profiles.find(state.profiles, id) : null),
+      openPlayerSheet,
+      closePlayerSheet,
+      openBoard,
+      closeBoard,
       getPack: () => ({
         category: state.categoryId,
         difficulty: state.difficulty,

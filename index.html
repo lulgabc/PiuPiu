@@ -32,7 +32,7 @@
       document.documentElement.classList.add("is-touch");
     }
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2.10.0">
+  <link rel="stylesheet" href="css/style.css?v=2.11.0">
 </head>
 <body class="phase-menu">
   <div id="app">
@@ -154,11 +154,22 @@
             <span class="pack-pill-chevron" aria-hidden="true">›</span>
           </button>
 
+          <button id="playerBtn" class="player-pill" type="button" aria-haspopup="dialog" aria-controls="playerSheet" data-i18n-aria="player.title">
+            <span id="playerAvatar" class="player-pill-avatar" aria-hidden="true">🦊</span>
+            <span id="playerName" class="player-pill-name" data-i18n="player.none">创建玩家</span>
+            <span id="playerTotal" class="player-pill-total">⭐ 0</span>
+            <span class="player-pill-chevron" aria-hidden="true">›</span>
+          </button>
+
           <div class="home-meta">
             <p id="bestLine" class="best home-best">🏆 0</p>
             <button id="installBtn" class="home-install is-hidden" type="button" data-i18n-title="install.cta" data-i18n-aria="install.cta" title="安装到手机" aria-label="安装到手机">
               <span aria-hidden="true">📲</span>
               <span data-i18n="install.short">安装</span>
+            </button>
+            <button id="boardBtn" class="home-settings home-board" type="button" aria-haspopup="dialog" aria-controls="boardSheet" aria-label="积分排行" data-i18n-aria="board.title">
+              <span aria-hidden="true">🏆</span>
+              <span data-i18n="board.open">排行</span>
             </button>
             <button id="setupBtn" class="home-settings" type="button" aria-haspopup="dialog" aria-controls="setupSheet" data-i18n-aria="setup.openAria">
               <span aria-hidden="true">⚙</span>
@@ -190,6 +201,7 @@
           <p class="missed-title" data-i18n="over.missedTitle">这些词再练一练</p>
           <div id="missedList" class="missed-list"></div>
           <p id="recordLine" class="record"></p>
+          <p id="sessionTotal" class="session-total" aria-live="polite"></p>
 
           <button id="restartBtn" class="primary-btn" type="button" data-i18n="over.cta">再来一局</button>
           <button id="homeBtn" class="ghost-btn" type="button" data-i18n="over.home">回到主页</button>
@@ -225,6 +237,45 @@
       <div id="installBody" class="install-body"></div>
       <p class="install-note" data-i18n="install.note">安装后可全屏打开，并支持离线游玩。</p>
       <button id="installDone" class="primary-btn install-done" type="button" data-i18n="install.done">知道了</button>
+    </div>
+  </div>
+
+  <div id="playerSheet" class="player-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="playerTitle" aria-hidden="true">
+    <div class="player-card" role="document">
+      <div class="player-head">
+        <h2 id="playerTitle" data-i18n="player.title">选择玩家</h2>
+        <button id="playerClose" class="player-close" type="button" aria-label="关闭玩家选择" data-i18n-aria="player.close">✕</button>
+      </div>
+      <p class="player-subtitle" data-i18n="player.subtitle">积分只保存在这台设备上。</p>
+
+      <div id="playerList" class="player-list"></div>
+
+      <form id="playerForm" class="player-form" autocomplete="off">
+        <h3 data-i18n="player.createTitle">新玩家</h3>
+        <div id="avatarPicker" class="avatar-picker" role="radiogroup" aria-label="头像" data-i18n-aria="player.avatarLabel"></div>
+        <div class="player-create-row">
+          <input id="playerNameInput" class="player-name-input" type="text" maxlength="12" autocomplete="off"
+                 placeholder="输入名字" data-i18n-placeholder="player.namePlaceholder"
+                 aria-label="名字" data-i18n-aria="player.nameAria">
+          <button type="submit" class="primary-btn player-create" data-i18n="player.create">创建</button>
+        </div>
+        <p id="playerError" class="player-error" role="alert"></p>
+      </form>
+
+      <button id="playerDone" class="ghost-btn player-done" type="button" data-i18n="setup.done">完成</button>
+    </div>
+  </div>
+
+  <div id="boardSheet" class="board-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="boardTitle" aria-hidden="true">
+    <div class="board-card" role="document">
+      <div class="board-head">
+        <h2 id="boardTitle"><span aria-hidden="true">🏆</span> <span data-i18n="board.title">积分排行</span></h2>
+        <button id="boardClose" class="board-close" type="button" aria-label="关闭积分排行" data-i18n-aria="board.close">✕</button>
+      </div>
+      <p class="board-subtitle" data-i18n="board.subtitle">这台设备上的玩家总积分。</p>
+      <ol id="boardList" class="board-list"></ol>
+      <p id="boardEmpty" class="board-empty" data-i18n="board.empty">还没有玩家，先创建一个吧。</p>
+      <button id="boardDone" class="primary-btn board-done" type="button" data-i18n="setup.done">完成</button>
     </div>
   </div>
 
@@ -275,17 +326,18 @@
   </div>
 
 
-  <script src="js/i18n.js?v=2.10.0"></script>
+  <script src="js/i18n.js?v=2.11.0"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
   <script src="js/education.js"></script>
   <script src="js/families.js"></script>
   <script src="js/phrases.js?v=2.2.0"></script>
   <script src="js/numbers.js"></script>
+  <script src="js/profiles.js"></script>
   <script src="js/emojis.js"></script>
   <script src="js/vendor/pixi.min.js?v=2.0.1"></script>
-  <script src="js/pixi-ambient.js?v=2.10.0"></script>
-  <script src="js/game.js?v=2.10.0"></script>
-  <script src="js/pwa.js?v=2.10.0"></script>
+  <script src="js/pixi-ambient.js?v=2.11.0"></script>
+  <script src="js/game.js?v=2.11.0"></script>
+  <script src="js/pwa.js?v=2.11.0"></script>
 </body>
 </html>
