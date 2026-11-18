@@ -10,6 +10,32 @@
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
   const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
   const EFFECT_HUES = { explode: 42, crack: 330, fly: 190, drop: 265, spin: 150 };
+  const GOLDEN_CHANCE = 0.045;
+
+  // A few words trigger their own tiny sound-and-emoji surprise. These are
+  // deliberately rare targets, so children discover them over time.
+  const WORD_EASTER_EGGS = {
+    robot: ["robot", "🤖"],
+    rocket: ["rocket", "🚀"],
+    dragon: ["dragon", "🐲"],
+    banana: ["boing", "🍌"],
+    pizza: ["coin", "🍕"],
+    ghost: ["ghost", "👻"],
+    cat: ["cat", "🐱"],
+    dog: ["dog", "🐶"],
+    star: ["sparkle", "⭐"],
+    magic: ["mystery", "🪄"],
+    rainbow: ["sparkle", "🌈"],
+    birthday: ["fanfare", "🎂"],
+  };
+
+  const SURPRISES = [
+    ["boing", "🪀"],
+    ["squeak", "🐸"],
+    ["slide", "🎺"],
+    ["kazoo", "🎈"],
+    ["bubble", "🍭"],
+  ];
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   const HS_KEY = "piupiu.highscore";
   const MUTE_KEY = "piupiu.muted";
@@ -138,6 +164,8 @@
     setupVoiceSection: $("setupVoiceSection"),
     setupParentSection: $("setupParentSection"),
     playSteps: $("playSteps"),
+    startMascot: $("startMascot"),
+    secretNote: $("secretNote"),
     voiceToggle: $("voiceToggle"),
     voicePopover: $("voicePopover"),
     voiceClose: $("voiceClose"),
@@ -203,6 +231,8 @@
     highScore: readNumber(HS_KEY, 0),
     muted: readString(MUTE_KEY, "0") === "1",
     audioCtx: null,
+    masterGain: null,
+    lastSurpriseAt: 0,
     micEnabled: Boolean(SpeechRec),
     speech: null,
     listening: false,
@@ -578,9 +608,29 @@
     if (state.muted) return null;
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return null;
-    if (!state.audioCtx) state.audioCtx = new Ctx();
+    if (!state.audioCtx) {
+      state.audioCtx = new Ctx();
+      const master = state.audioCtx.createGain();
+      master.gain.value = 0.9;
+      if (typeof state.audioCtx.createDynamicsCompressor === "function") {
+        const compressor = state.audioCtx.createDynamicsCompressor();
+        compressor.threshold.value = -18;
+        compressor.knee.value = 24;
+        compressor.ratio.value = 5;
+        compressor.attack.value = 0.004;
+        compressor.release.value = 0.22;
+        master.connect(compressor).connect(state.audioCtx.destination);
+      } else {
+        master.connect(state.audioCtx.destination);
+      }
+      state.masterGain = master;
+    }
     if (state.audioCtx.state === "suspended") state.audioCtx.resume().catch(() => {});
     return state.audioCtx;
+  }
+
+  function soundOut(ctx) {
+    return state.masterGain || ctx.destination;
   }
 
   function tone(freq, duration, type = "sine", volume = 0.04, delay = 0, slideTo = null) {
@@ -595,7 +645,7 @@
     gain.gain.setValueAtTime(0.0001, start);
     gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(soundOut(ctx));
     osc.start(start);
     osc.stop(start + duration + 0.03);
   }
@@ -614,7 +664,7 @@
     filter.frequency.value = 800;
     const gain = ctx.createGain();
     gain.gain.value = volume;
-    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.connect(filter).connect(gain).connect(soundOut(ctx));
     src.start(ctx.currentTime + delay);
   }
 
@@ -622,11 +672,13 @@
     noiseBurst(0.14, 0.035);
     tone(180, 0.18, "sine", 0.055, 0, 62);
     tone(920, 0.09, "triangle", 0.025, 0.01, 1500);
+    tone(1560, 0.07, "sine", 0.012, 0.04, 2100);
   }
 
   function playMiss() {
-    tone(130, 0.18, "sine", 0.05, 0, 72);
-    noiseBurst(0.05, 0.02);
+    tone(140, 0.18, "sine", 0.05, 0, 72);
+    tone(260, 0.12, "triangle", 0.018, 0.06, 180);
+    noiseBurst(0.05, 0.018);
   }
 
   function whoosh(duration = 0.35, from = 300, to = 1800, volume = 0.03) {
@@ -651,7 +703,7 @@
     gain.gain.exponentialRampToValueAtTime(volume, start + duration * 0.25);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
-    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.connect(filter).connect(gain).connect(soundOut(ctx));
     src.start(start);
     src.stop(start + duration + 0.02);
   }
@@ -690,23 +742,187 @@
 
   function playRewardClear() {
     whoosh(0.55, 160, 3200, 0.045);
+    thump(0.02, 0.035);
     tone(523.25, 0.12, "triangle", 0.035, 0.02);
     tone(783.99, 0.13, "triangle", 0.035, 0.12);
     tone(1046.5, 0.16, "triangle", 0.032, 0.24);
     tone(1567.98, 0.3, "sine", 0.025, 0.38);
+    sparkleNotes(0.46, 0.018);
     noiseBurst(0.22, 0.025, 0.12);
   }
 
   function playLevel() {
-    tone(620, 0.1, "triangle", 0.03);
-    tone(930, 0.14, "triangle", 0.03, 0.09);
+    sequence([523.25, 659.25, 783.99, 1046.5], "triangle", 0.03, 0.075);
+    thump(0.01, 0.028);
   }
 
   function playOver() {
     tone(392, 0.18, "triangle", 0.04);
+    tone(330, 0.2, "sawtooth", 0.018, 0.12, 270);
     tone(294, 0.22, "triangle", 0.04, 0.16);
     tone(196, 0.42, "sine", 0.05, 0.34, 140);
     noiseBurst(0.3, 0.015, 0.02);
+  }
+
+  function sequence(freqs, type = "triangle", volume = 0.03, step = 0.08, delay = 0) {
+    freqs.forEach((freq, index) => {
+      tone(freq, step * 1.6, type, volume, delay + index * step);
+    });
+  }
+
+  function sparkleNotes(delay = 0, volume = 0.018) {
+    sequence([1046.5, 1318.5, 1568, 2093], "sine", volume, 0.055, delay);
+  }
+
+  function thump(delay = 0, volume = 0.035) {
+    tone(132, 0.13, "sine", volume, delay, 55);
+    noiseBurst(0.045, volume * 0.45, delay);
+  }
+
+  function playStart() {
+    sequence([523.25, 659.25, 783.99, 1046.5], "triangle", 0.028, 0.085);
+    tone(1568, 0.22, "sine", 0.014, 0.28);
+  }
+
+  function playPause() {
+    sequence([523.25, 440, 349.23], "triangle", 0.024, 0.075);
+  }
+
+  function playResume() {
+    sequence([349.23, 440, 523.25, 659.25], "triangle", 0.024, 0.07);
+  }
+
+  function playBubble() {
+    [380, 540, 760].forEach((freq, index) => {
+      tone(freq, 0.09, "sine", 0.018, index * 0.045, freq * 1.45);
+    });
+  }
+
+  function playBoing() {
+    tone(170, 0.2, "sine", 0.04, 0, 680);
+    tone(680, 0.16, "triangle", 0.018, 0.13, 210);
+  }
+
+  function playSqueak() {
+    tone(880, 0.07, "square", 0.018, 0, 1500);
+    tone(1250, 0.06, "square", 0.016, 0.08, 1900);
+  }
+
+  function playSlide() {
+    tone(280, 0.38, "sine", 0.025, 0, 1500);
+    tone(1500, 0.28, "sine", 0.018, 0.34, 320);
+  }
+
+  function playKazoo() {
+    tone(310, 0.18, "sawtooth", 0.018, 0, 330);
+    tone(330, 0.16, "sawtooth", 0.016, 0.18, 300);
+    tone(300, 0.2, "sawtooth", 0.014, 0.36, 260);
+  }
+
+  function playRobot() {
+    sequence([440, 660, 880, 660, 440], "square", 0.018, 0.055);
+  }
+
+  function playRocket() {
+    whoosh(0.45, 180, 2600, 0.028);
+    tone(240, 0.4, "sawtooth", 0.018, 0, 1200);
+  }
+
+  function playDragon() {
+    noiseBurst(0.28, 0.02);
+    tone(120, 0.35, "sawtooth", 0.025, 0, 55);
+    tone(70, 0.3, "square", 0.018, 0.1, 45);
+  }
+
+  function playCoin() {
+    tone(1046.5, 0.07, "square", 0.02);
+    tone(1568, 0.18, "triangle", 0.025, 0.07);
+  }
+
+  function playGhost() {
+    tone(500, 0.3, "sine", 0.02, 0, 180);
+    tone(360, 0.32, "triangle", 0.016, 0.1, 120);
+  }
+
+  function playCat() {
+    tone(640, 0.12, "triangle", 0.02, 0, 1100);
+    tone(980, 0.18, "triangle", 0.018, 0.12, 560);
+  }
+
+  function playDog() {
+    noiseBurst(0.04, 0.015);
+    tone(190, 0.09, "square", 0.022);
+    tone(145, 0.1, "square", 0.018, 0.12);
+  }
+
+  function playSparkle() {
+    sparkleNotes(0, 0.018);
+    tone(2637, 0.2, "sine", 0.012, 0.2);
+  }
+
+  function playMystery() {
+    sequence([392, 466.16, 554.37, 659.25], "sine", 0.018, 0.09);
+    tone(784, 0.3, "sine", 0.014, 0.36, 523.25);
+  }
+
+  function playFanfare() {
+    sequence([523.25, 659.25, 783.99, 1046.5], "triangle", 0.03, 0.08);
+    thump(0.02, 0.028);
+  }
+
+  function playGolden() {
+    playFanfare();
+    playCoin();
+    sparkleNotes(0.22, 0.014);
+  }
+
+  function playCombo(combo) {
+    const notes = combo >= 10 ? [523.25, 659.25, 783.99, 1046.5, 1318.5] : [523.25, 659.25, 783.99];
+    sequence(notes, "triangle", 0.026, 0.06);
+    thump(0, 0.022);
+  }
+
+  function playSecret() {
+    sequence([523.25, 659.25, 783.99, 1046.5, 1318.5, 1568], "sine", 0.022, 0.055);
+    noiseBurst(0.18, 0.015, 0.1);
+  }
+
+  function playNamedSound(name) {
+    if (name === "boing") playBoing();
+    else if (name === "squeak") playSqueak();
+    else if (name === "slide") playSlide();
+    else if (name === "kazoo") playKazoo();
+    else if (name === "bubble") playBubble();
+    else if (name === "robot") playRobot();
+    else if (name === "rocket") playRocket();
+    else if (name === "dragon") playDragon();
+    else if (name === "coin") playCoin();
+    else if (name === "ghost") playGhost();
+    else if (name === "cat") playCat();
+    else if (name === "dog") playDog();
+    else if (name === "sparkle") playSparkle();
+    else if (name === "mystery") playMystery();
+    else if (name === "fanfare") playFanfare();
+    else if (name === "secret") playSecret();
+  }
+
+  function playWordEasterEgg(word, cx, cy) {
+    const entry = WORD_EASTER_EGGS[word.toLowerCase()];
+    if (!entry) return false;
+    playNamedSound(entry[0]);
+    spawnEmojiBurst({ emoji: entry[1] }, cx, cy);
+    return true;
+  }
+
+  function maybeSurprise(cx, cy) {
+    const now = performance.now();
+    if (now - state.lastSurpriseAt < 7000) return false;
+    if (Math.random() > 0.12) return false;
+    state.lastSurpriseAt = now;
+    const [sound, emoji] = SURPRISES[Math.floor(Math.random() * SURPRISES.length)];
+    playNamedSound(sound);
+    spawnEmojiBurst({ emoji }, cx, cy);
+    return true;
   }
 
   /* ------------------------------------------------------------------ */
@@ -716,6 +932,7 @@
   function resetGame() {
     cancelAnimationFrame(state.raf);
     state.raf = 0;
+    state.lastSurpriseAt = 0;
     clearFocus();
     stopHelpSpeech();
     hideHeard();
@@ -753,6 +970,8 @@
   }
 
   let setupOpener = null;
+  let mascotTaps = 0;
+  let mascotTapTimer = 0;
 
   function syncPhaseClass() {
     document.body.classList.remove("phase-menu", "phase-playing", "phase-paused", "phase-over");
@@ -809,6 +1028,7 @@
     closeVoicePopover();
     closeSetup();
     audio();
+    playStart();
     state.pool = getSelectedPool();
     resetGame();
     state.phase = "playing";
@@ -875,8 +1095,12 @@
     if (!fieldW || !fieldH) return;
 
     const word = nextWord();
+    const golden =
+      state.cleared >= 3 &&
+      !state.words.some((item) => item.golden) &&
+      Math.random() < GOLDEN_CHANCE;
     const el = document.createElement("div");
-    el.className = "word";
+    el.className = golden ? "word golden" : "word";
     el.style.setProperty("--hue", hueFor(word));
     const span = document.createElement("span");
     span.className = "word-text";
@@ -890,6 +1114,14 @@
       emojiFace.setAttribute("aria-hidden", "true");
       emojiFace.textContent = emoji;
       el.appendChild(emojiFace);
+    }
+
+    if (golden) {
+      const badge = document.createElement("span");
+      badge.className = "golden-badge";
+      badge.setAttribute("aria-hidden", "true");
+      badge.textContent = "★";
+      el.appendChild(badge);
     }
 
     els.wordLayer.appendChild(el);
@@ -918,6 +1150,7 @@
       h: height,
       speed,
       emoji,
+      golden,
       faceTimer: 1,
       showEmoji: false,
     };
@@ -970,7 +1203,10 @@
     const finalY = Math.max(0, y);
     word.y = finalY;
     word.showEmoji = false;
-    word.el.classList.remove("show-emoji");
+    word.golden = false;
+    word.el.classList.remove("show-emoji", "golden");
+    const goldenBadge = word.el.querySelector(".golden-badge");
+    if (goldenBadge) goldenBadge.remove();
     word.el.classList.add("settled", "miss");
     word.el.style.transform = `translate3d(${word.x}px, ${finalY}px, 0)`;
     window.setTimeout(() => word.el.classList.remove("miss"), 340);
@@ -1044,6 +1280,7 @@
     clearFocus();
     stopSpeech();
     setAmbientRunning(false);
+    playPause();
     updatePauseButton();
     updateMicUI();
     showPanel(els.pausePanel);
@@ -1055,6 +1292,7 @@
     syncPhaseClass();
     hideOverlay();
     setAmbientRunning(true);
+    playResume();
     updatePauseButton();
     state.lastFrame = 0;
     state.raf = requestAnimationFrame(frame);
@@ -1550,9 +1788,10 @@
 
     state.combo += 1;
     state.bestCombo = Math.max(state.bestCombo, state.combo);
+    const golden = Boolean(word.golden);
     const basePoints = 10 + Math.round(heightRatio * 10);
     const multiplier = 1 + Math.min(state.combo - 1, 10) * 0.1;
-    const points = Math.round(basePoints * multiplier);
+    const points = Math.round(basePoints * multiplier) + (golden ? 25 : 0);
     state.score += points;
     state.cleared += 1;
     advanceRewardProgress();
@@ -1562,18 +1801,29 @@
     const effectHue = EFFECT_HUES[effect] || hueFor(word.word);
     runEffect(effect, word, rel, hueFor(word.word), effectHue);
     word.el.remove();
-    showFloat(
-      `+${points}`,
-      state.combo >= 2 ? `×${state.combo}` : "",
-      cx,
-      cy,
-      `hsl(${effectHue} 100% 78%)`,
-    );
+    const sub = golden
+      ? `🌟${state.combo >= 2 ? ` ×${state.combo}` : ""}`
+      : state.combo >= 2
+        ? `×${state.combo}`
+        : "";
+    showFloat(`+${points}`, sub, cx, cy, golden ? "hsl(48 100% 76%)" : `hsl(${effectHue} 100% 78%)`);
     playEffect(effect);
+    if (golden) {
+      playGolden();
+      spawnStars(cx, cy, 48, 18);
+      showPraise("easter.golden");
+    } else {
+      const special = playWordEasterEgg(word.word, cx, cy);
+      if (!special) maybeSurprise(cx, cy);
+      if (state.combo > 0 && state.combo % 5 === 0) {
+        playCombo(state.combo);
+        spawnStars(cx, cy, 48, 10);
+      }
+    }
     pulseCombo();
     updateHUD(true);
     showHeard(tr("heard.correct", { word: word.word }));
-    showPraise();
+    if (!golden) showPraise();
     if (state.cleared % 5 === 0) triggerRewardClear(rel);
   }
 
@@ -2304,11 +2554,12 @@
     setText(els.heard, "");
   }
 
-  function showPraise() {
+  function showPraise(keyOverride) {
     if (!els.praise) return;
     const keys = ["praise.1", "praise.2", "praise.3", "praise.4"];
-    const key = keys[Math.floor(Math.random() * keys.length)];
-    setText(els.praise, `⭐ ${tr(key)}`);
+    const key = keyOverride || keys[Math.floor(Math.random() * keys.length)];
+    const icon = keyOverride === "easter.golden" ? "🌟" : "⭐";
+    setText(els.praise, `${icon} ${tr(key)}`);
     els.praise.classList.add("show");
     clearTimeout(state.praiseTimer);
     state.praiseTimer = window.setTimeout(() => {
@@ -2425,6 +2676,33 @@
     }
     closeVoicePopover();
   });
+  if (els.startMascot) {
+    els.startMascot.addEventListener("pointerdown", () => {
+      mascotTaps += 1;
+      window.clearTimeout(mascotTapTimer);
+      if (mascotTaps >= 5) {
+        mascotTaps = 0;
+        playSecret();
+        els.startMascot.classList.add("is-secret");
+        if (els.secretNote) {
+          els.secretNote.classList.add("show");
+          els.secretNote.setAttribute("aria-hidden", "false");
+        }
+        window.setTimeout(() => els.startMascot.classList.remove("is-secret"), 900);
+        window.setTimeout(() => {
+          if (els.secretNote) {
+            els.secretNote.classList.remove("show");
+            els.secretNote.setAttribute("aria-hidden", "true");
+          }
+        }, 2800);
+      } else {
+        mascotTapTimer = window.setTimeout(() => {
+          mascotTaps = 0;
+        }, 1200);
+      }
+    });
+  }
+
   if (els.packBtn) els.packBtn.addEventListener("click", () => openSetup("pack"));
   if (els.setupBtn) els.setupBtn.addEventListener("click", () => openSetup("parent"));
   if (els.setupClose) els.setupClose.addEventListener("click", closeSetup);
@@ -2659,6 +2937,7 @@
           h: w.h,
           emoji: w.emoji,
           showEmoji: w.showEmoji,
+          golden: Boolean(w.golden),
         })),
       updateWordFace,
       getSettled: () =>

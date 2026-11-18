@@ -2841,3 +2841,92 @@ html.is-touch .start-mascot {
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Sound-library extras: golden words and the secret star              */
+/* ------------------------------------------------------------------ */
+
+.start-mascot {
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.secret-note {
+  max-height: 0;
+  margin: 0;
+  overflow: hidden;
+  opacity: 0;
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  transition: opacity 0.25s, max-height 0.25s, margin 0.25s;
+}
+
+.secret-note.show {
+  max-height: 30px;
+  margin-top: 4px;
+  opacity: 1;
+}
+
+.start-mascot.is-secret {
+  animation: secretWiggle 0.9s ease;
+}
+
+html.is-touch .start-mascot.is-secret {
+  animation: secretWiggle 0.9s ease;
+}
+
+@keyframes secretWiggle {
+  0%, 100% { transform: rotate(0) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.08); }
+  50% { transform: rotate(7deg) scale(1.12); }
+  75% { transform: rotate(-4deg) scale(1.05); }
+}
+
+.word.golden:not(.settled):not(.miss),
+html.is-touch .word.golden:not(.settled):not(.miss) {
+  border-color: rgba(255, 214, 90, 0.95);
+  background: linear-gradient(180deg, rgba(91, 62, 8, 0.92), rgba(44, 27, 4, 0.86));
+  color: #fff6c7;
+  box-shadow:
+    0 0 30px rgba(255, 196, 64, 0.5),
+    0 0 70px rgba(255, 214, 90, 0.2),
+    inset 0 1px 0 rgba(255, 248, 190, 0.45);
+  text-shadow: 0 0 18px rgba(255, 226, 110, 0.85);
+}
+
+.golden-badge {
+  position: absolute;
+  top: -12px;
+  right: -9px;
+  color: #fff3a8;
+  font-size: 16px;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(255, 214, 90, 0.95);
+  animation: goldenTwinkle 1.15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.golden-badge::after {
+  content: "✦";
+  position: absolute;
+  top: 7px;
+  left: 10px;
+  color: #fff6c7;
+  font-size: 9px;
+}
+
+@keyframes goldenTwinkle {
+  0%, 100% { transform: scale(1) rotate(0); opacity: 0.9; }
+  50% { transform: scale(1.18) rotate(10deg); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .golden-badge,
+  .start-mascot.is-secret,
+  html.is-touch .start-mascot.is-secret {
+    animation: none;
+  }
+}
