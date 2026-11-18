@@ -1476,6 +1476,11 @@ html.is-standalone #app {
   box-shadow: inset 0 0 0 1px rgba(139, 92, 255, 0.28);
 }
 
+.speed-group .speed-btn {
+  flex: 1 1 0;
+  text-align: center;
+}
+
 .primary-btn {
   width: 100%;
   min-height: 52px;
@@ -3226,6 +3231,7 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
   letter-spacing: 0.08em;
 }
 
+.player-option-edit,
 .player-option-delete {
   flex: 0 0 auto;
   display: grid;
@@ -3236,10 +3242,27 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: rgba(255, 122, 158, 0.65);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
+}
+
+.player-option-edit {
+  color: rgba(41, 231, 199, 0.7);
+}
+
+.player-option-edit:hover {
+  background: rgba(41, 231, 199, 0.12);
+  color: var(--cyan);
+}
+
+.player-option-edit:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(41, 231, 199, 0.16);
+}
+
+.player-option-delete {
+  color: rgba(255, 122, 158, 0.65);
 }
 
 .player-option-delete:hover {
@@ -3267,9 +3290,48 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
   text-transform: uppercase;
 }
 
-.avatar-picker {
+.avatar-edit-note {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 6px 9px;
+  border-radius: 9px;
+  background: rgba(41, 231, 199, 0.07);
+  color: #bffcec;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.avatar-edit-note button {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid rgba(41, 231, 199, 0.25);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--cyan);
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.avatar-edit-note button:hover {
+  background: rgba(41, 231, 199, 0.1);
+}
+
+.player-form.is-editing .player-name-input {
+  display: none;
+}
+
+.player-form.is-editing .player-create-row {
+  grid-template-columns: 1fr;
+}
+
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 9px;
 }
@@ -3277,14 +3339,15 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
 .avatar-choice {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 11px;
   background: rgba(255, 255, 255, 0.04);
   font-family: inherit;
-  font-size: 20px;
+  font-size: clamp(19px, 4.8vw, 23px);
   line-height: 1;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, transform 0.15s;
@@ -3464,6 +3527,12 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
   font-size: 14px;
 }
 
+@media (max-width: 380px) {
+  .avatar-picker {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 @media (min-width: 700px) {
   .player-sheet,
   .board-sheet {
@@ -3492,5 +3561,45 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
 @media (prefers-reduced-motion: reduce) {
   .avatar-choice.is-selected {
     transform: none;
+  }
+}
+
+/* ---------- meteor sweep (every 10 clears) ---------- */
+
+.meteor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  font-size: 31px;
+  line-height: 1;
+  pointer-events: none;
+  will-change: transform;
+  filter:
+    drop-shadow(0 0 8px rgba(255, 236, 150, 0.95))
+    drop-shadow(0 0 24px rgba(255, 132, 48, 0.6));
+}
+
+.meteor::before {
+  content: "";
+  position: absolute;
+  inset: -13px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 244, 180, 0.42), rgba(255, 142, 48, 0.12) 46%, transparent 70%);
+  animation: meteorGlow 0.55s ease-in-out infinite alternate;
+}
+
+@keyframes meteorGlow {
+  from { transform: scale(0.86); opacity: 0.7; }
+  to { transform: scale(1.15); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meteor::before {
+    animation: none;
   }
 }

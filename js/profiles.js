@@ -12,7 +12,10 @@
   const USER_KEY = "piupiu.user";
   const MAX_PROFILES = 20;
   const MAX_NAME = 12;
-  const AVATARS = ["🦊", "🐼", "🐯", "🐸", "🦄", "🐙", "🐶", "🐱"];
+  const AVATARS = [
+    "🦊", "🐼", "🐯", "🐸", "🦄", "🐙", "🐶", "🐱",
+    "🐰", "🐨", "🐷", "🐵", "🐧", "🦁", "🐮", "🐢",
+  ];
 
   function storage() {
     try {

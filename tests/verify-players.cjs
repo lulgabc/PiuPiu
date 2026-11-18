@@ -17,7 +17,7 @@ const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
 const sw = fs.readFileSync(path.join(__dirname, "../sw.js"), "utf8");
 
 assert.equal(profiles.MAX_NAME, 12);
-assert.ok(profiles.AVATARS.length >= 6, "a child-friendly avatar palette is required");
+assert.ok(profiles.AVATARS.length >= 16, "the avatar palette should offer at least 16 faces");
 
 // ---------- creation ----------
 let list = [];
@@ -126,6 +126,12 @@ assert.match(game, /state\.roundRecorded = true/, "a new round should arm score 
 assert.match(game, /Profiles && !currentProfile\(\)/, "start should require a player");
 assert.match(game, /player\.need/, "the missing-player message should be translated");
 assert.match(game, /playerSheet|boardSheet/, "player and board sheets should be wired");
+assert.match(game, /function startAvatarEdit/, "existing players should be able to change their avatar");
+assert.match(game, /function saveAvatarEdit/, "avatar edits should be saved");
+assert.match(game, /data-edit-player/, "each player row should offer an avatar edit action");
+assert.match(game, /player\.avatarSaved/, "a saved avatar should confirm with a toast");
+assert.match(html, /id="avatarEditNote"/, "the picker needs an edit-mode notice");
+assert.match(html, /id="playerSubmitLabel"/, "the create button label should switch in edit mode");
 assert.match(game, /renderBoard\(\)/, "the leaderboard should render from profiles");
 assert.match(game, /Profiles\.rank\(state\.profiles\)/, "leaderboard order comes from the shared rank helper");
 assert.match(html, /id="playerBtn"/, "the start screen needs a player shortcut");

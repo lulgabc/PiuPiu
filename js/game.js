@@ -17,6 +17,10 @@
   const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
   const EFFECT_HUES = { explode: 42, crack: 330, fly: 190, drop: 265, spin: 150 };
   const GOLDEN_CHANCE = 0.045;
+  const METEOR_EVERY = 10;
+  const METEOR_ROUNDS = 2; // every side must be hit twice
+  const METEOR_MAX_HITS = 40; // safety cap if a corner keeps double-counting
+  const METEOR_SIZE = 46;
 
   // A few words trigger their own tiny sound-and-emoji surprise. These are
   // deliberately rare targets, so children discover them over time.
@@ -52,6 +56,8 @@
   const HS_KEY = "piupiu.highscore";
   const MUTE_KEY = "piupiu.muted";
   const PACK_KEY = "piupiu.pack";
+  const SPEED_KEY = "piupiu.speed";
+  const SPEED_LEVELS = { normal: 1, fast: 1.3, turbo: 1.65 };
   const LEVEL_KEY = "piupiu.level";
   const BAND_KEY = "piupiu.band";
   const VOICE_KEY = "piupiu.voice";
@@ -185,6 +191,7 @@
     voicePreview: $("voicePreview"),
     diffGroup: $("diffGroup"),
     levelSelect: $("levelSelect"),
+    speedGroup: $("speedGroup"),
     packCount: $("packCount"),
     score: $("score"),
     correct: $("correct"),
@@ -211,10 +218,16 @@
     playerClose: $("playerClose"),
     playerDone: $("playerDone"),
     playerForm: $("playerForm"),
+    playerFormTitle: $("playerFormTitle"),
     playerList: $("playerList"),
     playerNameInput: $("playerNameInput"),
+    playerSubmit: $("playerSubmit"),
+    playerSubmitLabel: $("playerSubmitLabel"),
     playerError: $("playerError"),
     avatarPicker: $("avatarPicker"),
+    avatarEditNote: $("avatarEditNote"),
+    avatarEditText: $("avatarEditText"),
+    avatarEditCancel: $("avatarEditCancel"),
     boardBtn: $("boardBtn"),
     boardSheet: $("boardSheet"),
     boardClose: $("boardClose"),
@@ -249,6 +262,7 @@
     pendingLegacyBest: 0,
     roundRecorded: false,
     voiceChoice: readString(VOICE_KEY, "auto"),
+    speed: readString(SPEED_KEY, "normal"),
     voicePreviewTimer: 0,
     lastWord: "",
     score: 0,
@@ -302,6 +316,7 @@
     helpGuardUntil: 0,
     toastTimer: 0,
     lastHud: {},
+    meteor: null,
     rewardProgress: 0,
     rewardBarTimer: 0,
     rewardTickTimer: 0,
@@ -561,6 +576,26 @@
       }
       setText(els.packSummary, `${tr(category.nameKey)} · ${tr(modeKey)}`);
     }
+  }
+
+  function updateSpeedUI() {
+    if (!els.speedGroup) return;
+    els.speedGroup.querySelectorAll("[data-speed]").forEach((button) => {
+      const active = button.dataset.speed === state.speed;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+
+  function onSpeedClick(button) {
+    const key = button && button.dataset ? button.dataset.speed : "";
+    if (!key || !(key in SPEED_LEVELS)) return;
+    state.speed = key;
+    try {
+      localStorage.setItem(SPEED_KEY, key);
+    } catch {}
+    updateSpeedUI();
+    toast(tr("speed.set", { speed: tr(`speed.${key}`) }));
   }
 
   function savePackSelection() {
@@ -941,6 +976,25 @@
     noiseBurst(0.18, 0.015, 0.1);
   }
 
+  function playMeteorLaunch() {
+    whoosh(0.5, 180, 2400, 0.05);
+    tone(220, 0.3, "sawtooth", 0.02, 0, 880);
+    noiseBurst(0.12, 0.02);
+  }
+
+  function playMeteorHit(bounces) {
+    tone(420 + bounces * 70, 0.075, "square", 0.022);
+    noiseBurst(0.03, 0.01);
+  }
+
+  function playMeteorFinish() {
+    whoosh(0.45, 2200, 280, 0.03);
+    thump(0.01, 0.05);
+    sequence([523.25, 659.25, 783.99, 1046.5], "triangle", 0.032, 0.065);
+    sparkleNotes(0.22, 0.02);
+    noiseBurst(0.32, 0.028, 0.04);
+  }
+
   function playNamedSound(name) {
     if (name === "boing") playBoing();
     else if (name === "squeak") playSqueak();
@@ -986,6 +1040,7 @@
   function resetGame() {
     cancelAnimationFrame(state.raf);
     state.raf = 0;
+    cancelMeteor();
     state.lastSurpriseAt = 0;
     clearFocus();
     stopHelpSpeech();
@@ -1138,6 +1193,8 @@
     }
 
     if (state.phase !== "playing") return;
+    updateMeteor(dt);
+    if (state.phase !== "playing") return;
     updateHUD();
     state.raf = requestAnimationFrame(frame);
   }
@@ -1200,7 +1257,7 @@
     const x = PAD + Math.random() * Math.max(1, maxX - PAD);
 
     const fallSeconds = Math.max(3.3, 8.6 - (state.level - 1) * 0.5);
-    const speed = fieldH / fallSeconds;
+    const speed = (fieldH / fallSeconds) * (SPEED_LEVELS[state.speed] || 1);
     const obj = {
       word,
       el,
@@ -1289,7 +1346,7 @@
     shakeField();
     updateHUD(true);
 
-    if (y <= DANGER_Y) endGame();
+    if (y <= DANGER_Y && !state.meteor) endGame();
   }
 
   function shakeField() {
@@ -1303,6 +1360,7 @@
     if (state.phase === "over") return;
     state.phase = "over";
     syncPhaseClass();
+    cancelMeteor();
     stopHelpSpeech();
     clearFocus();
     stopSpeech();
@@ -1429,6 +1487,7 @@
   /* ------------------------------------------------------------------ */
 
   let selectedAvatar = Profiles ? Profiles.AVATARS[0] : "🦊";
+  let editingProfileId = "";
   let playerSheetOpener = null;
   let boardOpener = null;
 
@@ -1498,6 +1557,15 @@
       }
 
       row.appendChild(main);
+
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "player-option-edit";
+      edit.dataset.editPlayer = profile.id;
+      edit.textContent = "✎";
+      edit.setAttribute("aria-label", tr("player.editAvatar") + " " + profile.name);
+      edit.title = tr("player.editAvatar");
+      row.appendChild(edit);
 
       const remove = document.createElement("button");
       remove.type = "button";
@@ -1617,6 +1685,7 @@
 
   function selectProfile(profile, { close = true } = {}) {
     if (!profile || !Profiles) return;
+    if (editingProfileId) cancelAvatarEdit();
     state.userId = profile.id;
     Profiles.setActiveId(profile.id);
     state.highScore = profile.best;
@@ -1627,9 +1696,74 @@
     if (close) closePlayerSheet();
   }
 
+  function syncPlayerFormMode() {
+    if (!els.playerForm) return;
+    const profile = editingProfileId && Profiles ? Profiles.find(state.profiles, editingProfileId) : null;
+    const editing = Boolean(profile);
+    els.playerForm.classList.toggle("is-editing", editing);
+    setText(els.playerFormTitle, editing ? tr("player.editTitle") : tr("player.createTitle"));
+    if (els.avatarEditNote) els.avatarEditNote.classList.toggle("is-hidden", !editing);
+    if (editing) setText(els.avatarEditText, tr("player.editingAvatar", { name: profile.name }));
+    if (els.playerSubmitLabel) {
+      els.playerSubmitLabel.textContent = editing ? tr("player.saveAvatar") : tr("player.create");
+    }
+    if (els.playerNameInput) {
+      els.playerNameInput.disabled = editing;
+      if (editing) els.playerNameInput.value = profile.name;
+    }
+  }
+
+  function startAvatarEdit(profile) {
+    if (!profile || !Profiles) return;
+    editingProfileId = profile.id;
+    selectedAvatar = profile.avatar;
+    setText(els.playerError, "");
+    renderAvatarPicker();
+    syncPlayerFormMode();
+    window.setTimeout(() => {
+      const selected = els.avatarPicker && els.avatarPicker.querySelector(".avatar-choice.is-selected");
+      if (selected && els.playerSheet && !els.playerSheet.classList.contains("is-hidden")) {
+        selected.focus({ preventScroll: true });
+      }
+    }, 20);
+  }
+
+  function cancelAvatarEdit({ clearInput = true } = {}) {
+    editingProfileId = "";
+    if (Profiles) selectedAvatar = Profiles.AVATARS[state.profiles.length % Profiles.AVATARS.length];
+    if (clearInput && els.playerNameInput) {
+      els.playerNameInput.value = "";
+      els.playerNameInput.disabled = false;
+    }
+    setText(els.playerError, "");
+    renderAvatarPicker();
+    syncPlayerFormMode();
+  }
+
+  function saveAvatarEdit() {
+    const profile = Profiles ? Profiles.find(state.profiles, editingProfileId) : null;
+    if (!profile) {
+      cancelAvatarEdit();
+      return;
+    }
+    profile.avatar = selectedAvatar;
+    profile.updatedAt = Date.now();
+    Profiles.save(state.profiles);
+    if (profile.id === state.userId) renderPlayerUI();
+    renderPlayerList();
+    renderBoard();
+    toast(tr("player.avatarSaved"));
+    cancelAvatarEdit();
+    closePlayerSheet();
+  }
+
   function createPlayerFromForm(event) {
     if (event) event.preventDefault();
     if (!Profiles) return;
+    if (editingProfileId) {
+      saveAvatarEdit();
+      return;
+    }
     const result = Profiles.create(state.profiles, els.playerNameInput.value, selectedAvatar, {
       best: state.pendingLegacyBest,
     });
@@ -1660,6 +1794,7 @@
   function deleteProfile(profile) {
     if (!profile || !Profiles) return;
     if (!window.confirm(tr("player.deleteConfirm", { name: profile.name }))) return;
+    if (editingProfileId === profile.id) cancelAvatarEdit();
     state.profiles = Profiles.remove(state.profiles, profile.id);
     Profiles.save(state.profiles);
 
@@ -1688,6 +1823,7 @@
   function openPlayerSheet() {
     if (!els.playerSheet) return;
     playerSheetOpener = document.activeElement && document.activeElement.focus ? document.activeElement : els.playerBtn;
+    cancelAvatarEdit();
     renderPlayerList();
     renderAvatarPicker();
     setText(els.playerError, "");
@@ -1884,8 +2020,10 @@
     renderPlayerList();
     renderBoard();
     renderAvatarPicker();
+    syncPlayerFormMode();
     renderCategoryOptions();
     updatePackUI();
+    updateSpeedUI();
     renderVoiceOptions();
     updateSpeechNote();
     if (state.phase === "over") renderOverPanel();
@@ -2147,6 +2285,125 @@
     spawnEmojiBurst(word, cx, cy);
   }
 
+  function startMeteor(cx, cy) {
+    if (!els.field || state.meteor) return;
+    const fieldW = els.field.clientWidth;
+    const fieldH = els.field.clientHeight;
+    if (!fieldW || !fieldH) return;
+
+    const quadrant = Math.floor(Math.random() * 4);
+    const angle = Math.PI / 4 + (Math.random() - 0.5) * (Math.PI / 7.5) + quadrant * (Math.PI / 2);
+    const speed = Math.min(1200, Math.max(520, Math.max(fieldW, fieldH) * 0.85));
+    const el = document.createElement("div");
+    el.className = "meteor";
+    el.setAttribute("aria-hidden", "true");
+    el.textContent = "☄️";
+
+    const x = Math.max(0, Math.min(fieldW - METEOR_SIZE, cx - METEOR_SIZE / 2));
+    const y = Math.max(0, Math.min(fieldH - METEOR_SIZE, cy - METEOR_SIZE / 2));
+    const meteor = {
+      el,
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      bounces: 0,
+      edgeHits: { top: 0, right: 0, bottom: 0, left: 0 },
+      size: METEOR_SIZE,
+    };
+    state.meteor = meteor;
+    el.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${(angle * 180) / Math.PI + 45}deg)`;
+    els.fxLayer.appendChild(el);
+
+    playMeteorLaunch();
+    spawnStars(cx, cy, 42, 14);
+    toast(tr("meteor.start"));
+  }
+
+  function updateMeteor(dt) {
+    const meteor = state.meteor;
+    if (!meteor) return;
+    const fieldW = els.field.clientWidth;
+    const fieldH = els.field.clientHeight;
+    if (!fieldW || !fieldH) {
+      cancelMeteor();
+      return;
+    }
+
+    const maxX = Math.max(0, fieldW - meteor.size);
+    const maxY = Math.max(0, fieldH - meteor.size);
+    meteor.x += meteor.vx * dt;
+    meteor.y += meteor.vy * dt;
+
+    const hits = [];
+    if (meteor.x <= 0) {
+      meteor.x = 0;
+      meteor.vx = Math.abs(meteor.vx);
+      hits.push("left");
+    } else if (meteor.x >= maxX) {
+      meteor.x = maxX;
+      meteor.vx = -Math.abs(meteor.vx);
+      hits.push("right");
+    }
+    if (meteor.y <= 0) {
+      meteor.y = 0;
+      meteor.vy = Math.abs(meteor.vy);
+      hits.push("top");
+    } else if (meteor.y >= maxY) {
+      meteor.y = maxY;
+      meteor.vy = -Math.abs(meteor.vy);
+      hits.push("bottom");
+    }
+
+    for (const side of hits) {
+      meteor.bounces += 1;
+      meteor.edgeHits[side] += 1;
+      const bx = meteor.x + meteor.size / 2;
+      const by = meteor.y + meteor.size / 2;
+      spawnSparks(bx, by, 42, 5);
+      createFlash(bx, by, 38);
+      playMeteorHit(meteor.bounces);
+    }
+
+    const sidesDone = Object.values(meteor.edgeHits).every((count) => count >= METEOR_ROUNDS);
+    if (sidesDone || meteor.bounces >= METEOR_MAX_HITS) {
+      finishMeteor();
+      return;
+    }
+
+    const rotation = (Math.atan2(meteor.vy, meteor.vx) * 180) / Math.PI + 45;
+    meteor.el.style.transform = `translate3d(${meteor.x}px, ${meteor.y}px, 0) rotate(${rotation}deg)`;
+  }
+
+  function finishMeteor() {
+    const meteor = state.meteor;
+    if (!meteor) return;
+    const cx = meteor.x + meteor.size / 2;
+    const cy = meteor.y + meteor.size / 2;
+    meteor.el.remove();
+    state.meteor = null;
+
+    const count = state.settled.length;
+    for (const settled of state.settled) {
+      spawnStars(settled.x + settled.w / 2, settled.y + settled.h / 2, 42, 5);
+      settled.el.remove();
+    }
+    state.settled = [];
+
+    createFlash(cx, cy, 42);
+    spawnStars(cx, cy, 42, 30);
+    spawnSparks(cx, cy, 42, 18);
+    updateHUD(true);
+    playMeteorFinish();
+    toast(count ? tr("meteor.clear", { count }) : tr("meteor.empty"));
+  }
+
+  function cancelMeteor() {
+    if (!state.meteor) return;
+    state.meteor.el.remove();
+    state.meteor = null;
+  }
+
   function triggerRewardClear(rel) {
     const fieldH = els.field.clientHeight || 1;
     const cx = rel.left + rel.width / 2;
@@ -2259,6 +2516,7 @@
     showHeard(tr("heard.correct", { word: word.word }));
     if (!golden) showPraise();
     if (state.cleared % 5 === 0) triggerRewardClear(rel);
+    if (state.cleared % METEOR_EVERY === 0) startMeteor(cx, cy);
   }
 
   function burst(el, rel, hue) {
@@ -3181,11 +3439,19 @@
         deleteProfile(Profiles ? Profiles.find(state.profiles, remove.dataset.deletePlayer) : null);
         return;
       }
+      const edit = target.closest("[data-edit-player]");
+      if (edit) {
+        startAvatarEdit(Profiles ? Profiles.find(state.profiles, edit.dataset.editPlayer) : null);
+        return;
+      }
       const pick = target.closest("[data-select-player]");
       if (pick) {
         selectProfile(Profiles ? Profiles.find(state.profiles, pick.dataset.selectPlayer) : null);
       }
     });
+  }
+  if (els.avatarEditCancel) {
+    els.avatarEditCancel.addEventListener("click", () => cancelAvatarEdit());
   }
   if (els.avatarPicker) {
     els.avatarPicker.addEventListener("click", (event) => {
@@ -3225,6 +3491,11 @@
   els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
     button.addEventListener("click", () => onDifficultyClick(button));
   });
+  if (els.speedGroup) {
+    els.speedGroup.querySelectorAll("[data-speed]").forEach((button) => {
+      button.addEventListener("click", () => onSpeedClick(button));
+    });
+  }
 
   window.addEventListener("keydown", (event) => {
     const target = event.target;
@@ -3355,8 +3626,10 @@
   function init() {
     syncPhaseClass();
     loadPackSelection();
+    if (!(state.speed in SPEED_LEVELS)) state.speed = "normal";
     renderCategoryOptions();
     updatePackUI();
+    updateSpeedUI();
     renderBestLine();
     loadPlayerState();
     updateMuteUI();
@@ -3417,6 +3690,26 @@
           correct: profile.correct,
           rounds: profile.rounds,
         })),
+      startMeteor,
+      getMeteor: () =>
+        state.meteor
+          ? {
+              x: state.meteor.x,
+              y: state.meteor.y,
+              bounces: state.meteor.bounces,
+              edgeHits: { ...state.meteor.edgeHits },
+              vx: state.meteor.vx,
+              vy: state.meteor.vy,
+            }
+          : null,
+      getSpeed: () => state.speed,
+      setSpeed: (key) => {
+        if (!(key in SPEED_LEVELS)) return state.speed;
+        state.speed = key;
+        try { localStorage.setItem(SPEED_KEY, key); } catch {}
+        updateSpeedUI();
+        return state.speed;
+      },
       getActiveProfile: () => {
         const profile = currentProfile();
         return profile ? { ...profile } : null;
