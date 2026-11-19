@@ -17,8 +17,8 @@ assert.equal(manifest.short_name, "PiuPiu", "the home-screen name should be shor
 assert.equal(manifest.start_url, "./", "start_url should stay relative to the repository path");
 assert.equal(manifest.scope, "./", "scope should cover the whole app");
 assert.equal(manifest.display, "standalone", "the app should open without browser chrome");
-assert.equal(manifest.theme_color, "#060814", "theme colour should match the app header");
-assert.equal(manifest.background_color, "#05070f", "launch background should match the app");
+assert.equal(manifest.theme_color, "#ffe9f3", "theme colour should match the candy header");
+assert.equal(manifest.background_color, "#fff7ec", "launch background should match the candy shell");
 assert.equal(manifest.lang, "zh-CN", "the default manifest language should be Chinese");
 assert.ok(Array.isArray(manifest.icons) && manifest.icons.length >= 3, "icon set is required");
 
@@ -46,7 +46,7 @@ assert.deepEqual(pngSize("icons/apple-touch-icon-180.png"), [180, 180], "Apple t
 assert.match(index, /rel="manifest" href="manifest.json"/, "the manifest should be linked");
 assert.match(index, /rel="apple-touch-icon" sizes="180x180" href="icons\/apple-touch-icon-180\.png"/, "iOS needs a touch icon");
 assert.match(index, /name="apple-mobile-web-app-capable" content="yes"/, "iOS standalone mode should be declared");
-assert.match(index, /name="theme-color" content="#060814"/, "the browser UI theme should be declared");
+assert.match(index, /name="theme-color" content="#ffe9f3"/, "the browser UI theme should be declared");
 assert.match(index, /id="installBtn"/, "the main screen needs an install shortcut");
 assert.match(index, /id="installSheet"/, "manual install instructions need a dialog");
 assert.match(index, /id="installClose"/, "the install dialog needs a close button");

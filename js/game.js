@@ -65,6 +65,9 @@
   const LEVEL_KEY = "piupiu.level";
   const BAND_KEY = "piupiu.band";
   const VOICE_KEY = "piupiu.voice";
+  const THEME_KEY = "piupiu.theme";
+  const THEMES = ["candy", "bubblegum", "cream"];
+  const THEME_COLORS = { candy: "#ffe9f3", bubblegum: "#1c1036", cream: "#f7f0e2" };
   const INTRO_KEY = "piupiu.introSeen";
   const PAD = 12;
   const DANGER_Y = 10;
@@ -188,8 +191,10 @@
     setupSheet: $("setupSheet"),
     setupClose: $("setupClose"),
     setupDone: $("setupDone"),
+    setupThemeSection: $("setupThemeSection"),
     setupVoiceSection: $("setupVoiceSection"),
     setupParentSection: $("setupParentSection"),
+    themeGroup: $("themeGroup"),
     playSteps: $("playSteps"),
     startMascot: $("startMascot"),
     secretNote: $("secretNote"),
@@ -272,6 +277,7 @@
     pendingLegacyBest: 0,
     roundRecorded: false,
     voiceChoice: readString(VOICE_KEY, "auto"),
+    theme: readString(THEME_KEY, "candy"),
     speed: readString(SPEED_KEY, "normal"),
     voicePreviewTimer: 0,
     lastWord: "",
@@ -591,6 +597,40 @@
       setText(els.packPreviewMeta, tr(modeKey));
       setText(els.packSummary, `${tr(category.nameKey)} · ${tr(modeKey)}`);
     }
+  }
+
+  function applyTheme(key) {
+    const theme = THEMES.includes(key) ? key : "candy";
+    state.theme = theme;
+    document.documentElement.dataset.theme = theme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", THEME_COLORS[theme] || THEME_COLORS.candy);
+    if (els.themeGroup) {
+      els.themeGroup.querySelectorAll("[data-theme-choice]").forEach((button) => {
+        const active = button.dataset.themeChoice === theme;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-checked", String(active));
+      });
+    }
+  }
+
+  function setTheme(key) {
+    if (!THEMES.includes(key)) return state.theme;
+    try {
+      localStorage.setItem(THEME_KEY, key);
+    } catch {}
+    applyTheme(key);
+    toast(tr("theme.set", { theme: tr(`theme.${key}`) }));
+    return state.theme;
+  }
+
+  function updateThemeUI() {
+    if (!els.themeGroup) return;
+    els.themeGroup.querySelectorAll("[data-theme-choice]").forEach((button) => {
+      const active = button.dataset.themeChoice === state.theme;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-checked", String(active));
+    });
   }
 
   function updateSpeedUI() {
@@ -2202,6 +2242,7 @@
     renderCategoryOptions();
     updatePackUI();
     updateSpeedUI();
+    updateThemeUI();
     renderVoiceOptions();
     updateSpeechNote();
     if (state.phase === "over") renderOverPanel();
@@ -3733,6 +3774,14 @@
     button.addEventListener("click", () => onDifficultyClick(button));
   });
   if (els.speedBtn) els.speedBtn.addEventListener("click", cycleSpeed);
+  if (els.themeGroup) {
+    els.themeGroup.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      const choice = target.closest("[data-theme-choice]");
+      if (choice) setTheme(choice.dataset.themeChoice);
+    });
+  }
 
   window.addEventListener("keydown", (event) => {
     const target = event.target;
@@ -3891,6 +3940,8 @@
     syncPhaseClass();
     loadPackSelection();
     if (!(state.speed in SPEED_LEVELS)) state.speed = "normal";
+    if (!THEMES.includes(state.theme)) state.theme = "candy";
+    applyTheme(state.theme);
     renderCategoryOptions();
     updatePackUI();
     updateSpeedUI();
@@ -3967,6 +4018,8 @@
               vy: state.meteor.vy,
             }
           : null,
+      getTheme: () => state.theme,
+      setTheme,
       getSpeed: () => state.speed,
       setSpeed: (key) => {
         if (!(key in SPEED_LEVELS)) return state.speed;
