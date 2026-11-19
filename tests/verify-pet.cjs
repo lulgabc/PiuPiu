@@ -35,6 +35,16 @@ for (const pet of pets.PETS) {
 }
 assert.equal(pets.byId("frog").emoji, "🐸");
 assert.equal(pets.byId("missing"), null);
+assert.ok(pets.ACCESSORIES.length >= 4, "the accessory layer should offer several pieces");
+for (const acc of pets.ACCESSORIES) {
+  assert.match(acc.color, /^#[0-9a-f]{6}$/i, `${acc.id} needs a colour`);
+  assert.match(acc.shade, /^#[0-9a-f]{6}$/i, `${acc.id} needs a shade`);
+}
+for (let i = 0; i < 80; i += 1) {
+  const acc = pets.randomAccessory("scarf");
+  assert.ok(acc && pets.ACCESSORIES.some((item) => item.id === acc.id), "randomAccessory must stay valid");
+  assert.notEqual(acc.id, "scarf", "randomAccessory should avoid an immediate repeat");
+}
 
 // The draw must be random, valid and avoid an immediate repeat.
 const seen = new Set();
@@ -76,6 +86,12 @@ assert.match(game, /const PET_DPR = Math\.min\(2,/, "the puppet canvas must cap 
 assert.match(game, /function makePetHead\(/, "the emoji head should be pre-rendered as a sticker sprite");
 assert.match(game, /function drawPetBodyPattern\(/, "each species should draw its own body markings");
 assert.match(game, /ctx\.fillStyle = def\.body \|\| palette\.card/, "the body should use the species colour instead of a white circle");
+assert.match(game, /function petBodyPath\(/, "the body should be a soft bean, not a circle");
+assert.match(game, /function drawPetAccessoryBack\(/, "backpacks should draw behind the body");
+assert.match(game, /function drawPetAccessoryFront\(/, "scarves, bows and pins should draw in front");
+assert.match(game, /function drawPetStar\(/, "the star pin needs a star shape");
+assert.match(game, /Pets\.randomAccessory\(state\.lastAccessory\)/, "each round should draw a varied accessory");
+assert.match(game, /state\.lastAccessory = accessory\.id/, "the previous accessory should be remembered");
 assert.match(game, /function createPetRenderer\(/, "the game needs a Canvas 2D renderer");
 assert.match(game, /function drawPetTail\(/, "the renderer should draw a species tail");
 assert.match(game, /function drawPetFoot\(/, "the renderer should draw feet");
@@ -135,7 +151,8 @@ for (const key of ["pet.say.mouse", "pet.name.mouse", "pet.say.frog", "pet.name.
 }
 
 console.log("✓ twelve pets keep their own silhouette, pace, jump style and voice");
-console.log("✓ each species has its own body tint, markings and silhouette, not one white circle");
+console.log("✓ each species has its own body tint, markings and soft bean silhouette, not one white circle");
+console.log("✓ a random scarf / backpack / bow / star can be layered on top each round");
 console.log("✓ the emoji sticker is now a Canvas 2D puppet with breathing, gaze, paws, feet and tail");
 console.log("✓ the utility brain picks wander / observe / climb / sit / groom / nap / nuzzle / nervous / chase");
 console.log("✓ each round draws exactly one random pet; no player selection or pet team");

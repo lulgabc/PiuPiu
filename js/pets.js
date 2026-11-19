@@ -257,11 +257,28 @@
     return pool[Math.floor(Math.random() * pool.length)] || PETS[0];
   }
 
+
+  const ACCESSORIES = [
+    { id: "scarf", color: "#e9586f", shade: "#b73f54" },
+    { id: "backpack", color: "#7d9cff", shade: "#5576d9" },
+    { id: "bow", color: "#ff9f50", shade: "#d97a2b" },
+    { id: "star", color: "#ffd35f", shade: "#d6a01c" },
+  ];
+
+  function randomAccessory(excludeId) {
+    const pool = excludeId && ACCESSORIES.length > 1
+      ? ACCESSORIES.filter((acc) => acc.id !== excludeId)
+      : ACCESSORIES;
+    return pool[Math.floor(Math.random() * pool.length)] || null;
+  }
+
   const api = {
     PETS,
     PET_IDS,
+    ACCESSORIES,
     byId,
     random,
+    randomAccessory,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;

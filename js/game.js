@@ -361,6 +361,7 @@
     pets: [],
     pet: null,
     lastPetId: "",
+    lastAccessory: "",
     pointer: null,
     petPalette: null,
     lastPetStep: 0,
@@ -1768,6 +1769,17 @@
     }
   }
 
+  function petBodyPath(ctx, def, w, h) {
+    // A soft, slightly asymmetric bean instead of a perfect circle.
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.08, -h * 0.5);
+    ctx.bezierCurveTo(w * 0.27, -h * 0.54, w * 0.5, -h * 0.25, w * 0.48, h * 0.03);
+    ctx.bezierCurveTo(w * 0.46, h * 0.33, w * 0.27, h * 0.5, -w * 0.02, h * 0.5);
+    ctx.bezierCurveTo(-w * 0.33, h * 0.5, -w * 0.51, h * 0.3, -w * 0.48, h * 0.02);
+    ctx.bezierCurveTo(-w * 0.45, -h * 0.29, -w * 0.28, -h * 0.5, -w * 0.08, -h * 0.5);
+    ctx.closePath();
+  }
+
   function makePetHead(def, palette, dpr) {
     const w = def.w;
     const h = def.h;
@@ -1781,13 +1793,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.translate(pad + w / 2, pad + h / 2);
 
-    const rounded = ["tall", "chunky", "pointy"].includes(def.shape);
-    ctx.beginPath();
-    if (rounded) {
-      canvasRoundRect(ctx, -w / 2, -h / 2, w, h, Math.min(w, h) * 0.4);
-    } else {
-      ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
-    }
+    petBodyPath(ctx, def, w, h);
 
     ctx.save();
     ctx.shadowColor = "rgba(64, 34, 72, 0.18)";
@@ -1816,6 +1822,10 @@
     ctx.beginPath();
     ctx.ellipse(0, h * 0.4, w * 0.42, h * 0.16, 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,0,0,0.04)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(0, h * 0.3, w * 0.26, h * 0.16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
     ctx.fill();
     drawPetBodyPattern(ctx, def, w, h);
     ctx.restore();
@@ -1962,6 +1972,131 @@
     ctx.restore();
   }
 
+  function drawPetStar(ctx, x, y, radius, fill) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i += 1) {
+      const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+      const r = i % 2 === 0 ? radius : radius * 0.44;
+      const px = x + Math.cos(angle) * r;
+      const py = y + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  function drawPetAccessoryBack(ctx, pet, def, motion, cx, badgeCenterY) {
+    const acc = pet.accessory;
+    if (!acc || acc.id !== "backpack") return;
+    const x = cx + def.w * 0.46;
+    const y = badgeCenterY + def.h * 0.03;
+    const bw = def.w * 0.3;
+    const bh = def.h * 0.38;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-0.08 + Math.sin(motion.tailPhase * 0.5) * 0.02);
+    ctx.beginPath();
+    canvasRoundRect(ctx, -bw / 2, -bh / 2, bw, bh, bw * 0.24);
+    ctx.fillStyle = acc.color;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = acc.shade;
+    ctx.stroke();
+    ctx.beginPath();
+    canvasRoundRect(ctx, -bw * 0.32, -bh * 0.42, bw * 0.64, bh * 0.28, bw * 0.15);
+    ctx.fillStyle = acc.shade;
+    ctx.globalAlpha = 0.55;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawPetAccessoryFront(ctx, pet, def, motion, cx, badgeCenterY) {
+    const acc = pet.accessory;
+    if (!acc) return;
+    if (acc.id === "scarf") {
+      const y = badgeCenterY + def.h * 0.3;
+      const bw = def.w * 0.72;
+      ctx.save();
+      ctx.translate(cx, y);
+      ctx.beginPath();
+      canvasRoundRect(ctx, -bw / 2, -def.h * 0.055, bw, def.h * 0.13, def.h * 0.06);
+      ctx.fillStyle = acc.color;
+      ctx.fill();
+      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = acc.shade;
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(def.w * 0.25, def.h * 0.04);
+      ctx.rotate(0.18 + Math.sin(motion.tailPhase * 0.6) * 0.04);
+      ctx.beginPath();
+      canvasRoundRect(ctx, -def.w * 0.055, 0, def.w * 0.11, def.h * 0.26, def.w * 0.04);
+      ctx.fillStyle = acc.color;
+      ctx.fill();
+      ctx.strokeStyle = acc.shade;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, def.h * 0.28, def.w * 0.075, 0, Math.PI * 2);
+      ctx.fillStyle = acc.color;
+      ctx.fill();
+      ctx.strokeStyle = acc.shade;
+      ctx.stroke();
+      ctx.restore();
+      ctx.restore();
+    } else if (acc.id === "bow") {
+      const x = cx + def.w * 0.34;
+      const y = badgeCenterY - def.h * 0.29;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(-0.25);
+      ctx.fillStyle = acc.color;
+      ctx.strokeStyle = acc.shade;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(-def.w * 0.07, 0, def.w * 0.09, def.h * 0.065, -0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(def.w * 0.07, 0, def.w * 0.09, def.h * 0.065, 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, def.w * 0.045, 0, Math.PI * 2);
+      ctx.fillStyle = acc.shade;
+      ctx.fill();
+      ctx.restore();
+    } else if (acc.id === "star") {
+      ctx.save();
+      ctx.translate(cx - def.w * 0.35, badgeCenterY - def.h * 0.24);
+      ctx.rotate(-0.12 + Math.sin(motion.tailPhase * 0.5) * 0.04);
+      drawPetStar(ctx, 0, 0, def.w * 0.12, acc.color);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = acc.shade;
+      ctx.stroke();
+      ctx.restore();
+    } else if (acc.id === "backpack") {
+      const x = cx + def.w * 0.18;
+      const y = badgeCenterY + def.h * 0.24;
+      ctx.save();
+      ctx.strokeStyle = acc.shade;
+      ctx.lineWidth = Math.max(2, def.w * 0.045);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx + def.w * 0.34, badgeCenterY - def.h * 0.28);
+      ctx.quadraticCurveTo(x, badgeCenterY, x + def.w * 0.08, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + def.w * 0.08, y, def.w * 0.05, 0, Math.PI * 2);
+      ctx.fillStyle = acc.color;
+      ctx.fill();
+      ctx.strokeStyle = acc.shade;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   function createPetRenderer(pet, def, dpr) {
     const canvas = pet.canvas;
     const ctx = canvas.getContext("2d");
@@ -2031,6 +2166,7 @@
       ctx.restore();
       drawPetFoot(ctx, cx - def.w * 0.17, footY - 4 - liftL, footW, footH, def.foot, def.accent, palette.card);
       drawPetFoot(ctx, cx + def.w * 0.17, footY - 4 - liftR, footW, footH, def.foot, def.accent, palette.card);
+      drawPetAccessoryBack(ctx, pet, def, m, cx, badgeCenterY);
 
       if (head) {
         const napDrop = m.action === "nap" ? def.h * 0.1 : 0;
@@ -2052,6 +2188,8 @@
         );
         ctx.restore();
       }
+
+      drawPetAccessoryFront(ctx, pet, def, m, cx, badgeCenterY);
 
       const pawW = Math.max(9, def.w * 0.27);
       const pawH = Math.max(8, def.h * 0.2);
@@ -2538,6 +2676,10 @@
     const drawH = h;
     const { el, canvas } = createPetElement(def, w, h, drawW, drawH);
     els.petLayer.appendChild(el);
+    const accessory = Pets && typeof Pets.randomAccessory === "function"
+      ? Pets.randomAccessory(state.lastAccessory)
+      : null;
+    if (accessory) state.lastAccessory = accessory.id;
     const fieldW = els.field.clientWidth || 360;
     const fieldH = els.field.clientHeight || 480;
     const minX = drawW / 2 + 2;
@@ -2546,6 +2688,7 @@
     const pet = {
       id: def.id,
       def,
+      accessory,
       el,
       canvas,
       renderer: null,
@@ -2735,6 +2878,7 @@
   function petInfo(pet) {
     return {
       id: pet.id,
+      accessory: pet.accessory ? pet.accessory.id : null,
       x: Math.round(pet.x),
       y: Math.round(pet.ground + pet.hopY - pet.h),
       ground: Math.round(pet.ground),
@@ -5293,6 +5437,7 @@
       getPet: () => (state.pet ? petInfo(state.pet) : null),
       getPets: () => state.pets.map(petInfo),
       getPetCatalog: () => (Pets ? Pets.PETS.map((pet) => ({ ...pet })) : []),
+      getPetAccessories: () => (Pets ? Pets.ACCESSORIES.map((acc) => ({ ...acc })) : []),
       randomPet: () => (Pets ? Pets.random(state.lastPetId).id : PET_FALLBACK.id),
       setPet: (id) => {
         if (!Pets) return null;
