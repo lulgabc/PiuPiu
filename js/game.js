@@ -12,6 +12,7 @@
       ? window.PIU_NUMBER_WORDS
       : {};
   const Profiles = window.PiuProfiles && typeof window.PiuProfiles === "object" ? window.PiuProfiles : null;
+  const Physics = window.Matter && window.Matter.Engine ? window.Matter : null;
   const EMOJI =
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
   const EFFECTS = ["explode", "crack", "fly", "drop", "spin"];
@@ -321,6 +322,7 @@
     toastTimer: 0,
     lastHud: {},
     meteor: null,
+    physics: null,
     rewardProgress: 0,
     rewardBarTimer: 0,
     rewardTickTimer: 0,
@@ -1050,6 +1052,7 @@
     cancelAnimationFrame(state.raf);
     state.raf = 0;
     cancelMeteor();
+    destroyPhysics();
     state.lastSurpriseAt = 0;
     clearFocus();
     stopHelpSpeech();
@@ -1202,6 +1205,12 @@
     }
 
     if (state.phase !== "playing") return;
+    if (state.physics && state.settled.length) {
+      Physics.Engine.update(state.physics.engine, 1000 / 60);
+      syncPhysicsPile();
+      if (checkPileDanger()) return;
+    }
+    if (state.phase !== "playing") return;
     updateMeteor(dt);
     if (state.phase !== "playing") return;
     updateHUD();
@@ -1319,43 +1328,115 @@
     word.el.style.transform = `translate3d(${word.x}px, ${word.y}px, 0)`;
   }
 
-  function pulseJelly(el, className, duration) {
-    if (!el) return;
-    const token = (Number(el.dataset.jellyToken) || 0) + 1;
-    el.dataset.jellyToken = String(token);
-    el.classList.remove("jelly-land", "jelly-nudge", "jelly-drop");
-    void el.offsetWidth;
-    el.classList.add(className);
-    window.setTimeout(() => {
-      if (Number(el.dataset.jellyToken) === token) el.classList.remove(className);
-    }, duration);
+  /* ------------------------------------------------------------------ */
+  /* soft pile physics                                                   */
+  /* ------------------------------------------------------------------ */
+
+  function ensurePhysics() {
+    if (!Physics || !els.field) return null;
+    const fieldW = els.field.clientWidth;
+    const fieldH = els.field.clientHeight;
+    if (!fieldW || !fieldH) return null;
+    if (!state.physics) {
+      const engine = Physics.Engine.create({ enableSleeping: true });
+      engine.gravity.y = 1;
+      engine.positionIterations = 10;
+      engine.velocityIterations = 8;
+      engine.constraintIterations = 2;
+      state.physics = { engine, walls: [] };
+      rebuildPhysicsWalls(fieldW, fieldH);
+    }
+    return state.physics;
   }
 
-  function relaxSettledPile() {
-    if (!state.settled.length || !els.field) return;
-    const fieldH = els.field.clientHeight || 1;
-    const ordered = state.settled.slice().sort((a, b) => b.y - a.y);
-    let moved = false;
+  function rebuildPhysicsWalls(fieldW, fieldH) {
+    const physics = state.physics;
+    if (!physics) return;
+    for (const wall of physics.walls) Physics.Composite.remove(physics.engine.world, wall);
+    const options = { isStatic: true, friction: 0.9, restitution: 0 };
+    physics.walls = [
+      Physics.Bodies.rectangle(fieldW / 2, fieldH + 40, fieldW + 200, 80, options),
+      Physics.Bodies.rectangle(-40, fieldH / 2, 80, fieldH * 2, options),
+      Physics.Bodies.rectangle(fieldW + 40, fieldH / 2, 80, fieldH * 2, options),
+    ];
+    for (const wall of physics.walls) Physics.Composite.add(physics.engine.world, wall);
+  }
 
-    for (const card of ordered) {
-      let target = fieldH - card.h - 3;
-      for (const other of state.settled) {
-        if (other === card) continue;
-        if (other.y <= card.y + 1) continue;
-        const overlapsX =
-          card.x + card.w - 2 > other.x + 1 && card.x + 2 < other.x + other.w - 1;
-        if (!overlapsX) continue;
-        target = Math.min(target, other.y - card.h + 3);
-      }
-      if (target > card.y + 0.5) {
-        card.y = target;
-        card.el.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
-        pulseJelly(card.el, "jelly-drop", 480);
-        moved = true;
-      }
+  function destroyPhysics() {
+    if (state.physics && Physics) {
+      Physics.Composite.clear(state.physics.engine.world, false);
+      Physics.Engine.clear(state.physics.engine);
     }
+    state.physics = null;
+  }
 
-    if (moved) updateHUD(true);
+  function wakePhysicsPile() {
+    if (!state.physics || !Physics || !Physics.Sleeping) return;
+    for (const settled of state.settled) {
+      if (settled.body) Physics.Sleeping.set(settled.body, false);
+    }
+  }
+
+  function attachSettledBody(settled) {
+    const physics = ensurePhysics();
+    if (!physics) return;
+    settled.baseW = settled.w;
+    settled.baseH = settled.h;
+    const body = Physics.Bodies.rectangle(
+      settled.x + settled.w / 2,
+      settled.y + settled.h / 2,
+      settled.w,
+      settled.h,
+      {
+        restitution: 0.01,
+        friction: 0.7,
+        frictionStatic: 1.1,
+        frictionAir: 0.015,
+        density: 0.0012,
+        slop: 0.04,
+        chamfer: { radius: Math.min(6, settled.h / 6) },
+      },
+    );
+    Physics.Composite.add(physics.engine.world, body);
+    settled.body = body;
+    wakePhysicsPile();
+    syncSettledCard(settled);
+  }
+
+  function syncSettledCard(settled) {
+    const body = settled.body;
+    if (!body) return;
+    const baseW = settled.baseW || settled.w;
+    const baseH = settled.baseH || settled.h;
+    settled.x = body.bounds.min.x;
+    settled.y = body.bounds.min.y;
+    settled.w = body.bounds.max.x - body.bounds.min.x;
+    settled.h = body.bounds.max.y - body.bounds.min.y;
+    const left = body.position.x - baseW / 2;
+    const top = body.position.y - baseH / 2;
+    settled.el.style.transform = `translate3d(${left}px, ${top}px, 0) rotate(${body.angle}rad)`;
+    settled.el.style.zIndex = String(Math.max(1, 1000 - Math.round(body.position.y)));
+  }
+
+  function syncPhysicsPile() {
+    if (!state.physics) return;
+    for (const settled of state.settled) syncSettledCard(settled);
+  }
+
+  function removeSettledBody(settled) {
+    if (state.physics && settled.body) {
+      Physics.Composite.remove(state.physics.engine.world, settled.body);
+    }
+    settled.body = null;
+  }
+
+  function checkPileDanger() {
+    if (state.phase !== "playing" || state.meteor) return false;
+    if (state.settled.some((settled) => settled.y <= DANGER_Y)) {
+      endGame();
+      return true;
+    }
+    return false;
   }
 
   function settleWord(word, y) {
@@ -1385,20 +1466,7 @@
       h: word.h,
     };
     state.settled.push(settled);
-    pulseJelly(word.el, "jelly-land", 580);
-
-    let nudged = 0;
-    for (const below of state.settled) {
-      if (below === settled) continue;
-      if (below.y < finalY - word.h * 0.4) continue;
-      if (below.y > finalY + word.h * 2.2) continue;
-      const overlapsX =
-        word.x + word.w - 2 > below.x + 1 && word.x + 2 < below.x + below.w - 1;
-      if (!overlapsX) continue;
-      pulseJelly(below.el, "jelly-nudge", 460);
-      nudged += 1;
-      if (nudged >= 3) break;
-    }
+    attachSettledBody(settled);
 
     state.combo = 0;
     state.missed += 1;
@@ -2483,13 +2551,14 @@
 
     const index = state.settled.indexOf(target);
     if (index !== -1) state.settled.splice(index, 1);
+    removeSettledBody(target);
+    wakePhysicsPile();
     spawnStars(target.x + target.w / 2, target.y + target.h / 2, 42, 6);
     spawnSparks(target.x + target.w / 2, target.y + target.h / 2, 42, 5);
     target.el.remove();
     meteor.cleared += 1;
     meteor.hitCooldown = METEOR_HIT_COOLDOWN;
     playMeteorSweep(meteor.cleared);
-    relaxSettledPile();
     return 1;
   }
 
@@ -2536,12 +2605,13 @@
     const targetSet = new Set(targets);
 
     for (const target of targets) {
+      removeSettledBody(target);
       spawnStars(target.x + target.w / 2, target.y + target.h / 2, 48, 5);
       target.el.remove();
     }
     if (targets.length) {
       state.settled = state.settled.filter((settled) => !targetSet.has(settled));
-      relaxSettledPile();
+      wakePhysicsPile();
     }
 
     const beam = document.createElement("div");
@@ -3710,21 +3780,37 @@
     const fieldH = els.field.clientHeight;
     if (!fieldW || !fieldH) return;
 
-    if (state.lastFieldH && Math.abs(fieldH - state.lastFieldH) > 4) {
+    if (state.physics) {
+      rebuildPhysicsWalls(fieldW, fieldH);
+      for (const s of state.settled) {
+        if (!s.body) continue;
+        const baseW = s.baseW || s.w;
+        const baseH = s.baseH || s.h;
+        const x = Math.min(Math.max(s.body.position.x, baseW / 2 + 1), fieldW - baseW / 2 - 1);
+        const y = Math.min(Math.max(s.body.position.y, baseH / 2 + 1), fieldH - baseH / 2 - 1);
+        if (x !== s.body.position.x || y !== s.body.position.y) {
+          Physics.Body.setPosition(s.body, { x, y });
+        }
+      }
+      wakePhysicsPile();
+      syncPhysicsPile();
+    } else if (state.lastFieldH && Math.abs(fieldH - state.lastFieldH) > 4) {
       const ratio = fieldH / state.lastFieldH;
       for (const s of state.settled) {
         s.y = Math.max(0, fieldH - (state.lastFieldH - s.y) * ratio);
         s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)`;
       }
+    }
+    if (state.lastFieldH && Math.abs(fieldH - state.lastFieldH) > 4) {
       for (const w of state.words) {
         w.y = Math.min(w.y, fieldH - w.h);
         w.el.style.transform = `translate3d(${w.x}px, ${w.y}px, 0)`;
       }
     }
-    for (const item of [...state.words, ...state.settled]) {
-      if (item.x + item.w > fieldW - 4) {
-        item.x = Math.max(PAD, fieldW - item.w - PAD);
-        item.el.style.transform = `translate3d(${item.x}px, ${item.y}px, 0)`;
+    for (const word of state.words) {
+      if (word.x + word.w > fieldW - 4) {
+        word.x = Math.max(PAD, fieldW - word.w - PAD);
+        word.el.style.transform = `translate3d(${word.x}px, ${word.y}px, 0)`;
       }
     }
     state.lastFieldW = fieldW;
@@ -3783,7 +3869,6 @@
       endGame,
       spawnWord,
       settleWord,
-      relaxPile: relaxSettledPile,
       explodeWord,
       findMatch,
       goHome,
@@ -3898,7 +3983,24 @@
         })),
       updateWordFace,
       getSettled: () =>
-        state.settled.map((s) => ({ word: s.word, x: s.x, y: s.y, w: s.w, h: s.h })),
+        state.settled.map((s) => ({
+          word: s.word,
+          x: s.x,
+          y: s.y,
+          w: s.w,
+          h: s.h,
+          angle: s.body ? s.body.angle : 0,
+          sleeping: s.body ? Boolean(s.body.isSleeping) : true,
+        })),
+      getPhysics: () =>
+        state.physics
+          ? {
+              bodies: state.physics.engine.world.bodies.length,
+              settled: state.settled.length,
+              awake: state.settled.filter((s) => s.body && !s.body.isSleeping).length,
+              gravity: state.physics.engine.gravity.y,
+            }
+          : null,
     };
   }
 

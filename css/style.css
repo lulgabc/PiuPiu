@@ -644,8 +644,6 @@ button:disabled {
   opacity: 0.92;
   animation: none;
   backdrop-filter: none;
-  transform-origin: 50% 100%;
-  transition: transform 0.3s cubic-bezier(0.2, 1.25, 0.35, 1);
 }
 
 .word.settled::after {
@@ -3682,104 +3680,6 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
 
 @media (prefers-reduced-motion: reduce) {
   .meteor::before {
-    animation: none;
-  }
-}
-
-
-/* ---------- jelly pile ---------- */
-
-.word.jelly-land {
-  animation: jellyLand 0.58s cubic-bezier(0.22, 1.2, 0.36, 1);
-}
-
-.word.miss.jelly-land {
-  animation: missBlink 0.32s ease-out, jellyLand 0.58s cubic-bezier(0.22, 1.2, 0.36, 1);
-}
-
-.word.jelly-nudge {
-  animation: jellyNudge 0.46s ease-out;
-}
-
-.word.jelly-drop {
-  animation: jellyDrop 0.48s cubic-bezier(0.22, 1.2, 0.36, 1);
-}
-
-@keyframes jellyLand {
-  0% {
-    scale: 1.12 0.82;
-    rotate: 0deg;
-    translate: 0 0;
-  }
-  28% {
-    scale: 0.975 1.045;
-    rotate: -1deg;
-    translate: 1.2px 0;
-  }
-  52% {
-    scale: 1.03 0.98;
-    rotate: 0.6deg;
-    translate: -0.9px 0;
-  }
-  76% {
-    scale: 0.994 1.008;
-    rotate: -0.2deg;
-    translate: 0.3px 0;
-  }
-  100% {
-    scale: 1 1;
-    rotate: 0deg;
-    translate: 0 0;
-  }
-}
-
-@keyframes jellyNudge {
-  0% {
-    scale: 1 1;
-    translate: 0 0;
-  }
-  34% {
-    scale: 1.025 0.972;
-    translate: 0.7px 0;
-  }
-  68% {
-    scale: 0.994 1.012;
-    translate: -0.5px 0;
-  }
-  100% {
-    scale: 1 1;
-    translate: 0 0;
-  }
-}
-
-@keyframes jellyDrop {
-  0% {
-    scale: 1 1;
-    rotate: 0deg;
-  }
-  30% {
-    scale: 1.05 0.93;
-    rotate: 0.6deg;
-  }
-  66% {
-    scale: 0.99 1.018;
-    rotate: -0.3deg;
-  }
-  100% {
-    scale: 1 1;
-    rotate: 0deg;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .word.settled {
-    transition: none;
-  }
-
-  .word.jelly-land,
-  .word.miss.jelly-land,
-  .word.jelly-nudge,
-  .word.jelly-drop {
     animation: none;
   }
 }
