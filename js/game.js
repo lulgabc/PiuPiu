@@ -359,6 +359,11 @@
     pets: [],
     pet: null,
     lastPetId: "",
+    pointer: null,
+    petPalette: null,
+    lastPetStep: 0,
+    lastPetLand: 0,
+    lastPetPurr: 0,
   };
 
   let effectBag = [];
@@ -625,6 +630,7 @@
     document.documentElement.dataset.theme = theme;
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", THEME_COLORS[theme] || THEME_COLORS.candy);
+    refreshPetPalette();
     if (els.themeGroup) {
       els.themeGroup.querySelectorAll("[data-theme-choice]").forEach((button) => {
         const active = button.dataset.themeChoice === theme;
@@ -1022,6 +1028,29 @@
     }
   }
 
+  function playPetStep() {
+    const now = performance.now();
+    if (now - (state.lastPetStep || 0) < 190) return;
+    state.lastPetStep = now;
+    tone(155, 0.045, "triangle", 0.006, 0, 105);
+  }
+
+  function playPetLand() {
+    const now = performance.now();
+    if (now - (state.lastPetLand || 0) < 220) return;
+    state.lastPetLand = now;
+    tone(92, 0.075, "sine", 0.016, 0, 56);
+    noiseBurst(0.028, 0.004);
+  }
+
+  function playPetPurr() {
+    const now = performance.now();
+    if (now - (state.lastPetPurr || 0) < 900) return;
+    state.lastPetPurr = now;
+    tone(86, 0.3, "sine", 0.018, 0, 72);
+    tone(72, 0.34, "sine", 0.014, 0.2, 62);
+  }
+
   function playSlide() {
     tone(280, 0.38, "sine", 0.025, 0, 1500);
     tone(1500, 0.28, "sine", 0.018, 0.34, 320);
@@ -1203,6 +1232,7 @@
     els.wordLayer.replaceChildren();
     els.fxLayer.replaceChildren();
     els.field.classList.remove("danger", "shake");
+    state.pointer = null;
     els.typeInput.value = "";
     els.typeInput.classList.remove("wrong");
     els.correctStat.classList.remove("reward");
@@ -1579,10 +1609,22 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* pet friends                                                         */
+  /* pet companion: behavior brain + canvas sticker puppet              */
   /* ------------------------------------------------------------------ */
 
   const PET_GRAVITY = 560;
+  const PET_SCALE = 1.34;
+  const PET_DPR = Math.min(2, window.devicePixelRatio || 1);
+  const PET_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+  const PET_MOVING = ["wander", "climb", "nuzzle", "chase", "startle"];
+  const PET_SPEED_FACTOR = {
+    wander: 1,
+    climb: 1.06,
+    nuzzle: 1.5,
+    chase: 1.7,
+    startle: 1.9,
+    nervous: 0.45,
+  };
 
   function randomPetDef() {
     const def = Pets && typeof Pets.random === "function" ? Pets.random(state.lastPetId) : PET_FALLBACK;
@@ -1595,36 +1637,415 @@
     return def || PET_FALLBACK;
   }
 
-  function createPetElement(def) {
+  function withAlpha(color, alpha) {
+    if (typeof color !== "string") return `rgba(255,255,255,${alpha})`;
+    if (color[0] !== "#") return color;
+    const hex = color.slice(1);
+    const value = hex.length === 3
+      ? hex.split("").map((part) => part + part).join("")
+      : hex;
+    const n = parseInt(value, 16);
+    if (!Number.isFinite(n)) return color;
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+
+  function petPalette() {
+    const root = document.documentElement;
+    const styles = getComputedStyle(root);
+    const read = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
+    const theme = root.dataset.theme || "candy";
+    return {
+      theme,
+      dark: theme === "bubblegum",
+      card: read("--theme-card", "#fffdf8"),
+      border: read("--theme-border", "#fffdf8"),
+      active: read("--theme-active", "#ff6fae"),
+      ink: read("--theme-card-ink", "#4d2b50"),
+    };
+  }
+
+  function refreshPetPalette() {
+    state.petPalette = petPalette();
+    for (const pet of state.pets) {
+      if (pet.renderer) pet.renderer.refreshTheme(state.petPalette);
+    }
+  }
+
+  function canvasRoundRect(ctx, x, y, w, h, radius) {
+    const r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(x, y, w, h, r);
+      return;
+    }
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+  }
+
+  function makePetHead(def, palette, dpr) {
+    const w = def.w;
+    const h = def.h;
+    const pad = 6;
+    const head = document.createElement("canvas");
+    head.width = Math.max(1, Math.round((w + pad * 2) * dpr));
+    head.height = Math.max(1, Math.round((h + pad * 2) * dpr));
+    head.pad = pad;
+    const ctx = head.getContext("2d");
+    if (!ctx) return null;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.translate(pad + w / 2, pad + h / 2);
+
+    const rounded = ["tall", "chunky", "pointy"].includes(def.shape);
+    ctx.beginPath();
+    if (rounded) {
+      canvasRoundRect(ctx, -w / 2, -h / 2, w, h, Math.min(w, h) * 0.4);
+    } else {
+      ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+    }
+
+    ctx.save();
+    ctx.shadowColor = "rgba(64, 34, 72, 0.18)";
+    ctx.shadowBlur = 7;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = palette.card;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.lineJoin = "round";
+    if (palette.dark) {
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = "#241239";
+      ctx.stroke();
+    }
+    ctx.lineWidth = palette.dark ? 3 : 3.5;
+    ctx.strokeStyle = palette.border;
+    ctx.stroke();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = withAlpha(def.accent, 0.38);
+    ctx.stroke();
+
+    // A small sticker gloss keeps the badge from looking like a flat circle.
+    ctx.beginPath();
+    ctx.ellipse(-w * 0.2, -h * 0.28, w * 0.2, h * 0.11, -0.38, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.38)";
+    ctx.fill();
+
+    let font = Math.round(h * 0.72);
+    ctx.font = `${font}px ${PET_FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const measured = ctx.measureText(def.emoji);
+    const maxWidth = w * 0.9;
+    if (measured.width > maxWidth) {
+      font = Math.max(12, Math.floor((font * maxWidth) / measured.width));
+      ctx.font = `${font}px ${PET_FONT}`;
+    }
+    ctx.fillText(def.emoji, 0, h * 0.02);
+
+    // Very soft cheeks, mostly visible on lighter species.
+    ctx.fillStyle = withAlpha(def.accent, 0.16);
+    ctx.beginPath();
+    ctx.ellipse(-w * 0.27, h * 0.2, w * 0.09, h * 0.055, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.27, h * 0.2, w * 0.09, h * 0.055, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    return head;
+  }
+
+  function drawPetTail(ctx, def, motion, cx, badgeCenterY) {
+    if (!def.tail || def.tail === "none") return;
+    const baseX = cx - def.w * 0.26;
+    const baseY = badgeCenterY + def.h * 0.28;
+    const sway = Math.sin(motion.tailPhase) * (def.tail === "tiny" ? 0.12 : 0.32);
+    const length = def.w * (def.tail === "tiny" ? 0.25 : def.tail === "thin" ? 0.65 : 0.6);
+    const tipX = baseX - length * (0.78 + sway * 0.12);
+    const tipY = baseY - length * (0.72 + Math.sin(sway) * 0.12) - def.h * 0.04;
+    const ctrl1X = baseX - length * 0.38;
+    const ctrl1Y = baseY + length * 0.26;
+    const ctrl2X = baseX - length * 0.92;
+    const ctrl2Y = baseY - length * 0.3;
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = def.accent;
+    ctx.fillStyle = def.accent;
+
+    const tailPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.bezierCurveTo(ctrl1X, ctrl1Y, ctrl2X, ctrl2Y, tipX, tipY);
+    };
+
+    if (def.tail === "fluffy") {
+      ctx.lineWidth = Math.max(5, def.w * 0.14);
+      tailPath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, def.w * 0.085, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (def.tail === "round") {
+      ctx.lineWidth = Math.max(2.4, def.w * 0.05);
+      tailPath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, def.w * 0.11, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.lineWidth = def.tail === "thin" ? Math.max(2, def.w * 0.045) : Math.max(3, def.w * 0.055);
+      tailPath();
+      ctx.stroke();
+      if (def.tail === "tuft") {
+        const tufts = [
+          [tipX - def.w * 0.03, tipY - def.h * 0.04],
+          [tipX + def.w * 0.015, tipY - def.h * 0.015],
+          [tipX + def.w * 0.045, tipY + def.h * 0.025],
+        ];
+        for (const [tx, ty] of tufts) {
+          ctx.beginPath();
+          ctx.arc(tx, ty, def.w * 0.05, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (def.tail === "tiny") {
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, Math.max(1.5, def.w * 0.025), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawPetFoot(ctx, x, y, w, h, shape, fill, stroke) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    if (shape === "webbed") {
+      ctx.moveTo(-w / 2, h * 0.2);
+      ctx.quadraticCurveTo(-w * 0.46, -h * 0.5, 0, -h * 0.55);
+      ctx.quadraticCurveTo(w * 0.46, -h * 0.5, w / 2, h * 0.2);
+      ctx.quadraticCurveTo(0, h * 0.55, -w / 2, h * 0.2);
+      ctx.closePath();
+    } else if (shape === "long") {
+      ctx.ellipse(0, 0, w * 0.5, h * 0.38, 0, 0, Math.PI * 2);
+    } else if (shape === "flipper") {
+      ctx.ellipse(0, 0, w * 0.4, h * 0.5, 0.3, 0, Math.PI * 2);
+    } else if (shape === "stub") {
+      ctx.ellipse(0, 0, w * 0.42, h * 0.3, 0, 0, Math.PI * 2);
+    } else {
+      ctx.ellipse(0, 0, w * 0.46, h * 0.4, 0, 0, Math.PI * 2);
+    }
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = stroke;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPetPaw(ctx, x, y, w, h, shape, fill, stroke) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    if (shape === "point") {
+      ctx.moveTo(-w * 0.5, h * 0.2);
+      ctx.quadraticCurveTo(-w * 0.2, -h * 0.8, w * 0.55, -h * 0.1);
+      ctx.quadraticCurveTo(w * 0.3, h * 0.6, -w * 0.5, h * 0.2);
+      ctx.closePath();
+    } else if (shape === "flipper" || shape === "wing") {
+      ctx.ellipse(0, 0, w * 0.34, h * 0.62, shape === "wing" ? -0.25 : 0.2, 0, Math.PI * 2);
+    } else if (shape === "webbed") {
+      ctx.ellipse(0, 0, w * 0.46, h * 0.4, 0, 0, Math.PI * 2);
+    } else {
+      ctx.ellipse(0, 0, w * 0.44, h * 0.42, -0.15, 0, Math.PI * 2);
+    }
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = stroke;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function createPetRenderer(pet, def, dpr) {
+    const canvas = pet.canvas;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    let palette = state.petPalette || petPalette();
+    let head = makePetHead(def, palette, dpr);
+    if (!head) return null;
+    let dust = [];
+
+    function refreshTheme(next) {
+      palette = next || petPalette();
+      head = makePetHead(def, palette, dpr);
+    }
+
+    function spawnDust(x, y, count = 2) {
+      for (let i = 0; i < count; i += 1) {
+        if (dust.length > 10) dust.shift();
+        dust.push({
+          x: x + (Math.random() - 0.5) * 8,
+          y: y + (Math.random() - 0.5) * 2,
+          vx: (Math.random() - 0.5) * 16,
+          vy: -8 - Math.random() * 12,
+          life: 0.32 + Math.random() * 0.2,
+          size: 1.2 + Math.random() * 2,
+        });
+      }
+    }
+
+    function draw(dt) {
+      const p = pet;
+      const m = p.motion;
+      const w = p.drawW;
+      const h = p.drawH;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const cx = w / 2;
+      const footY = h - 3;
+      const badgeBottom = footY - def.h * 0.17;
+      const badgeCenterY = badgeBottom - def.h / 2;
+
+      // Contact dust lives behind the feet.
+      for (const puff of dust) {
+        const alpha = Math.max(0, puff.life / 0.5) * 0.22;
+        ctx.beginPath();
+        ctx.arc(puff.x, puff.y, puff.size + (0.5 - puff.life) * 5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(120, 88, 108, ${alpha})`;
+        ctx.fill();
+      }
+
+      drawPetTail(ctx, def, m, cx, badgeCenterY);
+
+      const footW = Math.max(9, def.w * 0.22);
+      const footH = Math.max(6, def.h * 0.14);
+      const liftL = m.footL;
+      const liftR = m.footR;
+      ctx.save();
+      ctx.strokeStyle = def.accent;
+      ctx.lineCap = "round";
+      ctx.lineWidth = Math.max(2, def.w * 0.055);
+      ctx.beginPath();
+      ctx.moveTo(cx - def.w * 0.12, badgeBottom - 1);
+      ctx.lineTo(cx - def.w * 0.17, footY - 6 - liftL);
+      ctx.moveTo(cx + def.w * 0.12, badgeBottom - 1);
+      ctx.lineTo(cx + def.w * 0.17, footY - 6 - liftR);
+      ctx.stroke();
+      ctx.restore();
+      drawPetFoot(ctx, cx - def.w * 0.17, footY - 4 - liftL, footW, footH, def.foot, def.accent, palette.card);
+      drawPetFoot(ctx, cx + def.w * 0.17, footY - 4 - liftR, footW, footH, def.foot, def.accent, palette.card);
+
+      if (head) {
+        const napDrop = m.action === "nap" ? def.h * 0.1 : 0;
+        ctx.save();
+        ctx.translate(cx + m.lookX * 1.6, badgeCenterY + m.bob + napDrop);
+        ctx.rotate(m.tilt + m.spin);
+        ctx.scale(m.squashX, m.squashY);
+        const pad = head.pad || 0;
+        ctx.drawImage(
+          head,
+          0,
+          0,
+          head.width,
+          head.height,
+          -def.w / 2 - pad,
+          -def.h / 2 - pad,
+          def.w + pad * 2,
+          def.h + pad * 2,
+        );
+        ctx.restore();
+      }
+
+      const pawW = Math.max(9, def.w * 0.27);
+      const pawH = Math.max(8, def.h * 0.2);
+      const pawY = badgeCenterY + def.h * 0.27;
+      ctx.save();
+      ctx.strokeStyle = def.accent;
+      ctx.lineCap = "round";
+      ctx.lineWidth = Math.max(2, def.w * 0.06);
+      ctx.beginPath();
+      ctx.moveTo(cx - def.w * 0.3, badgeCenterY + def.h * 0.14);
+      ctx.lineTo(cx - def.w * 0.32, pawY - m.pawL);
+      ctx.moveTo(cx + def.w * 0.3, badgeCenterY + def.h * 0.14);
+      ctx.lineTo(cx + def.w * 0.32, pawY - m.pawR);
+      ctx.stroke();
+      ctx.restore();
+      drawPetPaw(
+        ctx,
+        cx - def.w * 0.32,
+        pawY - m.pawL,
+        pawW,
+        pawH,
+        def.paw,
+        def.accent,
+        palette.card,
+      );
+      drawPetPaw(
+        ctx,
+        cx + def.w * 0.32,
+        pawY - m.pawR,
+        pawW,
+        pawH,
+        def.paw,
+        def.accent,
+        palette.card,
+      );
+
+      // Dust drifts above the feet after a step or landing.
+      if (dust.length) {
+        for (const puff of dust) {
+          puff.x += puff.vx * dt;
+          puff.y += puff.vy * dt;
+          puff.vy += 32 * dt;
+          puff.life -= dt;
+        }
+        dust = dust.filter((puff) => puff.life > 0);
+      }
+    }
+
+    return { draw, refreshTheme, spawnDust };
+  }
+
+  function createPetElement(def, w, h, drawW, drawH) {
     const el = document.createElement("div");
     el.className = "pet";
     el.dataset.pet = def.id;
     el.dataset.shape = def.shape || "round";
-    el.style.setProperty("--pet-w", `${def.w}px`);
-    el.style.setProperty("--pet-h", `${def.h}px`);
+    el.style.setProperty("--pet-w", `${w}px`);
+    el.style.setProperty("--pet-h", `${h}px`);
 
     const shadow = document.createElement("span");
     shadow.className = "pet-shadow";
 
-    const body = document.createElement("span");
-    body.className = "pet-body";
-    body.textContent = def.emoji;
+    const canvas = document.createElement("canvas");
+    canvas.className = "pet-canvas";
+    canvas.width = Math.max(1, Math.round(drawW * PET_DPR));
+    canvas.height = Math.max(1, Math.round(drawH * PET_DPR));
+    canvas.style.width = `${drawW}px`;
+    canvas.style.height = `${drawH}px`;
 
     const bubble = document.createElement("span");
     bubble.className = "pet-squeak";
     bubble.dataset.i18n = def.say;
     bubble.textContent = tr(def.say);
 
-    el.append(shadow, body, bubble);
-    return el;
+    el.append(shadow, canvas, bubble);
+    return { el, canvas };
   }
 
   function petPickTarget(p, fieldW, bias = 0) {
-    const min = p.w / 2 + 8;
-    const max = Math.max(min + 24, fieldW - p.w / 2 - 10);
+    const min = p.drawW / 2 + 8;
+    const max = Math.max(min + 24, fieldW - p.drawW / 2 - 10);
     let lo = min;
     let hi = max;
-    if (!bias && state.settled.length > 1 && Math.random() < 0.68) {
+    if (!bias && state.settled.length > 1 && Math.random() < 0.72) {
       let pileLeft = Infinity;
       let pileRight = -Infinity;
       for (const settled of state.settled) {
@@ -1664,17 +2085,14 @@
   function petApply(p) {
     if (!p || !p.el) return;
     const fieldW = els.field.clientWidth || 360;
-    const minX = p.w / 2 + 4;
-    const maxX = Math.max(minX, fieldW - p.w / 2 - 4);
+    const minX = p.drawW / 2 + 2;
+    const maxX = Math.max(minX, fieldW - p.drawW / 2 - 2);
     p.x = Math.min(maxX, Math.max(minX, p.x));
     const left = Math.round(p.x - p.w / 2);
     const top = Math.round(p.ground - p.h);
     p.el.style.transform = `translate3d(${left}px, ${top}px, 0)`;
     p.el.style.setProperty("--pet-face", p.dir > 0 ? "-1" : "1");
     p.el.style.setProperty("--pet-hop", `${p.hopY.toFixed(1)}px`);
-    p.el.style.setProperty("--pet-bob", `${p.bob.toFixed(1)}px`);
-    const squash = p.landTimer > 0 ? 0.88 + (1 - p.landTimer / 0.16) * 0.12 : 1;
-    p.el.style.setProperty("--pet-squash", squash.toFixed(2));
     const lift = Math.min(1, Math.abs(p.hopY) / Math.max(40, p.def.hop));
     p.el.style.setProperty("--pet-shadow-scale", (1 - lift * 0.42).toFixed(2));
     p.el.style.setProperty("--pet-shadow-alpha", (0.86 - lift * 0.4).toFixed(2));
@@ -1686,38 +2104,418 @@
     state.pet = null;
   }
 
-  function resetPets() {
+  function petContext(p) {
+    const fieldW = els.field.clientWidth || 360;
+    const fieldH = els.field.clientHeight || 480;
+    let pileTop = fieldH;
+    for (const settled of state.settled) pileTop = Math.min(pileTop, settled.y);
+    const danger = state.settled.length ? Math.max(0, Math.min(1, 1 - pileTop / fieldH)) : 0;
+    let nearest = null;
+    let best = Infinity;
+    for (const word of state.words) {
+      const cx = word.x + word.w / 2;
+      const cy = word.y + word.h / 2;
+      const dx = cx - p.x;
+      const dy = cy - (p.ground - p.h / 2);
+      const distance = dx * dx + dy * dy * 0.55;
+      if (distance < best) {
+        best = distance;
+        nearest = word;
+      }
+    }
+    const pointer = state.pointer && performance.now() - state.pointer.at < 3200 ? state.pointer : null;
+    return { fieldW, fieldH, pileTop, danger, nearest, pointer, meteor: state.meteor };
+  }
+
+  function petStartAction(p, action, ctx) {
+    const b = p.brain;
+    b.action = action;
+    b.time = 0;
+    b.duration = 1.4 + Math.random() * 1.4;
+    b.moving = false;
+    b.lookTarget = null;
+    b.recent.unshift(action);
+    if (b.recent.length > 4) b.recent.pop();
+
+    if (action === "wander") {
+      b.targetX = petPickTarget(p, ctx.fieldW);
+      b.duration = 1.8 + Math.random() * 2.2;
+      b.energy = Math.max(0, b.energy - 0.03);
+    } else if (action === "observe") {
+      b.targetX = p.x;
+      b.lookTarget = ctx.pointer
+        ? { x: ctx.pointer.x, y: ctx.pointer.y }
+        : ctx.nearest
+          ? { x: ctx.nearest.x + ctx.nearest.w / 2, y: ctx.nearest.y + ctx.nearest.h / 2 }
+          : { x: p.x + p.dir * 90, y: ctx.fieldH * 0.42 };
+      b.duration = 1.1 + Math.random() * 1.2;
+      b.mood = "curious";
+    } else if (action === "climb") {
+      b.targetX = petPickTarget(p, ctx.fieldW);
+      b.duration = 2.2 + Math.random() * 1.6;
+      b.energy = Math.max(0, b.energy - 0.02);
+    } else if (action === "sit") {
+      b.targetX = p.x;
+      b.duration = 2.2 + Math.random() * 2;
+      b.energy = Math.min(1, b.energy + 0.16);
+      b.mood = "calm";
+    } else if (action === "groom") {
+      b.targetX = p.x;
+      b.duration = 1.6 + Math.random() * 1.2;
+      b.energy = Math.min(1, b.energy + 0.1);
+      b.mood = "calm";
+    } else if (action === "nap") {
+      b.targetX = p.x;
+      b.duration = 4 + Math.random() * 3;
+      b.energy = Math.min(1, b.energy + 0.4);
+      b.mood = "sleepy";
+    } else if (action === "nuzzle") {
+      b.targetX = ctx.pointer ? ctx.pointer.x : p.x;
+      b.duration = 1.1;
+      b.energy = Math.max(0, b.energy - 0.02);
+      b.mood = "happy";
+    } else if (action === "nervous") {
+      b.targetX = p.x;
+      b.duration = 1.5;
+      b.mood = "nervous";
+    } else if (action === "chase") {
+      b.targetX = ctx.meteor ? ctx.meteor.x + ctx.meteor.size / 2 : p.x;
+      b.duration = 0.55;
+      b.energy = Math.max(0, b.energy - 0.03);
+      b.mood = "excited";
+    }
+  }
+
+  function petChooseAction(p, ctx) {
+    const b = p.brain;
+    const candidates = [
+      ["wander", 0.45],
+      ["observe", 0.34 + (ctx.nearest ? 0.18 : 0) + (ctx.pointer ? 0.2 : 0)],
+      ["climb", state.settled.length > 2 && ctx.danger < 0.58 ? 0.55 : 0],
+      ["sit", b.energy < 0.36 ? 0.85 : 0.06],
+      ["groom", b.energy < 0.58 ? 0.26 : 0.04],
+      ["nap", b.energy < 0.18 && b.idle > 6 ? 1.05 : 0],
+      ["nuzzle", ctx.pointer ? 0.45 + b.sociability * 0.35 : 0],
+      ["nervous", ctx.danger > 0.52 ? 0.9 + ctx.danger : 0],
+      ["chase", ctx.meteor ? 1.3 : 0],
+    ];
+    let best = "wander";
+    let bestScore = -Infinity;
+    for (const [action, base] of candidates) {
+      if (!base) continue;
+      const recent = b.recent.indexOf(action);
+      const penalty = recent === 0 ? 0.55 : recent === 1 ? 0.22 : 0;
+      const score = base + Math.random() * 0.2 - penalty;
+      if (score > bestScore) {
+        bestScore = score;
+        best = action;
+      }
+    }
+    petStartAction(p, best, ctx);
+  }
+
+  function petThink(p, dt) {
+    const b = p.brain;
+    b.time += dt;
+    b.idle += dt;
+    b.thinkTimer -= dt;
+    if (b.thinkTimer > 0) return;
+    b.thinkTimer = 0.18 + Math.random() * 0.12;
+
+    const ctx = petContext(p);
+
+    if (b.action === "startle" || b.action === "cheer") {
+      if (b.time < b.duration) return;
+    } else if (ctx.danger > 0.72 && b.action !== "nervous") {
+      petStartAction(p, "nervous", ctx);
+      return;
+    } else if (ctx.meteor && b.action !== "chase") {
+      petStartAction(p, "chase", ctx);
+      return;
+    } else if (b.action === "wander" && Math.abs(b.targetX - p.x) < 4) {
+      b.time = b.duration;
+    } else if (b.time < b.duration) {
+      if (b.action === "observe") {
+        if (ctx.pointer) b.lookTarget = { x: ctx.pointer.x, y: ctx.pointer.y };
+        else if (ctx.nearest) b.lookTarget = { x: ctx.nearest.x + ctx.nearest.w / 2, y: ctx.nearest.y + ctx.nearest.h / 2 };
+      }
+      return;
+    }
+
+    petChooseAction(p, ctx);
+  }
+
+  function petUpdateMotion(p, dt, moving) {
+    const m = p.motion;
+    const b = p.brain;
+    const nap = b.action === "nap";
+    m.action = b.action;
+    m.breathPhase += dt * (nap ? 1.2 : 2.3);
+    m.breath = Math.sin(m.breathPhase) * (nap ? 0.012 : 0.018);
+    m.tailPhase += dt * (nap ? 1.1 : 3.1);
+
+    if (moving) {
+      m.gaitPhase += dt * (7.5 + p.def.speed * 0.055);
+      m.gait = Math.sin(m.gaitPhase);
+    } else {
+      m.gait *= Math.exp(-dt * 9);
+    }
+    const stepSign = Math.sign(m.gait);
+    if (moving && stepSign !== m.lastStepSign && Math.abs(m.gait) > 0.55) {
+      m.lastStepSign = stepSign;
+      if (!REDUCED_MOTION) {
+        if (p.renderer) p.renderer.spawnDust(p.drawW / 2 + stepSign * p.def.w * 0.2, p.h - 5, 1);
+        playPetStep();
+      }
+    }
+
+    let lookX = 0;
+    let lookY = 0;
+    if (b.lookTarget) {
+      lookX = Math.max(-1, Math.min(1, (b.lookTarget.x - p.x) / (p.def.w * 2.2)));
+      lookY = Math.max(-1, Math.min(1, (b.lookTarget.y - (p.ground - p.def.h)) / (p.def.h * 2.4)));
+    } else if (b.action === "nervous") {
+      lookY = -0.4;
+    }
+    if (
+      (b.action === "observe" || b.action === "nuzzle" || b.action === "nervous" || b.action === "chase") &&
+      b.lookTarget &&
+      Math.abs(b.lookTarget.x - p.x) > 8
+    ) {
+      p.dir = b.lookTarget.x > p.x ? 1 : -1;
+    }
+    m.lookX += (lookX - m.lookX) * Math.min(1, dt * 5);
+    m.lookY += (lookY - m.lookY) * Math.min(1, dt * 5);
+
+    let sx = 1 + m.breath;
+    let sy = 1 - m.breath;
+    if (p.landTimer > 0) {
+      const q = p.landTimer / 0.18;
+      sx += 0.12 * q;
+      sy -= 0.14 * q;
+    }
+    if (b.action === "cheer") {
+      const q = Math.sin(Math.min(1, b.time / Math.max(0.01, b.duration)) * Math.PI);
+      sy += q * 0.08;
+      sx -= q * 0.04;
+    }
+    if (nap) sy *= 0.94;
+    if (b.action === "sit") {
+      sy *= 0.97;
+      sx *= 1.01;
+    }
+    if (b.action === "nervous") {
+      sy *= 0.93;
+      sx *= 1.03;
+    }
+    if (b.action === "startle") {
+      sy *= 0.95;
+      sx *= 1.04;
+    }
+    m.squashX = sx;
+    m.squashY = sy;
+    m.tilt = m.lookX * 0.09 + p.dir * 0.014 + (b.action === "nervous" ? 0.04 : 0);
+    m.bob = -Math.abs(m.gait) * 1.9
+      + (nap ? p.def.h * 0.08 : 0)
+      + (b.action === "sit" ? p.def.h * 0.02 : 0)
+      + (b.action === "nervous" ? p.def.h * 0.03 : 0)
+      + Math.sin(m.breathPhase) * 0.35;
+    m.footL = Math.max(0, Math.sin(m.gaitPhase)) * (moving ? 3 : 0);
+    m.footR = Math.max(0, Math.sin(m.gaitPhase + Math.PI)) * (moving ? 3 : 0);
+
+    let pawL = 0;
+    let pawR = 0;
+    if (moving) {
+      pawL = Math.max(0, Math.sin(m.gaitPhase + Math.PI)) * 2.2;
+      pawR = Math.max(0, Math.sin(m.gaitPhase)) * 2.2;
+    }
+    if (b.action === "cheer") {
+      const q = Math.sin(Math.min(1, b.time / Math.max(0.01, b.duration)) * Math.PI);
+      pawL = q * p.def.h * 0.38;
+      pawR = q * p.def.h * 0.38;
+    } else if (b.action === "groom") {
+      pawR = p.def.h * 0.22;
+    } else if (b.action === "nuzzle") {
+      pawL = 2.5;
+      pawR = 2.5;
+    } else if (b.action === "sit") {
+      pawL = 2.2;
+      pawR = 2.2;
+    } else if (b.action === "nervous" || b.action === "startle") {
+      pawL = 1.6;
+      pawR = 1.6;
+    }
+    m.pawL = pawL;
+    m.pawR = pawR;
+
+    if (b.action === "cheer" && !REDUCED_MOTION) {
+      const progress = Math.min(1, b.time / Math.max(0.01, b.duration));
+      m.spin = Math.sin(progress * Math.PI * 2) * 0.32;
+    } else {
+      m.spin *= Math.exp(-dt * 12);
+    }
+  }
+
+  function updatePet(p, dt) {
+    if (!p || !p.el) return;
+    const fieldW = els.field.clientWidth;
+    const fieldH = els.field.clientHeight;
+    if (!fieldW || !fieldH) return;
+
+    if (p.squeakCooldown > 0) p.squeakCooldown = Math.max(0, p.squeakCooldown - dt);
+    if (p.startleCooldown > 0) p.startleCooldown = Math.max(0, p.startleCooldown - dt);
+    if (p.squeakTimer > 0) {
+      p.squeakTimer -= dt;
+      if (p.squeakTimer <= 0) p.el.classList.remove("squeaking");
+    }
+    if (p.landTimer > 0) {
+      p.landTimer = Math.max(0, p.landTimer - dt);
+      if (p.landTimer <= 0) p.el.classList.remove("landed");
+    }
+
+    petThink(p, dt);
+
+    const action = p.brain.action;
+    const movingAction = PET_MOVING.includes(action);
+    let moving = false;
+    if (movingAction) {
+      const dx = p.brain.targetX - p.x;
+      if (Math.abs(dx) > 2.5) {
+        p.dir = dx > 0 ? 1 : -1;
+        const speed = p.def.speed * (PET_SPEED_FACTOR[action] || 1) * (REDUCED_MOTION ? 0.55 : 1);
+        p.x += p.dir * speed * dt;
+        moving = true;
+        p.brain.energy = Math.max(0, p.brain.energy - dt * 0.012);
+        p.brain.idle = Math.max(0, p.brain.idle - dt * 2);
+      } else if (action === "wander" || action === "nuzzle") {
+        p.brain.time = p.brain.duration;
+      }
+    }
+    p.brain.moving = moving;
+
+    const ground = petGroundAt(p.x);
+    if (ground < p.ground - 5 && p.hopY === 0 && p.hopV === 0) {
+      p.hopV = -Math.min(p.def.hop, Math.abs(ground - p.ground) * 3.4 + 70);
+    }
+    const ease = Math.min(1, dt * (ground < p.ground ? 18 : 10));
+    p.ground += (ground - p.ground) * ease;
+
+    const canIdleHop = action === "wander" || action === "climb" || action === "observe";
+    p.nextHop -= dt;
+    if (p.nextHop <= 0) {
+      if (canIdleHop && p.hopY === 0 && !REDUCED_MOTION && Math.random() < 0.55) {
+        p.hopV = -(p.def.hop * 0.55 + Math.random() * 30);
+      }
+      const [hopMin, hopMax] = p.def.hopEvery;
+      p.nextHop = hopMin + Math.random() * (hopMax - hopMin);
+    }
+
+    if (p.hopY < 0 || p.hopV < 0) {
+      p.hopV += PET_GRAVITY * dt;
+      p.hopY += p.hopV * dt;
+      if (p.hopY >= 0) {
+        p.hopY = 0;
+        p.hopV = 0;
+        p.landTimer = 0.18;
+        p.el.classList.remove("landed");
+        p.el.classList.add("landed");
+        if (!REDUCED_MOTION) {
+          if (p.renderer) p.renderer.spawnDust(p.drawW / 2, p.h - 4, 3);
+          playPetLand();
+        }
+      }
+    }
+
+    petUpdateMotion(p, dt, moving);
+    petApply(p);
+    if (p.renderer) p.renderer.draw(dt);
+  }
+
+  function updatePets(dt) {
+    for (const pet of state.pets) updatePet(pet, dt);
+    state.pet = state.pets[0] || null;
+  }
+
+  function resetPets(forcedDef) {
     clearPets();
     if (!els.petLayer) return;
-    const def = randomPetDef();
-    const el = createPetElement(def);
+    state.petPalette = petPalette();
+    const def = forcedDef || randomPetDef();
+    state.lastPetId = def.id;
+    const w = Math.round(def.w * PET_SCALE);
+    const h = Math.round(def.h * PET_SCALE);
+    const drawW = Math.round(w * 1.38);
+    const drawH = h;
+    const { el, canvas } = createPetElement(def, w, h, drawW, drawH);
     els.petLayer.appendChild(el);
     const fieldW = els.field.clientWidth || 360;
     const fieldH = els.field.clientHeight || 480;
-    const minX = def.w / 2 + 10;
-    const maxX = Math.max(minX, fieldW - def.w / 2 - 12);
+    const minX = drawW / 2 + 2;
+    const maxX = Math.max(minX, fieldW - drawW / 2 - 2);
     const x = Math.min(maxX, Math.max(minX, fieldW * (0.26 + Math.random() * 0.48)));
     const pet = {
       id: def.id,
       def,
       el,
-      w: def.w,
-      h: def.h,
+      canvas,
+      renderer: null,
+      w,
+      h,
+      drawW,
+      drawH,
       x,
-      targetX: x,
       dir: Math.random() < 0.5 ? -1 : 1,
       ground: Math.max(64, fieldH - 10),
       hopY: 0,
       hopV: 0,
-      bob: 0,
-      walkPhase: Math.random() * Math.PI * 2,
-      idlePhase: Math.random() * Math.PI * 2,
-      pause: 0.5 + Math.random() * 1.4,
-      nextHop: 2 + Math.random() * 3,
       squeakCooldown: 0,
+      startleCooldown: 0,
       squeakTimer: 0,
       landTimer: 0,
+      nextHop: 2 + Math.random() * 3,
+      brain: {
+        action: "observe",
+        time: 0,
+        duration: 1.2,
+        thinkTimer: 0,
+        targetX: x,
+        lookTarget: { x: fieldW / 2, y: fieldH * 0.4 },
+        recent: [],
+        energy: 0.62 + Math.random() * 0.34,
+        sociability: 0.35 + Math.random() * 0.55,
+        idle: 0,
+        mood: "curious",
+        moving: false,
+      },
+      motion: {
+        action: "observe",
+        breathPhase: Math.random() * Math.PI * 2,
+        breath: 0,
+        gaitPhase: Math.random() * Math.PI * 2,
+        gait: 0,
+        lastStepSign: 0,
+        tailPhase: Math.random() * Math.PI * 2,
+        lookX: 0,
+        lookY: 0,
+        tilt: 0,
+        spin: 0,
+        bob: 0,
+        squashX: 1,
+        squashY: 1,
+        footL: 0,
+        footR: 0,
+        pawL: 0,
+        pawR: 0,
+      },
     };
+    pet.renderer = createPetRenderer(pet, def, PET_DPR);
+    if (!pet.renderer) {
+      const body = document.createElement("span");
+      body.className = "pet-body";
+      body.textContent = def.emoji;
+      el.appendChild(body);
+      canvas.remove();
+    }
     state.pets = [pet];
     state.pet = pet;
     petApply(pet);
@@ -1748,17 +2546,28 @@
     playPetVoice(p.id);
   }
 
+  function petHop(p, power) {
+    if (!p || p.hopY < 0 || REDUCED_MOTION) return;
+    p.hopV = -Math.max(40, power);
+  }
+
   function petStartle(x) {
     if (state.phase !== "playing") return;
     let closest = null;
     let closestDistance = Infinity;
     for (const p of state.pets) {
       const dx = p.x - x;
-      if (Math.abs(dx) > 170) continue;
-      p.dir = dx >= 0 ? 1 : -1;
-      p.pause = 0;
-      p.targetX = petPickTarget(p, els.field.clientWidth || 360, p.dir);
-      if (p.hopY === 0) p.hopV = -(p.def.hop * 0.65);
+      if (Math.abs(dx) > 190) continue;
+      p.brain.action = "startle";
+      p.brain.time = 0;
+      p.brain.duration = 0.9;
+      p.brain.targetX = petPickTarget(p, els.field.clientWidth || 360, dx >= 0 ? 1 : -1);
+      if (p.startleCooldown > 0) continue;
+      p.startleCooldown = 1.3 + Math.random() * 1.2;
+      p.brain.mood = "scared";
+      p.brain.energy = Math.max(0, p.brain.energy - 0.04);
+      p.brain.idle = 0;
+      petHop(p, p.def.hop * 0.68);
       if (Math.abs(dx) < closestDistance) {
         closest = p;
         closestDistance = Math.abs(dx);
@@ -1772,84 +2581,65 @@
     const milestone = state.combo > 0 && state.combo % 5 === 0;
     let cheerPet = null;
     for (const p of state.pets) {
-      if (!milestone && Math.random() > 0.32) continue;
-      if (p.hopY === 0) p.hopV = -(p.def.hop * (milestone ? 0.9 : 0.55));
+      if (!milestone && Math.random() > 0.38) continue;
+      if (p.brain.action === "startle") continue;
+      p.brain.action = "cheer";
+      p.brain.time = 0;
+      p.brain.duration = 0.95;
+      p.brain.lookTarget = null;
+      p.brain.mood = "happy";
+      p.brain.energy = Math.min(1, p.brain.energy + 0.04);
+      p.brain.idle = 0;
+      petHop(p, p.def.hop * (milestone ? 0.95 : 0.62));
       if (milestone && !cheerPet) cheerPet = p;
     }
-    if (cheerPet && cheerPet.squeakCooldown <= 0) petSqueak(cheerPet);
+    if (cheerPet && cheerPet.squeakCooldown <= 0) petSqueak(cheerPet, true);
   }
 
-  function updatePet(p, dt) {
-    if (!p || !p.el) return;
-    const fieldW = els.field.clientWidth;
-    const fieldH = els.field.clientHeight;
-    if (!fieldW || !fieldH) return;
-
-    if (p.squeakCooldown > 0) p.squeakCooldown = Math.max(0, p.squeakCooldown - dt);
-    if (p.squeakTimer > 0) {
-      p.squeakTimer -= dt;
-      if (p.squeakTimer <= 0) p.el.classList.remove("squeaking");
+  function petNuzzle(x) {
+    if (state.phase !== "playing") return;
+    for (const p of state.pets) {
+      if (p.brain.action === "startle" || p.brain.action === "cheer") continue;
+      p.brain.action = "nuzzle";
+      p.brain.time = 0;
+      p.brain.duration = 1.15;
+      p.brain.targetX = Math.min(
+        (els.field.clientWidth || 360) - p.drawW / 2 - 2,
+        Math.max(p.drawW / 2 + 2, x),
+      );
+      p.brain.lookTarget = { x, y: p.ground - p.h * 0.4 };
+      p.brain.mood = "happy";
+      p.brain.idle = 0;
+      petHop(p, p.def.hop * 0.38);
     }
-    if (p.landTimer > 0) {
-      p.landTimer -= dt;
-      if (p.landTimer <= 0) p.el.classList.remove("landed");
-    }
-
-    if (p.pause > 0) {
-      p.pause -= dt;
-      p.idlePhase += dt;
-      p.bob = Math.sin(p.idlePhase * 2.6) * 0.5;
-      if (p.pause <= 0) {
-        p.targetX = petPickTarget(p, fieldW);
-        if (Math.random() < p.def.chatter) petSqueak(p);
-      }
-    } else {
-      const dx = p.targetX - p.x;
-      if (Math.abs(dx) < 3.5) {
-        const [restMin, restMax] = p.def.pause;
-        p.pause = restMin + Math.random() * (restMax - restMin);
-        p.bob = 0;
-      } else {
-        p.dir = dx > 0 ? 1 : -1;
-        p.x += p.dir * (REDUCED_MOTION ? p.def.speed * 0.55 : p.def.speed) * dt;
-        p.walkPhase += dt * 10.5;
-        p.bob = -Math.abs(Math.sin(p.walkPhase)) * (REDUCED_MOTION ? 1 : 2.8);
-      }
-    }
-
-    const ground = petGroundAt(p.x);
-    if (ground < p.ground - 5 && p.hopY === 0 && p.hopV === 0) {
-      p.hopV = -Math.min(p.def.hop, Math.abs(ground - p.ground) * 3.4 + 70);
-    }
-    const ease = Math.min(1, dt * (ground < p.ground ? 18 : 10));
-    p.ground += (ground - p.ground) * ease;
-
-    p.nextHop -= dt;
-    if (p.nextHop <= 0) {
-      if (p.hopY === 0) p.hopV = -(REDUCED_MOTION ? 80 : p.def.hop * 0.72 + Math.random() * 40);
-      const [hopMin, hopMax] = p.def.hopEvery;
-      p.nextHop = hopMin + Math.random() * (hopMax - hopMin);
-    }
-
-    if (p.hopY < 0 || p.hopV < 0) {
-      p.hopV += PET_GRAVITY * dt;
-      p.hopY += p.hopV * dt;
-      if (p.hopY >= 0) {
-        p.hopY = 0;
-        p.hopV = 0;
-        p.bob = 2.4;
-        p.landTimer = 0.16;
-        p.el.classList.remove("landed");
-        p.el.classList.add("landed");
-      }
-    }
-
-    petApply(p);
   }
 
-  function updatePets(dt) {
-    for (const pet of state.pets) updatePet(pet, dt);
-    state.pet = state.pets[0] || null;
+  function petMeteorStart() {
+    if (state.phase !== "playing") return;
+    for (const p of state.pets) {
+      p.brain.action = "chase";
+      p.brain.time = 0;
+      p.brain.duration = 0.6;
+      p.brain.targetX = state.meteor
+        ? Math.max(p.drawW / 2 + 2, Math.min((els.field.clientWidth || 360) - p.drawW / 2 - 2, state.meteor.x + state.meteor.size / 2))
+        : p.x;
+      p.brain.lookTarget = state.meteor
+        ? { x: state.meteor.x + state.meteor.size / 2, y: state.meteor.y + state.meteor.size / 2 }
+        : null;
+      p.brain.mood = "excited";
+    }
+  }
+
+  function petMeteorFinish() {
+    if (state.phase !== "playing") return;
+    for (const p of state.pets) {
+      p.brain.action = "cheer";
+      p.brain.time = 0;
+      p.brain.duration = 0.9;
+      p.brain.lookTarget = null;
+      p.brain.mood = "happy";
+      petHop(p, p.def.hop * 0.8);
+    }
   }
 
   function petInfo(pet) {
@@ -1860,6 +2650,9 @@
       ground: Math.round(pet.ground),
       dir: pet.dir,
       hop: Math.round(pet.hopY),
+      action: pet.brain.action,
+      mood: pet.brain.mood,
+      moving: Boolean(pet.brain.moving),
       squeaking: Boolean(pet.el && pet.el.classList.contains("squeaking")),
     };
   }
@@ -2885,6 +3678,7 @@
     state.meteor = meteor;
     el.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${(angle * 180) / Math.PI + 45}deg)`;
     els.fxLayer.appendChild(el);
+    petMeteorStart();
 
     playMeteorLaunch();
     spawnStars(cx, cy, 42, 14);
@@ -3006,6 +3800,7 @@
     const count = meteor.cleared;
     meteor.el.remove();
     state.meteor = null;
+    petMeteorFinish();
 
     createFlash(cx, cy, 42);
     spawnStars(cx, cy, 42, 30);
@@ -4217,7 +5012,24 @@
       const pet = state.pets.find((item) => item.el === node);
       if (!pet) return;
       petSqueak(pet, true);
-      if (pet.hopY === 0) pet.hopV = -(pet.def.hop * 0.8);
+      petNuzzle(pet.x);
+      playPetPurr();
+      if (pet.hopY === 0) petHop(pet, pet.def.hop * 0.8);
+    });
+  }
+
+  if (els.field) {
+    els.field.addEventListener("pointermove", (event) => {
+      if (state.phase !== "playing") return;
+      const rect = els.field.getBoundingClientRect();
+      state.pointer = {
+        x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+        y: Math.max(0, Math.min(rect.height, event.clientY - rect.top)),
+        at: performance.now(),
+      };
+    });
+    els.field.addEventListener("pointerleave", () => {
+      state.pointer = null;
     });
   }
 
@@ -4232,6 +5044,10 @@
     ) {
       return;
     }
+    const rect = els.field.getBoundingClientRect();
+    const px = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    state.pointer = { x: px, y: Math.max(0, Math.min(rect.height, event.clientY - rect.top)), at: performance.now() };
+    petNuzzle(px);
     triggerHelp();
   });
 
@@ -4388,6 +5204,16 @@
       getPets: () => state.pets.map(petInfo),
       getPetCatalog: () => (Pets ? Pets.PETS.map((pet) => ({ ...pet })) : []),
       randomPet: () => (Pets ? Pets.random(state.lastPetId).id : PET_FALLBACK.id),
+      setPet: (id) => {
+        if (!Pets) return null;
+        const def = Pets.byId(id);
+        if (!def) return null;
+        resetPets(def);
+        return state.pet ? petInfo(state.pet) : null;
+      },
+      petStartle: (x) => { petStartle(x == null ? (state.pet ? state.pet.x : 0) : x); },
+      petCheer: () => petCheer(),
+      petNuzzle: (x) => petNuzzle(x == null ? (state.pet ? state.pet.x : 0) : x),
       petSqueak: () => {
         if (state.pet) petSqueak(state.pet, true);
       },

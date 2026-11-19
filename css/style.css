@@ -647,6 +647,20 @@ body.phase-paused .pet {
   filter: blur(1px);
 }
 
+.pet-canvas {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  display: block;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  transform: translateX(-50%) translateY(var(--pet-hop, 0px)) scaleX(var(--pet-face, 1));
+  transform-origin: 50% 100%;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .pet-body {
   position: absolute;
   inset: 0;

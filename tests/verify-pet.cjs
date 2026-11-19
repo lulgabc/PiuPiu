@@ -21,6 +21,10 @@ for (const pet of pets.PETS) {
   assert.ok(Array.isArray(pet.hopEvery) && pet.hopEvery[0] <= pet.hopEvery[1], `${pet.id} needs hop timing`);
   assert.ok(pet.chatter >= 0 && pet.chatter <= 1, `${pet.id} needs a chatter chance`);
   assert.ok(pet.shape && pet.say, `${pet.id} needs a shape and a saying`);
+  assert.match(pet.accent, /^#[0-9a-f]{6}$/i, `${pet.id} needs a sticker accent colour`);
+  assert.ok(["thin", "fluffy", "round", "tuft", "tiny", "none"].includes(pet.tail), `${pet.id} needs a tail type`);
+  assert.ok(["round", "point", "webbed", "flipper", "wing"].includes(pet.paw), `${pet.id} needs a paw shape`);
+  assert.ok(["round", "long", "webbed", "stub", "small"].includes(pet.foot), `${pet.id} needs a foot shape`);
   for (const key of [`pet.name.${pet.id}`, pet.say]) {
     for (const lang of ["zh", "fr", "en"]) {
       assert.ok(translations[lang][key], `${key} missing from ${lang}`);
@@ -52,24 +56,55 @@ assert.doesNotMatch(html, /id="petGrid"/, "there should be no pet selection grid
 assert.match(html, /js\/pets\.js/, "index.html must load the pet catalog");
 assert.match(sw, /\.\/js\/pets\.js/, "the service worker must precache pets.js");
 
+// ---------- Canvas sticker puppet ----------
 assert.match(css, /\.pet-layer \{/, "pets need a dedicated layer");
-assert.match(css, /\.pet \{[^}]*var\(--pet-w/, "pet badges should use per-pet widths");
-assert.match(css, /\.pet \{[^}]*var\(--pet-h/, "pet badges should use per-pet heights");
-assert.match(css, /\.pet\[data-shape="tall"\] \.pet-body/, "tall pets need a taller silhouette");
-assert.match(css, /\.pet\[data-shape="wide"\] \.pet-body/, "wide pets need a wider silhouette");
-assert.match(css, /\.pet\[data-shape="chunky"\] \.pet-body/, "chunky pets need their own silhouette");
-assert.doesNotMatch(css, /pet-choice/, "the removed warehouse should not leave styling behind");
-assert.doesNotMatch(css, /player-pet/, "the removed pet shortcut should not leave styling behind");
+assert.match(css, /\.pet\[data-shape="tall"\] \.pet-body/, "the emoji fallback keeps tall silhouettes");
+assert.match(css, /\.pet-canvas \{/, "the puppet needs a canvas layer");
+assert.match(css, /translateY\(var\(--pet-hop/, "the canvas should lift with the pet hop");
+assert.match(css, /scaleX\(var\(--pet-face/, "the canvas should face the direction of travel");
 assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.pet,/, "pets should calm down for reduced motion");
+assert.doesNotMatch(css, /pet-choice|player-pet/, "removed warehouse UI must not leave styling behind");
 
 assert.match(game, /const Pets = window\.PiuPets/, "game.js should use the shared pet catalog");
 assert.match(game, /function randomPetDef\(\)/, "each round should draw a random pet");
 assert.match(game, /Pets\.random\(state\.lastPetId\)/, "the draw should avoid an immediate repeat");
 assert.match(game, /state\.lastPetId = def\.id/, "the previous pet should be remembered");
+assert.match(game, /const PET_SCALE = 1\.34;/, "the puppet should have room for limbs and a tail");
+assert.match(game, /const PET_DPR = Math\.min\(2,/, "the puppet canvas must cap device pixel ratio");
+assert.match(game, /function makePetHead\(/, "the emoji head should be pre-rendered as a sticker sprite");
+assert.match(game, /function createPetRenderer\(/, "the game needs a Canvas 2D renderer");
+assert.match(game, /function drawPetTail\(/, "the renderer should draw a species tail");
+assert.match(game, /function drawPetFoot\(/, "the renderer should draw feet");
+assert.match(game, /function drawPetPaw\(/, "the renderer should draw paws");
+assert.match(game, /function petUpdateMotion\(/, "the puppet should have procedural motion");
+assert.match(game, /m\.breathPhase/, "the puppet should breathe");
+assert.match(game, /m\.tailPhase/, "the tail should sway");
+assert.match(game, /m\.lookX/, "the puppet should look toward a target");
+assert.match(game, /m\.squashX/, "the puppet should squash and stretch");
+assert.match(game, /m\.footL/, "the feet should step");
+assert.match(game, /m\.pawL/, "the paws should move");
+assert.match(game, /spawnDust/, "steps and landings should make small dust puffs");
+
+assert.match(game, /function petThink\(/, "the pet needs a behavior brain");
+assert.match(game, /function petChooseAction\(/, "the brain should score actions");
+assert.match(game, /function petStartAction\(/, "the brain should start named actions");
+for (const action of ["wander", "observe", "climb", "sit", "groom", "nap", "nuzzle", "nervous", "chase", "startle", "cheer"]) {
+  assert.ok(game.includes(`"${action}"`), `the behavior brain should include ${action}`);
+}
+assert.match(game, /b\.energy/, "the brain should track energy");
+assert.match(game, /b\.recent/, "the brain should remember recent actions");
+assert.match(game, /ctx\.danger/, "the brain should react to the pile height");
+assert.match(game, /ctx\.pointer/, "the brain should notice the player's pointer");
+assert.match(game, /ctx\.nearest/, "the brain should notice falling words");
+assert.match(game, /state\.pointer = \{/, "pointer movement should feed the brain");
+assert.match(game, /petNuzzle\(px\)/, "tapping the field should call the pet over");
+assert.match(game, /petMeteorStart\(\);/, "the meteor should trigger a pet reaction");
+assert.match(game, /petMeteorFinish\(\);/, "the meteor ending should trigger a pet reaction");
+
 assert.match(game, /function clearPets\(\)/, "leaving a round should clear the pet");
-assert.match(game, /function resetPets\(\)/, "each round should spawn one pet");
+assert.match(game, /function resetPets\(forcedDef\)/, "each round should spawn one pet");
 assert.match(game, /state\.pets = \[pet\]/, "exactly one pet should be active");
-assert.match(game, /const def = randomPetDef\(\);/, "the pet should come from the random draw");
+assert.match(game, /const def = forcedDef \|\| randomPetDef\(\);/, "the pet should come from the random draw unless QA forces one");
 assert.match(game, /function introducePet\(pet\)/, "the new pet should introduce itself");
 assert.match(game, /bubble\.textContent = tr\(`pet\.name\.\$\{pet\.id\}`\)/, "the intro should show the pet name");
 assert.match(game, /resetGame\(\);\s*resetPets\(\);/, "startGame should spawn a fresh random pet");
@@ -78,18 +113,16 @@ assert.match(game, /function updatePets\(dt\)/, "the pet needs a frame update");
 assert.match(game, /for \(const pet of state\.pets\) updatePet\(pet, dt\)/, "the active pet should animate");
 assert.match(game, /petStartle\(word\.x \+ word\.w \/ 2\)/, "a falling word should startle the pet");
 assert.match(game, /petCheer\(\);/, "correct words should make the pet cheer");
-assert.match(game, /p\.def\.speed/, "each pet should use its own speed");
-assert.match(game, /p\.def\.hop/, "each pet should use its own jump");
-assert.match(game, /p\.def\.pause/, "each pet should use its own rest rhythm");
-assert.match(game, /playPetVoice\(p\.id\)/, "each pet should use its own voice");
-assert.match(game, /function playPetVoice\(id\)/, "the game needs a pet voice mixer");
-for (const id of ["cat", "dog", "frog", "penguin", "chick", "turtle", "lion"]) {
-  assert.ok(game.includes(`id === "${id}"`), `playPetVoice should handle ${id}`);
-}
+assert.match(game, /function playPetVoice\(id\)/, "each pet should use its own voice");
+assert.match(game, /function playPetStep\(\)/, "the puppet should have footsteps");
+assert.match(game, /function playPetLand\(\)/, "the puppet should land with a sound");
+assert.match(game, /function playPetPurr\(\)/, "petting the puppet should purr");
 assert.match(game, /getPetCatalog:/, "the catalog should be inspectable in debug mode");
 assert.match(game, /randomPet:/, "the random draw should be inspectable in debug mode");
+assert.match(game, /setPet: \(id\)/, "QA should be able to force a pet for visual checks");
 assert.doesNotMatch(game, /profilePets|renderPetSheet|togglePetChoice|setActivePets/, "player pet selection must be gone");
 assert.doesNotMatch(game, /state\.profiles,[\s\S]{0,40}pets/, "profiles must not store pet teams");
+assert.doesNotMatch(game, /@rive-app|dotlottie|lottie-web|three\.js/, "v1 must not add a heavy animation runtime");
 
 for (const key of ["pet.say.mouse", "pet.name.mouse", "pet.say.frog", "pet.name.unicorn"]) {
   for (const lang of ["zh", "fr", "en"]) {
@@ -98,6 +131,6 @@ for (const key of ["pet.say.mouse", "pet.name.mouse", "pet.say.frog", "pet.name.
 }
 
 console.log("✓ twelve pets keep their own silhouette, pace, jump style and voice");
-console.log("✓ each round draws exactly one random pet and avoids an immediate repeat");
-console.log("✓ players can no longer choose, keep or bring multiple pets");
-console.log("✓ the random pet follows the pile, introduces itself and reacts to the round");
+console.log("✓ the emoji sticker is now a Canvas 2D puppet with breathing, gaze, paws, feet and tail");
+console.log("✓ the utility brain picks wander / observe / climb / sit / groom / nap / nuzzle / nervous / chase");
+console.log("✓ each round draws exactly one random pet; no player selection or pet team");
