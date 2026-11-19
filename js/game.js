@@ -1841,12 +1841,35 @@
         p.el.classList.add("landed");
       }
     }
+  }
 
-    petApply(p);
+  function petSeparate() {
+    const fieldW = els.field.clientWidth || 360;
+    for (let i = 0; i < state.pets.length; i += 1) {
+      const a = state.pets[i];
+      for (let j = i + 1; j < state.pets.length; j += 1) {
+        const b = state.pets[j];
+        if (Math.abs(a.ground - b.ground) > 30) continue;
+        const min = (a.w + b.w) * 0.46;
+        const dx = b.x - a.x;
+        const gap = Math.abs(dx);
+        if (gap >= min) continue;
+        const sign = dx === 0 ? 1 : Math.sign(dx);
+        const push = (min - gap) * 0.38;
+        a.x = Math.max(a.w / 2 + 4, a.x - sign * push);
+        b.x = Math.min(fieldW - b.w / 2 - 4, b.x + sign * push);
+        if (Math.abs(a.targetX - b.targetX) < min) {
+          a.targetX = Math.max(a.w / 2 + 8, a.targetX - sign * push * 2);
+          b.targetX = Math.min(fieldW - b.w / 2 - 8, b.targetX + sign * push * 2);
+        }
+      }
+    }
   }
 
   function updatePets(dt) {
     for (const pet of state.pets) updatePet(pet, dt);
+    petSeparate();
+    for (const pet of state.pets) petApply(pet);
     state.pet = state.pets[0] || null;
   }
 
