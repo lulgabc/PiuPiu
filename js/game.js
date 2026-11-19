@@ -1319,6 +1319,45 @@
     word.el.style.transform = `translate3d(${word.x}px, ${word.y}px, 0)`;
   }
 
+  function pulseJelly(el, className, duration) {
+    if (!el) return;
+    const token = (Number(el.dataset.jellyToken) || 0) + 1;
+    el.dataset.jellyToken = String(token);
+    el.classList.remove("jelly-land", "jelly-nudge", "jelly-drop");
+    void el.offsetWidth;
+    el.classList.add(className);
+    window.setTimeout(() => {
+      if (Number(el.dataset.jellyToken) === token) el.classList.remove(className);
+    }, duration);
+  }
+
+  function relaxSettledPile() {
+    if (!state.settled.length || !els.field) return;
+    const fieldH = els.field.clientHeight || 1;
+    const ordered = state.settled.slice().sort((a, b) => b.y - a.y);
+    let moved = false;
+
+    for (const card of ordered) {
+      let target = fieldH - card.h - 3;
+      for (const other of state.settled) {
+        if (other === card) continue;
+        if (other.y <= card.y + 1) continue;
+        const overlapsX =
+          card.x + card.w - 2 > other.x + 1 && card.x + 2 < other.x + other.w - 1;
+        if (!overlapsX) continue;
+        target = Math.min(target, other.y - card.h + 3);
+      }
+      if (target > card.y + 0.5) {
+        card.y = target;
+        card.el.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
+        pulseJelly(card.el, "jelly-drop", 480);
+        moved = true;
+      }
+    }
+
+    if (moved) updateHUD(true);
+  }
+
   function settleWord(word, y) {
     const index = state.words.indexOf(word);
     if (index === -1) return;
@@ -1337,14 +1376,29 @@
     word.el.style.transform = `translate3d(${word.x}px, ${finalY}px, 0)`;
     window.setTimeout(() => word.el.classList.remove("miss"), 340);
 
-    state.settled.push({
+    const settled = {
       word: word.word,
       el: word.el,
       x: word.x,
       y: finalY,
       w: word.w,
       h: word.h,
-    });
+    };
+    state.settled.push(settled);
+    pulseJelly(word.el, "jelly-land", 580);
+
+    let nudged = 0;
+    for (const below of state.settled) {
+      if (below === settled) continue;
+      if (below.y < finalY - word.h * 0.4) continue;
+      if (below.y > finalY + word.h * 2.2) continue;
+      const overlapsX =
+        word.x + word.w - 2 > below.x + 1 && word.x + 2 < below.x + below.w - 1;
+      if (!overlapsX) continue;
+      pulseJelly(below.el, "jelly-nudge", 460);
+      nudged += 1;
+      if (nudged >= 3) break;
+    }
 
     state.combo = 0;
     state.missed += 1;
@@ -2435,6 +2489,7 @@
     meteor.cleared += 1;
     meteor.hitCooldown = METEOR_HIT_COOLDOWN;
     playMeteorSweep(meteor.cleared);
+    relaxSettledPile();
     return 1;
   }
 
@@ -2486,6 +2541,7 @@
     }
     if (targets.length) {
       state.settled = state.settled.filter((settled) => !targetSet.has(settled));
+      relaxSettledPile();
     }
 
     const beam = document.createElement("div");
@@ -3727,6 +3783,7 @@
       endGame,
       spawnWord,
       settleWord,
+      relaxPile: relaxSettledPile,
       explodeWord,
       findMatch,
       goHome,
