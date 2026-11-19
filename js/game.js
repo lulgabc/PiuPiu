@@ -1617,6 +1617,7 @@
 
   const PET_GRAVITY = 560;
   const PET_SCALE = 1.34;
+  const PET_BODY_VARIANT = new URLSearchParams(location.search).get("petbody") === "cut" ? "cut" : "bean";
   const PET_DPR = Math.min(2, window.devicePixelRatio || 1);
   const PET_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
   const PET_MOVING = ["wander", "climb", "nuzzle", "chase", "startle"];
@@ -1780,10 +1781,39 @@
     ctx.closePath();
   }
 
+  function petCutBodyPath(ctx, def, w, h) {
+    // A softly scalloped, lopsided die-cut. The irregular edge is what makes
+    // it read as a peeled sticker instead of a normal rounded badge.
+    const points = [];
+    const count = 12;
+    for (let i = 0; i < count; i += 1) {
+      const angle = -Math.PI / 2 + (i / count) * Math.PI * 2;
+      const wobble = 1 + (i % 2 === 0 ? 0.085 : -0.065) + Math.sin(i * 1.7) * 0.025;
+      points.push({
+        x: Math.cos(angle) * w * 0.5 * wobble - w * 0.018,
+        y: Math.sin(angle) * h * 0.5 * wobble + h * 0.012,
+      });
+    }
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 0; i < count; i += 1) {
+      const p0 = points[(i - 1 + count) % count];
+      const p1 = points[i];
+      const p2 = points[(i + 1) % count];
+      const p3 = points[(i + 2) % count];
+      const c1x = p1.x + (p2.x - p0.x) / 6;
+      const c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6;
+      const c2y = p2.y - (p3.y - p1.y) / 6;
+      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, p2.x, p2.y);
+    }
+    ctx.closePath();
+  }
+
   function makePetHead(def, palette, dpr) {
     const w = def.w;
     const h = def.h;
-    const pad = 6;
+    const pad = PET_BODY_VARIANT === "cut" ? 16 : 6;
     const head = document.createElement("canvas");
     head.width = Math.max(1, Math.round((w + pad * 2) * dpr));
     head.height = Math.max(1, Math.round((h + pad * 2) * dpr));
@@ -1793,27 +1823,47 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.translate(pad + w / 2, pad + h / 2);
 
-    petBodyPath(ctx, def, w, h);
+    const cut = PET_BODY_VARIANT === "cut";
+    if (cut) ctx.rotate(-0.07);
+    if (cut) {
+      // The white backing is offset from the coloured sticker, so the cut edge
+      // reads as a real die-cut rather than a normal border.
+      ctx.save();
+      ctx.translate(w * 0.035, -h * 0.03);
+      ctx.scale(1.055, 1.055);
+      petCutBodyPath(ctx, def, w, h);
+      ctx.shadowColor = "rgba(64, 34, 72, 0.2)";
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 5;
+      ctx.fillStyle = "#fffdf8";
+      ctx.fill();
+      ctx.restore();
+      petCutBodyPath(ctx, def, w, h);
+    } else {
+      petBodyPath(ctx, def, w, h);
+    }
 
     ctx.save();
-    ctx.shadowColor = "rgba(64, 34, 72, 0.18)";
-    ctx.shadowBlur = 7;
-    ctx.shadowOffsetY = 4;
+    if (!cut) {
+      ctx.shadowColor = "rgba(64, 34, 72, 0.18)";
+      ctx.shadowBlur = 7;
+      ctx.shadowOffsetY = 4;
+    }
     ctx.fillStyle = def.body || palette.card;
     ctx.fill();
     ctx.restore();
 
     ctx.lineJoin = "round";
     if (palette.dark) {
-      ctx.lineWidth = 6;
+      ctx.lineWidth = cut ? 8 : 6;
       ctx.strokeStyle = "#241239";
       ctx.stroke();
     }
-    ctx.lineWidth = palette.dark ? 3 : 3.5;
+    ctx.lineWidth = cut ? 5 : palette.dark ? 3 : 3.5;
     ctx.strokeStyle = palette.border;
     ctx.stroke();
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = withAlpha(def.accent, 0.38);
+    ctx.lineWidth = cut ? 1.6 : 1.2;
+    ctx.strokeStyle = withAlpha(def.accent, cut ? 0.48 : 0.38);
     ctx.stroke();
 
     // Body shading and species markings live inside the sticker silhouette.
@@ -1854,6 +1904,28 @@
     ctx.ellipse(-w * 0.27, h * 0.2, w * 0.09, h * 0.055, -0.2, 0, Math.PI * 2);
     ctx.ellipse(w * 0.27, h * 0.2, w * 0.09, h * 0.055, 0.2, 0, Math.PI * 2);
     ctx.fill();
+
+    if (cut) {
+      ctx.save();
+      ctx.translate(w * 0.42, -h * 0.04);
+      ctx.rotate(-0.42);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(w * 0.24, 0);
+      ctx.lineTo(0, h * 0.24);
+      ctx.closePath();
+      ctx.fillStyle = "#ffe7f2";
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#f2b9d2";
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(w * 0.05, h * 0.05);
+      ctx.lineTo(w * 0.15, h * 0.05);
+      ctx.strokeStyle = "rgba(210,120,160,0.55)";
+      ctx.stroke();
+      ctx.restore();
+    }
 
     return head;
   }

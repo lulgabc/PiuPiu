@@ -87,6 +87,9 @@ assert.match(game, /function makePetHead\(/, "the emoji head should be pre-rende
 assert.match(game, /function drawPetBodyPattern\(/, "each species should draw its own body markings");
 assert.match(game, /ctx\.fillStyle = def\.body \|\| palette\.card/, "the body should use the species colour instead of a white circle");
 assert.match(game, /function petBodyPath\(/, "the body should be a soft bean, not a circle");
+assert.match(game, /PET_BODY_VARIANT = new URLSearchParams/, "the organic die-cut should be available as a preview variant");
+assert.match(game, /function petCutBodyPath\(/, "the preview needs a scalloped die-cut path");
+assert.match(game, /if \(cut\) \{/, "the preview should branch on the cut style");
 assert.match(game, /function drawPetAccessoryBack\(/, "backpacks should draw behind the body");
 assert.match(game, /function drawPetAccessoryFront\(/, "scarves, bows and pins should draw in front");
 assert.match(game, /function drawPetStar\(/, "the star pin needs a star shape");
