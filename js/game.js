@@ -603,12 +603,24 @@
     els.speedBtn.setAttribute("title", label);
   }
 
+  function applyFallingSpeed(previous, next) {
+    const oldMultiplier = SPEED_LEVELS[previous] || 1;
+    const newMultiplier = SPEED_LEVELS[next] || 1;
+    if (oldMultiplier === newMultiplier) return;
+    for (const word of state.words) {
+      const base = word.baseSpeed || word.speed / oldMultiplier;
+      word.speed = base * newMultiplier;
+    }
+  }
+
   function cycleSpeed() {
+    const previous = state.speed;
     const index = SPEED_ORDER.indexOf(state.speed);
     state.speed = SPEED_ORDER[(index + 1) % SPEED_ORDER.length] || "normal";
     try {
       localStorage.setItem(SPEED_KEY, state.speed);
     } catch {}
+    applyFallingSpeed(previous, state.speed);
     updateSpeedUI();
     toast(tr("speed.set", { speed: tr(`speed.${state.speed}`) }));
   }
@@ -1308,7 +1320,8 @@
     const x = PAD + Math.random() * Math.max(1, maxX - PAD);
 
     const fallSeconds = Math.max(3.3, 8.6 - (state.level - 1) * 0.5);
-    const speed = (fieldH / fallSeconds) * (SPEED_LEVELS[state.speed] || 1);
+    const baseSpeed = fieldH / fallSeconds;
+    const speed = baseSpeed * (SPEED_LEVELS[state.speed] || 1);
     const obj = {
       word,
       el,
@@ -1316,6 +1329,7 @@
       y: -height - 8,
       w: width,
       h: height,
+      baseSpeed,
       speed,
       emoji,
       golden,
@@ -3956,8 +3970,10 @@
       getSpeed: () => state.speed,
       setSpeed: (key) => {
         if (!(key in SPEED_LEVELS)) return state.speed;
+        const previous = state.speed;
         state.speed = key;
         try { localStorage.setItem(SPEED_KEY, key); } catch {}
+        applyFallingSpeed(previous, key);
         updateSpeedUI();
         return state.speed;
       },

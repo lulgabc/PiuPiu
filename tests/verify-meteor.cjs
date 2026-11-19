@@ -36,9 +36,12 @@ assert.match(css, /@keyframes meteorGlow/, "the meteor needs a glow animation");
 // ---------- falling speed ----------
 assert.match(game, /const SPEED_KEY = "piupiu\.speed"/, "the speed choice should persist");
 assert.match(game, /const SPEED_LEVELS = \{ normal: 1, fast: 1\.6, turbo: 2\.3 \}/, "the three speeds should be clearly different");
-assert.match(game, /\(fieldH \/ fallSeconds\) \* \(SPEED_LEVELS\[state\.speed\] \|\| 1\)/, "new words should use the chosen speed");
+assert.match(game, /const baseSpeed = fieldH \/ fallSeconds;/, "each word should remember its base falling speed");
+assert.match(game, /const speed = baseSpeed \* \(SPEED_LEVELS\[state\.speed\] \|\| 1\)/, "new words should use the chosen speed");
 assert.match(game, /localStorage\.setItem\(SPEED_KEY, key\)/, "the speed should be remembered");
-assert.match(game, /function cycleSpeed\(\)/, "the start-screen speed pill should cycle through the three speeds");
+assert.match(game, /function cycleSpeed\(\)/, "the gameplay speed control should cycle through the three speeds");
+assert.match(game, /baseSpeed/, "falling words should remember their base speed");
+assert.match(game, /function applyFallingSpeed\(previous, next\)/, "changing speed should rescale words already in flight");
 assert.match(html, /id="speedBtn"/, "the game HUD needs a speed control");
 assert.ok(
   html.indexOf('id="speedBtn"') < html.indexOf('id="startPanel"'),
