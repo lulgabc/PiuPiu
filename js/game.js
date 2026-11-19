@@ -86,6 +86,8 @@
     chatter: 0.2,
     trait: "fast",
     shape: "round",
+    body: "#ded3f0",
+    pattern: "plain",
     say: "pet.say.mouse",
   };
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1688,6 +1690,84 @@
     ctx.quadraticCurveTo(x, y, x + r, y);
   }
 
+  function drawPetBodyPattern(ctx, def, w, h) {
+    const accent = withAlpha(def.accent, 0.4);
+    ctx.strokeStyle = accent;
+    ctx.fillStyle = accent;
+    ctx.lineCap = "round";
+    ctx.lineWidth = 2;
+
+    if (def.pattern === "stripes") {
+      for (let i = 0; i < 3; i += 1) {
+        const y = -h * 0.24 + i * h * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.48, y);
+        ctx.quadraticCurveTo(-w * 0.38, y - h * 0.05, -w * 0.27, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(w * 0.48, y);
+        ctx.quadraticCurveTo(w * 0.38, y - h * 0.05, w * 0.27, y);
+        ctx.stroke();
+      }
+    } else if (def.pattern === "spots") {
+      const spots = [
+        [-0.38, 0.18], [0.37, -0.2], [0.4, 0.24], [-0.34, -0.28], [0.28, 0.36],
+      ];
+      for (const [x, y] of spots) {
+        ctx.beginPath();
+        ctx.arc(x * w, y * h, w * 0.045, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (def.pattern === "belly") {
+      ctx.beginPath();
+      ctx.ellipse(0, h * 0.37, w * 0.24, h * 0.17, 0, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.52)";
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(def.accent, 0.22);
+      ctx.stroke();
+    } else if (def.pattern === "tuxedo") {
+      ctx.fillStyle = "rgba(44,55,78,0.16)";
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.48, h * 0.08);
+      ctx.quadraticCurveTo(-w * 0.3, h * 0.28, -w * 0.35, h * 0.5);
+      ctx.lineTo(-w * 0.5, h * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(w * 0.48, h * 0.08);
+      ctx.quadraticCurveTo(w * 0.3, h * 0.28, w * 0.35, h * 0.5);
+      ctx.lineTo(w * 0.5, h * 0.5);
+      ctx.closePath();
+      ctx.fill();
+    } else if (def.pattern === "shell") {
+      ctx.strokeStyle = withAlpha(def.accent, 0.34);
+      for (let i = 0; i < 3; i += 1) {
+        ctx.beginPath();
+        ctx.arc(0, h * 0.2, w * (0.18 + i * 0.11), Math.PI * 0.2, Math.PI * 0.8);
+        ctx.stroke();
+      }
+    } else if (def.pattern === "sparkle") {
+      const stars = [[-0.34, -0.28, 0.055], [0.35, 0.18, 0.04], [0.26, -0.34, 0.032]];
+      ctx.fillStyle = withAlpha(def.accent, 0.55);
+      for (const [x, y, r] of stars) {
+        const cx = x * w;
+        const cy = y * h;
+        const radius = r * w;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - radius);
+        ctx.lineTo(cx + radius * 0.36, cy - radius * 0.36);
+        ctx.lineTo(cx + radius, cy);
+        ctx.lineTo(cx + radius * 0.36, cy + radius * 0.36);
+        ctx.lineTo(cx, cy + radius);
+        ctx.lineTo(cx - radius * 0.36, cy + radius * 0.36);
+        ctx.lineTo(cx - radius, cy);
+        ctx.lineTo(cx - radius * 0.36, cy - radius * 0.36);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
   function makePetHead(def, palette, dpr) {
     const w = def.w;
     const h = def.h;
@@ -1713,7 +1793,7 @@
     ctx.shadowColor = "rgba(64, 34, 72, 0.18)";
     ctx.shadowBlur = 7;
     ctx.shadowOffsetY = 4;
-    ctx.fillStyle = palette.card;
+    ctx.fillStyle = def.body || palette.card;
     ctx.fill();
     ctx.restore();
 
@@ -1729,6 +1809,16 @@
     ctx.lineWidth = 1.2;
     ctx.strokeStyle = withAlpha(def.accent, 0.38);
     ctx.stroke();
+
+    // Body shading and species markings live inside the sticker silhouette.
+    ctx.save();
+    ctx.clip();
+    ctx.beginPath();
+    ctx.ellipse(0, h * 0.4, w * 0.42, h * 0.16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.04)";
+    ctx.fill();
+    drawPetBodyPattern(ctx, def, w, h);
+    ctx.restore();
 
     // A small sticker gloss keeps the badge from looking like a flat circle.
     ctx.beginPath();

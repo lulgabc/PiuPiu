@@ -25,6 +25,8 @@ for (const pet of pets.PETS) {
   assert.ok(["thin", "fluffy", "round", "tuft", "tiny", "none"].includes(pet.tail), `${pet.id} needs a tail type`);
   assert.ok(["round", "point", "webbed", "flipper", "wing"].includes(pet.paw), `${pet.id} needs a paw shape`);
   assert.ok(["round", "long", "webbed", "stub", "small"].includes(pet.foot), `${pet.id} needs a foot shape`);
+  assert.match(pet.body, /^#[0-9a-f]{6}$/i, `${pet.id} needs its own body colour`);
+  assert.ok(["plain", "stripes", "spots", "belly", "tuxedo", "shell", "sparkle"].includes(pet.pattern), `${pet.id} needs a body pattern`);
   for (const key of [`pet.name.${pet.id}`, pet.say]) {
     for (const lang of ["zh", "fr", "en"]) {
       assert.ok(translations[lang][key], `${key} missing from ${lang}`);
@@ -72,6 +74,8 @@ assert.match(game, /state\.lastPetId = def\.id/, "the previous pet should be rem
 assert.match(game, /const PET_SCALE = 1\.34;/, "the puppet should have room for limbs and a tail");
 assert.match(game, /const PET_DPR = Math\.min\(2,/, "the puppet canvas must cap device pixel ratio");
 assert.match(game, /function makePetHead\(/, "the emoji head should be pre-rendered as a sticker sprite");
+assert.match(game, /function drawPetBodyPattern\(/, "each species should draw its own body markings");
+assert.match(game, /ctx\.fillStyle = def\.body \|\| palette\.card/, "the body should use the species colour instead of a white circle");
 assert.match(game, /function createPetRenderer\(/, "the game needs a Canvas 2D renderer");
 assert.match(game, /function drawPetTail\(/, "the renderer should draw a species tail");
 assert.match(game, /function drawPetFoot\(/, "the renderer should draw feet");
@@ -131,6 +135,7 @@ for (const key of ["pet.say.mouse", "pet.name.mouse", "pet.say.frog", "pet.name.
 }
 
 console.log("✓ twelve pets keep their own silhouette, pace, jump style and voice");
+console.log("✓ each species has its own body tint, markings and silhouette, not one white circle");
 console.log("✓ the emoji sticker is now a Canvas 2D puppet with breathing, gaze, paws, feet and tail");
 console.log("✓ the utility brain picks wander / observe / climb / sit / groom / nap / nuzzle / nervous / chase");
 console.log("✓ each round draws exactly one random pet; no player selection or pet team");

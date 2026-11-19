@@ -26,6 +26,8 @@
       tail: "thin",
       paw: "round",
       foot: "small",
+      body: "#ded3f0",
+      pattern: "plain",
       say: "pet.say.mouse",
     },
     {
@@ -43,6 +45,8 @@
       tail: "fluffy",
       paw: "round",
       foot: "round",
+      body: "#ffd9a0",
+      pattern: "stripes",
       say: "pet.say.cat",
     },
     {
@@ -60,6 +64,8 @@
       tail: "fluffy",
       paw: "round",
       foot: "round",
+      body: "#f4d2ae",
+      pattern: "spots",
       say: "pet.say.dog",
     },
     {
@@ -77,6 +83,8 @@
       tail: "round",
       paw: "round",
       foot: "long",
+      body: "#ffe5ea",
+      pattern: "plain",
       say: "pet.say.rabbit",
     },
     {
@@ -94,6 +102,8 @@
       tail: "none",
       paw: "webbed",
       foot: "webbed",
+      body: "#c9edb4",
+      pattern: "belly",
       say: "pet.say.frog",
     },
     {
@@ -111,6 +121,8 @@
       tail: "tiny",
       paw: "round",
       foot: "round",
+      body: "#f4efe6",
+      pattern: "plain",
       say: "pet.say.panda",
     },
     {
@@ -128,6 +140,8 @@
       tail: "fluffy",
       paw: "point",
       foot: "round",
+      body: "#ffc392",
+      pattern: "plain",
       say: "pet.say.fox",
     },
     {
@@ -145,6 +159,8 @@
       tail: "tiny",
       paw: "flipper",
       foot: "webbed",
+      body: "#dce8f6",
+      pattern: "tuxedo",
       say: "pet.say.penguin",
     },
     {
@@ -162,6 +178,8 @@
       tail: "tiny",
       paw: "wing",
       foot: "small",
+      body: "#ffe780",
+      pattern: "plain",
       say: "pet.say.chick",
     },
     {
@@ -179,6 +197,8 @@
       tail: "tuft",
       paw: "round",
       foot: "round",
+      body: "#e6d4ff",
+      pattern: "sparkle",
       say: "pet.say.unicorn",
     },
     {
@@ -196,6 +216,8 @@
       tail: "tiny",
       paw: "round",
       foot: "stub",
+      body: "#c6e6b3",
+      pattern: "shell",
       say: "pet.say.turtle",
     },
     {
@@ -213,6 +235,8 @@
       tail: "tuft",
       paw: "round",
       foot: "round",
+      body: "#ffd787",
+      pattern: "plain",
       say: "pet.say.lion",
     },
   ];
