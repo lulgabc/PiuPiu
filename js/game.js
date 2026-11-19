@@ -73,6 +73,12 @@
   const DANGER_Y = 10;
   const GAME_FPS = 60;
   const ACCENT_HUES = [265, 190, 318, 42, 158, 225, 288, 12];
+  const PET_W = 46;
+  const PET_H = 48;
+  const PET_SPEED = 58;
+  const PET_GRAVITY = 560;
+  const PET_HOP = 170;
+  const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Pronunciation-spelling pairs the recognizer can confuse. They sound the
   // same, so accepting either spelling keeps the game fair.
@@ -163,6 +169,8 @@
     field: $("field"),
     wordLayer: $("wordLayer"),
     fxLayer: $("fxLayer"),
+    pet: $("pet"),
+    petSqueak: $("petSqueak"),
     overlay: $("overlay"),
     startPanel: $("startPanel"),
     pausePanel: $("pausePanel"),
@@ -339,6 +347,7 @@
     rewardTickTimer: 0,
     lastFieldH: 0,
     lastFieldW: 0,
+    pet: null,
   };
 
   let effectBag = [];
@@ -1149,6 +1158,7 @@
     els.typeInput.classList.remove("wrong");
     els.correctStat.classList.remove("reward");
     resetRewardProgress();
+    petReset();
     updateHUD(true);
   }
 
@@ -1298,6 +1308,7 @@
     if (state.phase !== "playing") return;
     updateMeteor(dt);
     if (state.phase !== "playing") return;
+    updatePet(dt);
     updateHUD();
     state.raf = requestAnimationFrame(frame);
   }
@@ -1517,6 +1528,206 @@
     settled.body = null;
   }
 
+  /* ------------------------------------------------------------------ */
+  /* pet mouse                                                           */
+  /* ------------------------------------------------------------------ */
+
+  function petPickTarget(p, fieldW, bias = 0) {
+    const min = PET_W / 2 + 8;
+    const max = Math.max(min + 24, fieldW - PET_W / 2 - 10);
+    let lo = min;
+    let hi = max;
+    if (!bias && state.settled.length > 1 && Math.random() < 0.68) {
+      let pileLeft = Infinity;
+      let pileRight = -Infinity;
+      for (const settled of state.settled) {
+        pileLeft = Math.min(pileLeft, settled.x);
+        pileRight = Math.max(pileRight, settled.x + settled.w);
+      }
+      if (pileRight - pileLeft > 40) {
+        lo = Math.max(min, pileLeft + 8);
+        hi = Math.min(max, pileRight - 8);
+        if (hi - lo < 36) {
+          lo = min;
+          hi = max;
+        }
+      }
+    }
+    let next = lo + Math.random() * (hi - lo);
+    if (!bias && Math.abs(next - p.x) < 46) {
+      const away = p.x < fieldW / 2 ? 1 : -1;
+      next = p.x + away * (64 + Math.random() * 86);
+    } else if (bias) {
+      next = p.x + bias * (58 + Math.random() * 76);
+    }
+    return Math.min(max, Math.max(min, next));
+  }
+
+  function petGroundAt(x) {
+    const fieldH = els.field.clientHeight || 480;
+    let ground = fieldH - Math.max(10, Math.round(fieldH * 0.02));
+    for (const settled of state.settled) {
+      if (x >= settled.x - 4 && x <= settled.x + settled.w + 4 && settled.y < ground) {
+        ground = settled.y;
+      }
+    }
+    return Math.max(PET_H + 4, ground);
+  }
+
+  function petApply() {
+    const p = state.pet;
+    if (!p || !els.pet) return;
+    const fieldW = els.field.clientWidth || 360;
+    const minX = PET_W / 2 + 4;
+    const maxX = Math.max(minX, fieldW - PET_W / 2 - 4);
+    p.x = Math.min(maxX, Math.max(minX, p.x));
+    const left = Math.round(p.x - PET_W / 2);
+    const top = Math.round(p.ground - PET_H);
+    els.pet.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    els.pet.style.setProperty("--pet-face", p.dir > 0 ? "-1" : "1");
+    els.pet.style.setProperty("--pet-hop", `${p.hopY.toFixed(1)}px`);
+    els.pet.style.setProperty("--pet-bob", `${p.bob.toFixed(1)}px`);
+    const squash = p.landTimer > 0 ? 0.88 + (1 - p.landTimer / 0.16) * 0.12 : 1;
+    els.pet.style.setProperty("--pet-squash", squash.toFixed(2));
+    const lift = Math.min(1, Math.abs(p.hopY) / Math.max(40, PET_HOP));
+    els.pet.style.setProperty("--pet-shadow-scale", (1 - lift * 0.42).toFixed(2));
+    els.pet.style.setProperty("--pet-shadow-alpha", (0.86 - lift * 0.4).toFixed(2));
+  }
+
+  function petReset() {
+    const fieldW = els.field.clientWidth || 360;
+    const fieldH = els.field.clientHeight || 480;
+    const x = Math.min(
+      fieldW - PET_W / 2 - 10,
+      Math.max(PET_W / 2 + 8, fieldW * (0.26 + Math.random() * 0.48)),
+    );
+    state.pet = {
+      x,
+      targetX: x,
+      dir: Math.random() < 0.5 ? -1 : 1,
+      ground: Math.max(PET_H + 4, fieldH - 10),
+      hopY: 0,
+      hopV: 0,
+      bob: 0,
+      walkPhase: 0,
+      idlePhase: 0,
+      pause: 0.7 + Math.random() * 0.9,
+      nextHop: 2.4 + Math.random() * 3.5,
+      squeakCooldown: 0,
+      squeakTimer: 0,
+      landTimer: 0,
+    };
+    if (els.pet) {
+      els.pet.classList.remove("squeaking", "landed");
+      els.pet.style.setProperty("--pet-hop", "0px");
+      els.pet.style.setProperty("--pet-bob", "0px");
+      els.pet.style.setProperty("--pet-squash", "1");
+    }
+    petApply();
+  }
+
+  function petSqueak(force = false) {
+    const p = state.pet;
+    if (!p || !els.pet || state.phase !== "playing") return;
+    if (!force && p.squeakCooldown > 0) return;
+    p.squeakCooldown = 1.8 + Math.random() * 2.2;
+    p.squeakTimer = 1.15;
+    els.pet.classList.remove("squeaking");
+    void els.pet.offsetWidth;
+    els.pet.classList.add("squeaking");
+    playNamedSound("squeak");
+  }
+
+  function petStartle(x) {
+    const p = state.pet;
+    if (!p || state.phase !== "playing" || !els.pet) return;
+    const dx = p.x - x;
+    if (Math.abs(dx) > 170) return;
+    p.dir = dx >= 0 ? 1 : -1;
+    p.pause = 0;
+    p.targetX = petPickTarget(p, els.field.clientWidth || 360, p.dir);
+    if (p.hopY === 0) {
+      p.hopV = -(PET_HOP * 0.65);
+    }
+    if (p.squeakCooldown <= 0) petSqueak();
+  }
+
+  function petCheer() {
+    const p = state.pet;
+    if (!p || state.phase !== "playing" || !els.pet) return;
+    const milestone = state.combo > 0 && state.combo % 5 === 0;
+    if (!milestone && Math.random() > 0.32) return;
+    if (p.hopY === 0) p.hopV = -(PET_HOP * (milestone ? 0.9 : 0.55));
+    if (milestone && p.squeakCooldown <= 0) petSqueak();
+  }
+
+  function updatePet(dt) {
+    const p = state.pet;
+    if (!p || !els.pet) return;
+    const fieldW = els.field.clientWidth;
+    const fieldH = els.field.clientHeight;
+    if (!fieldW || !fieldH) return;
+
+    if (p.squeakCooldown > 0) p.squeakCooldown = Math.max(0, p.squeakCooldown - dt);
+    if (p.squeakTimer > 0) {
+      p.squeakTimer -= dt;
+      if (p.squeakTimer <= 0) els.pet.classList.remove("squeaking");
+    }
+    if (p.landTimer > 0) {
+      p.landTimer -= dt;
+      if (p.landTimer <= 0) els.pet.classList.remove("landed");
+    }
+
+    if (p.pause > 0) {
+      p.pause -= dt;
+      p.idlePhase += dt;
+      p.bob = Math.sin(p.idlePhase * 2.6) * 0.5;
+      if (p.pause <= 0) {
+        p.targetX = petPickTarget(p, fieldW);
+        if (Math.random() < 0.2) petSqueak();
+      }
+    } else {
+      const dx = p.targetX - p.x;
+      if (Math.abs(dx) < 3.5) {
+        p.pause = 0.65 + Math.random() * 2.1;
+        p.bob = 0;
+      } else {
+        p.dir = dx > 0 ? 1 : -1;
+        p.x += p.dir * (REDUCED_MOTION ? PET_SPEED * 0.55 : PET_SPEED) * dt;
+        p.walkPhase += dt * 10.5;
+        p.bob = -Math.abs(Math.sin(p.walkPhase)) * (REDUCED_MOTION ? 1 : 2.8);
+      }
+    }
+
+    const ground = petGroundAt(p.x);
+    if (ground < p.ground - 5 && p.hopY === 0 && p.hopV === 0) {
+      p.hopV = -Math.min(PET_HOP, Math.abs(ground - p.ground) * 3.4 + 70);
+    }
+    const ease = Math.min(1, dt * (ground < p.ground ? 18 : 10));
+    p.ground += (ground - p.ground) * ease;
+
+    p.nextHop -= dt;
+    if (p.nextHop <= 0) {
+      if (p.hopY === 0) p.hopV = -(REDUCED_MOTION ? 80 : 120 + Math.random() * 55);
+      p.nextHop = 3.2 + Math.random() * 5;
+    }
+
+    if (p.hopY < 0 || p.hopV < 0) {
+      p.hopV += PET_GRAVITY * dt;
+      p.hopY += p.hopV * dt;
+      if (p.hopY >= 0) {
+        p.hopY = 0;
+        p.hopV = 0;
+        p.bob = 2.4;
+        p.landTimer = 0.16;
+        els.pet.classList.remove("landed");
+        els.pet.classList.add("landed");
+      }
+    }
+
+    petApply();
+  }
+
   function checkPileDanger() {
     if (state.phase !== "playing" || state.meteor) return false;
     if (state.settled.some((settled) => settled.y <= DANGER_Y)) {
@@ -1563,6 +1774,7 @@
     playMiss();
     shakeField();
     updateHUD(true);
+    petStartle(word.x + word.w / 2);
 
     if (y <= DANGER_Y && !state.meteor) endGame();
   }
@@ -2788,6 +3000,7 @@
     }
     pulseCombo();
     updateHUD(true);
+    petCheer();
     showHeard(tr("heard.correct", { word: word.word }));
     if (!golden) showPraise();
     if (state.cleared % 5 === 0) triggerRewardClear(rel);
@@ -3858,6 +4071,16 @@
     }
   });
 
+  if (els.pet) {
+    els.pet.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      if (state.phase !== "playing") return;
+      petSqueak(true);
+      if (state.pet && state.pet.hopY === 0) state.pet.hopV = -(PET_HOP * 0.8);
+    });
+  }
+
   els.field.addEventListener("pointerdown", (event) => {
     if (state.phase !== "playing") return;
     if (event.button !== undefined && event.button !== 0) return;
@@ -4020,6 +4243,18 @@
           : null,
       getTheme: () => state.theme,
       setTheme,
+      getPet: () =>
+        state.pet
+          ? {
+              x: Math.round(state.pet.x),
+              y: Math.round(state.pet.ground + state.pet.hopY - PET_H),
+              ground: Math.round(state.pet.ground),
+              dir: state.pet.dir,
+              hop: Math.round(state.pet.hopY),
+              squeaking: els.pet ? els.pet.classList.contains("squeaking") : false,
+            }
+          : null,
+      petSqueak: () => petSqueak(true),
       getSpeed: () => state.speed,
       setSpeed: (key) => {
         if (!(key in SPEED_LEVELS)) return state.speed;
