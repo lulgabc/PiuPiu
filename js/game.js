@@ -75,20 +75,19 @@
   const GAME_FPS = 60;
   const ACCENT_HUES = [265, 190, 318, 42, 158, 225, 288, 12];
   const PET_FALLBACK = {
-    id: "mouse",
-    emoji: "🐭",
-    w: 46,
-    h: 46,
-    speed: 58,
-    hop: 170,
-    pause: [0.65, 2.1],
-    hopEvery: [2.4, 5.2],
-    chatter: 0.2,
-    trait: "fast",
+    id: "cat",
+    emoji: "🐱",
+    w: 48,
+    h: 48,
+    speed: 60,
+    hop: 155,
+    pause: [1.2, 3.2],
+    hopEvery: [3.0, 6.0],
+    chatter: 0.12,
     shape: "round",
-    body: "#ded3f0",
-    pattern: "plain",
-    say: "pet.say.mouse",
+    body: "#ffd9a0",
+    pattern: "stripes",
+    say: "pet.say.cat",
   };
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -1617,20 +1616,20 @@
 
   const PET_GRAVITY = 560;
   const PET_SCALE = 1.34;
-  const PET_BODY_VARIANT = new URLSearchParams(location.search).get("petbody") === "cut" ? "cut" : "bean";
-  const PET_SPRITE_PILOT = new URLSearchParams(location.search).get("petdemo") === "sprite";
-  const PET_SPRITE_CAT = {
-    image: "assets/pets/cat-sprite.webp",
-    cell: 160,
-    rows: {
-      Idle: { row: 0, count: 10, fps: 8, loop: true },
-      Walk: { row: 1, count: 10, fps: 10, loop: true },
-      Run: { row: 2, count: 8, fps: 12, loop: true },
-      Jump: { row: 3, count: 8, fps: 12, loop: false },
-      Fall: { row: 4, count: 8, fps: 12, loop: true },
-      Hurt: { row: 5, count: 10, fps: 8, loop: false },
-    },
+  const PET_PARAMS = new URLSearchParams(location.search);
+  const PET_BODY_VARIANT = PET_PARAMS.get("petbody") === "cut" ? "cut" : "bean";
+  const PET_VECTOR_PREVIEW = ["vector", "bean", "cut"].includes(PET_PARAMS.get("petbody"));
+  const PET_SPRITE_MODE = !PET_VECTOR_PREVIEW;
+  const PET_SPRITE_IDS = ["cat", "dog", "bunny", "chick", "bear", "fox", "panda", "penguin", "frog", "dragon", "slime", "ghost"];
+  const PET_SPRITE_ACTIONS = {
+    Idle: { row: 0, count: 8, fps: 8, loop: true },
+    Jump: { row: 1, count: 8, fps: 12, loop: true },
+    Sleep: { row: 2, count: 8, fps: 6, loop: true },
+    Happy: { row: 3, count: 8, fps: 10, loop: true },
   };
+  const PET_SPRITE_DEFS = Object.fromEntries(
+    PET_SPRITE_IDS.map((id) => [id, { image: `assets/pets/${id}.webp` }]),
+  );
   const PET_DPR = Math.min(2, window.devicePixelRatio || 1);
   const PET_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
   const PET_MOVING = ["wander", "climb", "nuzzle", "chase", "startle"];
@@ -1644,11 +1643,6 @@
   };
 
   function randomPetDef() {
-    if (PET_SPRITE_PILOT && Pets && typeof Pets.byId === "function") {
-      const pilot = Pets.byId("cat") || PET_FALLBACK;
-      state.lastPetId = pilot.id;
-      return pilot;
-    }
     const def = Pets && typeof Pets.random === "function" ? Pets.random(state.lastPetId) : PET_FALLBACK;
     state.lastPetId = def.id;
     return def;
@@ -2191,12 +2185,14 @@
     const canvas = pet.canvas;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    const cfg = PET_SPRITE_CAT;
+    const sprite = PET_SPRITE_DEFS[def.id];
+    if (!sprite) return null;
     const image = new Image();
     let ready = false;
     let current = "Idle";
     let frameTime = 0;
     let dust = [];
+    ctx.imageSmoothingEnabled = false;
 
     function spawnDust(x, y, count = 2) {
       for (let i = 0; i < count; i += 1) {
@@ -2214,13 +2210,13 @@
 
     function chooseSpriteAction() {
       const b = pet.brain;
-      if (b.action === "startle") return "Hurt";
-      if (pet.hopY < -2) return pet.hopV < 0 ? "Jump" : "Fall";
-      if (b.action === "cheer") return "Jump";
-      if (b.action === "chase") return "Run";
-      if (b.action === "wander" || b.action === "climb" || b.action === "nuzzle") {
-        return b.moving ? "Walk" : "Idle";
+      if (b.action === "nap") return "Sleep";
+      if (b.action === "cheer" || b.action === "nuzzle") return "Happy";
+      if (pet.hopY < -2) return "Jump";
+      if (b.action === "wander" || b.action === "climb") {
+        return b.moving ? "Jump" : "Idle";
       }
+      if (b.action === "chase" || b.action === "startle") return "Jump";
       return "Idle";
     }
 
@@ -2247,16 +2243,16 @@
         current = next;
         frameTime = 0;
       }
-      frameTime += dt;
-      const meta = cfg.rows[current];
+      if (!REDUCED_MOTION) frameTime += dt;
+      const meta = PET_SPRITE_ACTIONS[current];
       let frame = Math.floor(frameTime * meta.fps);
       frame = meta.loop ? frame % meta.count : Math.min(meta.count - 1, frame);
-      const size = h;
+      const size = Math.min(64, h);
       const dx = (w - size) / 2;
       const dy = h - size;
-      const sx = frame * cfg.cell;
-      const sy = meta.row * cfg.cell;
-      ctx.drawImage(image, sx, sy, cfg.cell, cfg.cell, dx, dy, size, size);
+      const sx = frame * 64;
+      const sy = meta.row * 64;
+      ctx.drawImage(image, sx, sy, 64, 64, dx, dy, size, size);
 
       if (dust.length) {
         for (const puff of dust) {
@@ -2273,7 +2269,10 @@
       ready = true;
       draw(0);
     };
-    image.src = cfg.image;
+    image.onerror = () => {
+      pet.renderer = createPetRenderer(pet, def, dpr);
+    };
+    image.src = sprite.image;
 
     return {
       draw,
@@ -2863,7 +2862,7 @@
     const drawH = h;
     const { el, canvas } = createPetElement(def, w, h, drawW, drawH);
     els.petLayer.appendChild(el);
-    const accessory = !PET_SPRITE_PILOT && Pets && typeof Pets.randomAccessory === "function"
+    const accessory = !PET_SPRITE_MODE && Pets && typeof Pets.randomAccessory === "function"
       ? Pets.randomAccessory(state.lastAccessory)
       : null;
     if (accessory) state.lastAccessory = accessory.id;
@@ -2928,7 +2927,7 @@
         pawR: 0,
       },
     };
-    pet.renderer = PET_SPRITE_PILOT
+    pet.renderer = PET_SPRITE_MODE
       ? createPetSpriteRenderer(pet, def, PET_DPR)
       : createPetRenderer(pet, def, PET_DPR);
     if (!pet.renderer) {

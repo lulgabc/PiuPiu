@@ -81,13 +81,16 @@ assert.match(game, /const Pets = window\.PiuPets/, "game.js should use the share
 assert.match(game, /function randomPetDef\(\)/, "each round should draw a random pet");
 assert.match(game, /Pets\.random\(state\.lastPetId\)/, "the draw should avoid an immediate repeat");
 assert.match(game, /state\.lastPetId = def\.id/, "the previous pet should be remembered");
-assert.match(game, /const PET_SCALE = 1\.34;/, "the puppet should have room for limbs and a tail");
-assert.match(game, /const PET_DPR = Math\.min\(2,/, "the puppet canvas must cap device pixel ratio");
+assert.match(game, /const PET_SCALE = 1\.34;/, "the pet should have room for limbs and a tail");
+assert.match(game, /const PET_DPR = Math\.min\(2,/, "the sprite canvas must cap device pixel ratio");
+assert.match(game, /const PET_SPRITE_MODE = !PET_VECTOR_PREVIEW;/, "the animated sprite roster should be the default renderer");
+assert.match(game, /function createPetSpriteRenderer\(/, "the default renderer should play sprite atlases");
+assert.match(game, /function createPetRenderer\(/, "the vector puppet should remain as the offline fallback");
 assert.match(game, /function makePetHead\(/, "the emoji head should be pre-rendered as a sticker sprite");
 assert.match(game, /function drawPetBodyPattern\(/, "each species should draw its own body markings");
 assert.match(game, /ctx\.fillStyle = def\.body \|\| palette\.card/, "the body should use the species colour instead of a white circle");
 assert.match(game, /function petBodyPath\(/, "the body should be a soft bean, not a circle");
-assert.match(game, /PET_BODY_VARIANT = new URLSearchParams/, "the organic die-cut should be available as a preview variant");
+assert.match(game, /PET_BODY_VARIANT = PET_PARAMS\.get\("petbody"\)/, "the organic die-cut should stay available as a preview variant");
 assert.match(game, /function petCutBodyPath\(/, "the preview needs a scalloped die-cut path");
 assert.match(game, /if \(cut\) \{/, "the preview should branch on the cut style");
 assert.match(game, /function drawPetAccessoryBack\(/, "backpacks should draw behind the body");
@@ -147,15 +150,14 @@ assert.doesNotMatch(game, /profilePets|renderPetSheet|togglePetChoice|setActiveP
 assert.doesNotMatch(game, /state\.profiles,[\s\S]{0,40}pets/, "profiles must not store pet teams");
 assert.doesNotMatch(game, /@rive-app|dotlottie|lottie-web|three\.js/, "v1 must not add a heavy animation runtime");
 
-for (const key of ["pet.say.mouse", "pet.name.mouse", "pet.say.frog", "pet.name.unicorn"]) {
+for (const key of ["pet.say.cat", "pet.name.bunny", "pet.say.dragon", "pet.name.ghost"]) {
   for (const lang of ["zh", "fr", "en"]) {
     assert.ok(translations[lang][key], `${key} missing from ${lang}`);
   }
 }
 
-console.log("✓ twelve pets keep their own silhouette, pace, jump style and voice");
-console.log("✓ each species has its own body tint, markings and soft bean silhouette, not one white circle");
-console.log("✓ a random scarf / backpack / bow / star can be layered on top each round");
-console.log("✓ the emoji sticker is now a Canvas 2D puppet with breathing, gaze, paws, feet and tail");
-console.log("✓ the utility brain picks wander / observe / climb / sit / groom / nap / nuzzle / nervous / chase");
+console.log("✓ twelve Tiny Pets share one cohesive animated sprite family");
+console.log("✓ the sprite atlas is the default renderer, with a vector fallback and ?petbody=vector preview");
+console.log("✓ a random scarf / backpack / bow / star can still be layered in the vector preview");
+console.log("✓ the behavior brain still drives wander / observe / climb / sit / groom / nap / nuzzle / nervous / chase");
 console.log("✓ each round draws exactly one random pet; no player selection or pet team");

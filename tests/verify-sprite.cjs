@@ -4,33 +4,67 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const pets = require(path.join(root, "js/pets.js"));
 const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");
-const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-const asset = path.join(root, "assets/pets/cat-sprite.webp");
 const license = fs.readFileSync(path.join(root, "assets/pets/README.md"), "utf8");
 
-assert.ok(fs.existsSync(asset), "the pilot sprite atlas should be bundled");
-const bytes = fs.readFileSync(asset);
-assert.ok(bytes.length > 100 * 1024 && bytes.length < 400 * 1024, "the pilot atlas should stay around 200-300KB");
-assert.equal(bytes.toString("ascii", 0, 4), "RIFF", "the atlas should be a WebP");
-assert.equal(bytes.toString("ascii", 8, 12), "WEBP", "the atlas should be a WebP");
+const PET_IDS = ["cat", "dog", "bunny", "chick", "bear", "fox", "panda", "penguin", "frog", "dragon", "slime", "ghost"];
+const ACTIONS = ["Idle", "Jump", "Sleep", "Happy"];
 
-assert.match(license, /CC0/, "the source license should be recorded");
-assert.match(license, /opengameart\.org/, "the source URL should be recorded");
-assert.match(license, /pzUH/, "the source author should be recorded");
+function readLosslessSize(file) {
+  const bytes = fs.readFileSync(file);
+  assert.equal(bytes.toString("ascii", 0, 4), "RIFF", `${file} should be a RIFF container`);
+  assert.equal(bytes.toString("ascii", 8, 12), "WEBP", `${file} should be a WebP`);
+  assert.equal(bytes.toString("ascii", 12, 16), "VP8L", `${file} should use lossless WebP for crisp pixel art`);
+  assert.equal(bytes[20], 0x2f, `${file} should carry a VP8L signature`);
+  const bits = bytes.readUInt32LE(21);
+  return {
+    width: (bits & 0x3fff) + 1,
+    height: ((bits >>> 14) & 0x3fff) + 1,
+    bytes: bytes.length,
+  };
+}
 
-assert.match(game, /PET_SPRITE_PILOT = new URLSearchParams\(location\.search\)\.get\("petdemo"\) === "sprite"/, "the sprite pilot should be opt-in");
-assert.match(game, /const PET_SPRITE_CAT = \{/, "the cat atlas metadata should be defined");
-assert.match(game, /image: "assets\/pets\/cat-sprite\.webp"/, "the renderer should point at the bundled atlas");
-assert.match(game, /function createPetSpriteRenderer\(/, "the pilot needs a Canvas 2D sprite renderer");
-assert.match(game, /ctx\.drawImage\(image, sx, sy, cfg\.cell, cfg\.cell, dx, dy, size, size\)/, "the pilot should draw atlas cells directly");
-assert.match(game, /if \(PET_SPRITE_PILOT && Pets/, "the pilot should force the cat");
+assert.deepEqual(pets.PET_IDS, PET_IDS, "the catalog roster should match the sprite roster exactly");
+assert.equal(new Set(PET_IDS).size, 12, "the roster should not repeat a species");
+
+let total = 0;
+for (const id of PET_IDS) {
+  const file = path.join(root, "assets/pets", `${id}.webp`);
+  assert.ok(fs.existsSync(file), `${id}.webp should be bundled`);
+  const size = readLosslessSize(file);
+  assert.equal(size.width, 512, `${id} atlas should be 8 frames wide`);
+  assert.equal(size.height, 256, `${id} atlas should be 4 actions tall`);
+  assert.ok(size.bytes > 2 * 1024 && size.bytes < 64 * 1024, `${id} atlas should stay small`);
+  total += size.bytes;
+  assert.match(sw, new RegExp(`\\./assets/pets/${id}\\.webp`), `${id} atlas should be precached offline`);
+  assert.ok(pets.byId(id), `${id} should exist in the catalog`);
+}
+assert.ok(total < 200 * 1024, "the whole twelve-pet atlas set should stay under 200KB");
+
+assert.match(license, /labitos/, "the source author should be recorded");
+assert.match(license, /https:\/\/labitos\.itch\.io\/tiny-pets/, "the source page should be recorded");
+assert.match(license, /commercial/i, "the commercial-use grant should be recorded");
+assert.match(license, /may not.*resell|forbids reselling/i, "the redistribution limit should be recorded");
+assert.match(license, /512×256/, "the atlas layout should be documented");
+assert.match(license, /Idle, Jump, Sleep, Happy/, "the four actions should be documented");
+
+assert.match(game, /const PET_SPRITE_IDS = \["cat", "dog", "bunny", "chick", "bear", "fox", "panda", "penguin", "frog", "dragon", "slime", "ghost"\]/, "the renderer should know all twelve atlases");
+assert.match(game, /function createPetSpriteRenderer\(/, "the game needs a Canvas 2D sprite renderer");
+assert.match(game, /ctx\.drawImage\(image, sx, sy, 64, 64, dx, dy, size, size\)/, "the renderer should draw 64px atlas cells directly");
+assert.match(game, /const PET_SPRITE_MODE = !PET_VECTOR_PREVIEW;/, "sprite pets should be the default renderer");
+assert.match(game, /PET_VECTOR_PREVIEW = \["vector", "bean", "cut"\]/, "the old vector puppets should remain opt-in previews");
+assert.match(game, /!PET_SPRITE_MODE && Pets/, "the sprite roster should not overlay vector accessories");
+assert.match(game, /image\.onerror = \(\) => \{\s*pet\.renderer = createPetRenderer/, "a missing atlas should fall back to the vector puppet");
 assert.match(game, /renderer: pet\.renderer && pet\.renderer\.isSprite \? "sprite" : "canvas"/, "debug state should expose the renderer");
-assert.match(game, /spriteAction: pet\.renderer && pet\.renderer\.getAction/, "debug state should expose the sprite action");
-assert.match(game, /!PET_SPRITE_PILOT && Pets/, "the sprite pilot should not overlay a vector accessory");
-assert.match(sw, /\.\/assets\/pets\/cat-sprite\.webp/, "the atlas should be precached for offline use");
-assert.match(html, /js\/game\.js\?v=\d+\.\d+\.\d+/, "the app should load the current game script");
+assert.match(game, /spriteAction: pet\.renderer && pet\.renderer\.getAction/, "debug state should expose the playing action");
+assert.match(game, /function chooseSpriteAction\(\)/, "behaviour should map onto the four sprite actions");
+for (const action of ACTIONS) {
+  assert.match(game, new RegExp(`${action}: \\{ row: \\d, count: 8`), `${action} should be mapped to an atlas row`);
+}
 
-console.log("✓ the CC0 cat atlas is bundled, attributed and precached");
-console.log("✓ ?petdemo=sprite draws real frame animation through Canvas 2D");
-console.log("✓ the pilot stays opt-in and does not disturb the default bean companion");
+console.log("✓ twelve Tiny Pets atlases are bundled, sized and documented");
+console.log("✓ the whole sprite set stays under 200KB and is precached for offline play");
+console.log("✓ Canvas 2D draws 64px cells as the default pet renderer");
+console.log("✓ Idle / Jump / Sleep / Happy follow the behaviour brain");
+console.log("✓ a missing atlas falls back to the vector puppet; ?petbody=vector keeps the old preview");
