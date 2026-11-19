@@ -45,7 +45,7 @@
       document.documentElement.classList.add("is-touch");
     }
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2.17.0">
+  <link rel="stylesheet" href="css/style.css?v=2.18.0">
 </head>
 <body class="phase-menu">
   <div id="app">
@@ -131,11 +131,7 @@
       </div>
 
       <div id="wordLayer" class="word-layer"></div>
-      <div id="pet" class="pet" aria-hidden="true">
-        <span class="pet-shadow"></span>
-        <span class="pet-body">🐭</span>
-        <span id="petSqueak" class="pet-squeak" data-i18n="pet.squeak">吱吱！</span>
-      </div>
+      <div id="petLayer" class="pet-layer" aria-hidden="true"></div>
       <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
       <div id="heard" class="heard" aria-live="polite"></div>
@@ -173,11 +169,17 @@
             <span id="packSummary" class="pack-pill-text">综合词库 · 全部</span>
           </button>
 
-          <button id="playerBtn" class="player-pill" type="button" aria-haspopup="dialog" aria-controls="playerSheet" data-i18n-aria="player.title">
-            <span id="playerAvatar" class="player-pill-avatar" aria-hidden="true">🦊</span>
-            <span id="playerName" class="player-pill-name" data-i18n="player.none">创建玩家</span>
-            <span id="playerTotal" class="player-pill-total">⭐ 0</span>
-          </button>
+          <div class="player-row">
+            <button id="playerBtn" class="player-pill" type="button" aria-haspopup="dialog" aria-controls="playerSheet" data-i18n-aria="player.title">
+              <span id="playerAvatar" class="player-pill-avatar" aria-hidden="true">🦊</span>
+              <span id="playerName" class="player-pill-name" data-i18n="player.none">创建玩家</span>
+              <span id="playerTotal" class="player-pill-total">⭐ 0</span>
+            </button>
+            <button id="petBtn" class="player-pet" type="button" aria-haspopup="dialog" aria-controls="petSheet" aria-label="宠物仓库" data-i18n-aria="pet.openAria">
+              <span aria-hidden="true">🐾</span>
+              <span id="petCount" class="player-pet-count">1</span>
+            </button>
+          </div>
 
           <div class="home-meta">
             <p id="bestLine" class="best home-best">🏆 0</p>
@@ -289,6 +291,23 @@
     </div>
   </div>
 
+  <div id="petSheet" class="player-sheet pet-shelf is-hidden" role="dialog" aria-modal="true" aria-labelledby="petTitle" aria-hidden="true">
+    <div class="player-card pet-shelf-card" role="document">
+      <div class="player-head">
+        <h2 id="petTitle"><span aria-hidden="true">🐾</span> <span data-i18n="pet.title">宠物仓库</span></h2>
+        <button id="petClose" class="player-close" type="button" aria-label="关闭宠物仓库" data-i18n-aria="pet.close">✕</button>
+      </div>
+      <p id="petSubtitle" class="player-subtitle"></p>
+      <div id="petTeam" class="pet-team" aria-hidden="true"></div>
+      <p id="petCountLine" class="pet-count-line" aria-live="polite"></p>
+      <div id="petGrid" class="pet-grid" role="group" aria-label="宠物仓库" data-i18n-aria="pet.title"></div>
+      <p class="pet-note" data-i18n="pet.note">点一下卡片就能选中并试听声音。</p>
+      <div class="pet-shelf-footer">
+        <button id="petDone" class="primary-btn player-done pet-done" type="button" data-i18n="setup.done">完成</button>
+      </div>
+    </div>
+  </div>
+
   <div id="boardSheet" class="board-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="boardTitle" aria-hidden="true">
     <div class="board-card" role="document">
       <div class="board-head">
@@ -383,19 +402,20 @@
   </div>
 
 
-  <script src="js/i18n.js?v=2.17.0"></script>
+  <script src="js/i18n.js?v=2.18.0"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
   <script src="js/education.js"></script>
   <script src="js/families.js"></script>
   <script src="js/phrases.js?v=2.2.0"></script>
   <script src="js/numbers.js"></script>
+  <script src="js/pets.js"></script>
   <script src="js/profiles.js"></script>
   <script src="js/emojis.js"></script>
   <script src="js/vendor/pixi.min.js?v=2.0.1"></script>
   <script src="js/vendor/matter.min.js"></script>
-  <script src="js/pixi-ambient.js?v=2.17.0"></script>
-  <script src="js/game.js?v=2.17.0"></script>
-  <script src="js/pwa.js?v=2.17.0"></script>
+  <script src="js/pixi-ambient.js?v=2.18.0"></script>
+  <script src="js/game.js?v=2.18.0"></script>
+  <script src="js/pwa.js?v=2.18.0"></script>
 </body>
 </html>

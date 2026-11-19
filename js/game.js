@@ -12,6 +12,7 @@
       ? window.PIU_NUMBER_WORDS
       : {};
   const Profiles = window.PiuProfiles && typeof window.PiuProfiles === "object" ? window.PiuProfiles : null;
+  const Pets = window.PiuPets && typeof window.PiuPets === "object" ? window.PiuPets : null;
   const Physics = window.Matter && window.Matter.Engine ? window.Matter : null;
   const EMOJI =
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
@@ -73,11 +74,20 @@
   const DANGER_Y = 10;
   const GAME_FPS = 60;
   const ACCENT_HUES = [265, 190, 318, 42, 158, 225, 288, 12];
-  const PET_W = 46;
-  const PET_H = 48;
-  const PET_SPEED = 58;
-  const PET_GRAVITY = 560;
-  const PET_HOP = 170;
+  const PET_FALLBACK = {
+    id: "mouse",
+    emoji: "🐭",
+    w: 46,
+    h: 46,
+    speed: 58,
+    hop: 170,
+    pause: [0.65, 2.1],
+    hopEvery: [2.4, 5.2],
+    chatter: 0.2,
+    trait: "fast",
+    shape: "round",
+    say: "pet.say.mouse",
+  };
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Pronunciation-spelling pairs the recognizer can confuse. They sound the
@@ -169,8 +179,16 @@
     field: $("field"),
     wordLayer: $("wordLayer"),
     fxLayer: $("fxLayer"),
-    pet: $("pet"),
-    petSqueak: $("petSqueak"),
+    petLayer: $("petLayer"),
+    petBtn: $("petBtn"),
+    petCount: $("petCount"),
+    petSheet: $("petSheet"),
+    petClose: $("petClose"),
+    petDone: $("petDone"),
+    petGrid: $("petGrid"),
+    petTeam: $("petTeam"),
+    petSubtitle: $("petSubtitle"),
+    petCountLine: $("petCountLine"),
     overlay: $("overlay"),
     startPanel: $("startPanel"),
     pausePanel: $("pausePanel"),
@@ -347,6 +365,7 @@
     rewardTickTimer: 0,
     lastFieldH: 0,
     lastFieldW: 0,
+    pets: [],
     pet: null,
   };
 
@@ -973,6 +992,44 @@
     tone(1250, 0.06, "square", 0.016, 0.08, 1900);
   }
 
+  function playPetVoice(id) {
+    if (id === "cat") {
+      playCat();
+    } else if (id === "dog") {
+      playDog();
+    } else if (id === "rabbit") {
+      tone(520, 0.08, "sine", 0.02, 0, 1200);
+      tone(900, 0.1, "sine", 0.016, 0.09, 1600);
+    } else if (id === "frog") {
+      tone(180, 0.08, "square", 0.026, 0, 150);
+      tone(150, 0.09, "square", 0.022, 0.11, 125);
+      tone(200, 0.12, "square", 0.02, 0.23, 165);
+    } else if (id === "panda") {
+      tone(220, 0.18, "sine", 0.02, 0, 180);
+      tone(180, 0.2, "sine", 0.018, 0.14, 150);
+    } else if (id === "fox") {
+      tone(600, 0.07, "triangle", 0.022, 0, 1000);
+      tone(1100, 0.08, "triangle", 0.018, 0.08, 700);
+    } else if (id === "penguin") {
+      tone(300, 0.09, "square", 0.02);
+      tone(260, 0.12, "square", 0.018, 0.12);
+    } else if (id === "chick") {
+      tone(1400, 0.05, "sine", 0.018);
+      tone(1800, 0.06, "sine", 0.016, 0.07);
+    } else if (id === "unicorn") {
+      sequence([880, 1174.66, 1567.98], "sine", 0.018, 0.06);
+    } else if (id === "turtle") {
+      tone(120, 0.22, "sine", 0.025, 0, 90);
+      tone(90, 0.28, "sine", 0.02, 0.18, 70);
+    } else if (id === "lion") {
+      tone(150, 0.18, "sawtooth", 0.022, 0, 90);
+      tone(110, 0.25, "sawtooth", 0.018, 0.12, 70);
+      noiseBurst(0.08, 0.012);
+    } else {
+      playSqueak();
+    }
+  }
+
   function playSlide() {
     tone(280, 0.38, "sine", 0.025, 0, 1500);
     tone(1500, 0.28, "sine", 0.018, 0.34, 320);
@@ -1158,7 +1215,7 @@
     els.typeInput.classList.remove("wrong");
     els.correctStat.classList.remove("reward");
     resetRewardProgress();
-    petReset();
+    resetPets();
     updateHUD(true);
   }
 
@@ -1308,7 +1365,7 @@
     if (state.phase !== "playing") return;
     updateMeteor(dt);
     if (state.phase !== "playing") return;
-    updatePet(dt);
+    updatePets(dt);
     updateHUD();
     state.raf = requestAnimationFrame(frame);
   }
@@ -1529,12 +1586,52 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* pet mouse                                                           */
+  /* pet friends                                                         */
   /* ------------------------------------------------------------------ */
 
+  const PET_GRAVITY = 560;
+
+  function activePetIds() {
+    const profile = currentProfile();
+    const source = profile && Array.isArray(profile.pets) ? profile.pets : null;
+    if (Pets && typeof Pets.sanitize === "function") {
+      return Pets.sanitize(source).slice(0, Pets.MAX_PETS);
+    }
+    return [PET_FALLBACK.id];
+  }
+
+  function petDef(id) {
+    const def = Pets && typeof Pets.byId === "function" ? Pets.byId(id) : null;
+    return def || PET_FALLBACK;
+  }
+
+  function createPetElement(def) {
+    const el = document.createElement("div");
+    el.className = "pet";
+    el.dataset.pet = def.id;
+    el.dataset.shape = def.shape || "round";
+    el.style.setProperty("--pet-w", `${def.w}px`);
+    el.style.setProperty("--pet-h", `${def.h}px`);
+
+    const shadow = document.createElement("span");
+    shadow.className = "pet-shadow";
+
+    const body = document.createElement("span");
+    body.className = "pet-body";
+    body.textContent = def.emoji;
+
+    const bubble = document.createElement("span");
+    bubble.className = "pet-squeak";
+    bubble.dataset.i18n = def.say;
+    bubble.textContent = tr(def.say);
+
+    el.append(shadow, body, bubble);
+    return el;
+  }
+
   function petPickTarget(p, fieldW, bias = 0) {
-    const min = PET_W / 2 + 8;
-    const max = Math.max(min + 24, fieldW - PET_W / 2 - 10);
+    const min = p.w / 2 + 8;
+    const max = Math.max(min + 24, fieldW - p.w / 2 - 10);
     let lo = min;
     let hi = max;
     if (!bias && state.settled.length > 1 && Math.random() < 0.68) {
@@ -1571,99 +1668,117 @@
         ground = settled.y;
       }
     }
-    return Math.max(PET_H + 4, ground);
+    return Math.max(64, ground);
   }
 
-  function petApply() {
-    const p = state.pet;
-    if (!p || !els.pet) return;
+  function petApply(p) {
+    if (!p || !p.el) return;
     const fieldW = els.field.clientWidth || 360;
-    const minX = PET_W / 2 + 4;
-    const maxX = Math.max(minX, fieldW - PET_W / 2 - 4);
+    const minX = p.w / 2 + 4;
+    const maxX = Math.max(minX, fieldW - p.w / 2 - 4);
     p.x = Math.min(maxX, Math.max(minX, p.x));
-    const left = Math.round(p.x - PET_W / 2);
-    const top = Math.round(p.ground - PET_H);
-    els.pet.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-    els.pet.style.setProperty("--pet-face", p.dir > 0 ? "-1" : "1");
-    els.pet.style.setProperty("--pet-hop", `${p.hopY.toFixed(1)}px`);
-    els.pet.style.setProperty("--pet-bob", `${p.bob.toFixed(1)}px`);
+    const left = Math.round(p.x - p.w / 2);
+    const top = Math.round(p.ground - p.h);
+    p.el.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    p.el.style.setProperty("--pet-face", p.dir > 0 ? "-1" : "1");
+    p.el.style.setProperty("--pet-hop", `${p.hopY.toFixed(1)}px`);
+    p.el.style.setProperty("--pet-bob", `${p.bob.toFixed(1)}px`);
     const squash = p.landTimer > 0 ? 0.88 + (1 - p.landTimer / 0.16) * 0.12 : 1;
-    els.pet.style.setProperty("--pet-squash", squash.toFixed(2));
-    const lift = Math.min(1, Math.abs(p.hopY) / Math.max(40, PET_HOP));
-    els.pet.style.setProperty("--pet-shadow-scale", (1 - lift * 0.42).toFixed(2));
-    els.pet.style.setProperty("--pet-shadow-alpha", (0.86 - lift * 0.4).toFixed(2));
+    p.el.style.setProperty("--pet-squash", squash.toFixed(2));
+    const lift = Math.min(1, Math.abs(p.hopY) / Math.max(40, p.def.hop));
+    p.el.style.setProperty("--pet-shadow-scale", (1 - lift * 0.42).toFixed(2));
+    p.el.style.setProperty("--pet-shadow-alpha", (0.86 - lift * 0.4).toFixed(2));
   }
 
-  function petReset() {
+  function resetPets() {
+    if (!els.petLayer) return;
+    els.petLayer.replaceChildren();
+    state.pets = [];
+    state.pet = null;
+    const ids = activePetIds();
     const fieldW = els.field.clientWidth || 360;
     const fieldH = els.field.clientHeight || 480;
-    const x = Math.min(
-      fieldW - PET_W / 2 - 10,
-      Math.max(PET_W / 2 + 8, fieldW * (0.26 + Math.random() * 0.48)),
-    );
-    state.pet = {
-      x,
-      targetX: x,
-      dir: Math.random() < 0.5 ? -1 : 1,
-      ground: Math.max(PET_H + 4, fieldH - 10),
-      hopY: 0,
-      hopV: 0,
-      bob: 0,
-      walkPhase: 0,
-      idlePhase: 0,
-      pause: 0.7 + Math.random() * 0.9,
-      nextHop: 2.4 + Math.random() * 3.5,
-      squeakCooldown: 0,
-      squeakTimer: 0,
-      landTimer: 0,
-    };
-    if (els.pet) {
-      els.pet.classList.remove("squeaking", "landed");
-      els.pet.style.setProperty("--pet-hop", "0px");
-      els.pet.style.setProperty("--pet-bob", "0px");
-      els.pet.style.setProperty("--pet-squash", "1");
-    }
-    petApply();
+    const count = ids.length;
+    ids.forEach((id, index) => {
+      const def = petDef(id);
+      const el = createPetElement(def);
+      els.petLayer.appendChild(el);
+      const slot = count === 1 ? 0.5 : 0.2 + (0.6 * index) / Math.max(1, count - 1);
+      const minX = def.w / 2 + 10;
+      const maxX = Math.max(minX, fieldW - def.w / 2 - 12);
+      const x = Math.min(maxX, Math.max(minX, fieldW * slot + (Math.random() - 0.5) * 26));
+      const pet = {
+        id: def.id,
+        def,
+        el,
+        w: def.w,
+        h: def.h,
+        x,
+        targetX: x,
+        dir: Math.random() < 0.5 ? -1 : 1,
+        ground: Math.max(64, fieldH - 10),
+        hopY: 0,
+        hopV: 0,
+        bob: 0,
+        walkPhase: Math.random() * Math.PI * 2,
+        idlePhase: Math.random() * Math.PI * 2,
+        pause: 0.5 + Math.random() * 1.4,
+        nextHop: 2 + Math.random() * 3,
+        squeakCooldown: 0.4 + index * 0.5,
+        squeakTimer: 0,
+        landTimer: 0,
+      };
+      state.pets.push(pet);
+      petApply(pet);
+    });
+    state.pet = state.pets[0] || null;
   }
 
-  function petSqueak(force = false) {
-    const p = state.pet;
-    if (!p || !els.pet || state.phase !== "playing") return;
+  function petSqueak(pet, force = false) {
+    if (!pet || !pet.el || state.phase !== "playing") return;
+    const p = pet;
     if (!force && p.squeakCooldown > 0) return;
     p.squeakCooldown = 1.8 + Math.random() * 2.2;
     p.squeakTimer = 1.15;
-    els.pet.classList.remove("squeaking");
-    void els.pet.offsetWidth;
-    els.pet.classList.add("squeaking");
-    playNamedSound("squeak");
+    p.el.classList.remove("squeaking");
+    void p.el.offsetWidth;
+    p.el.classList.add("squeaking");
+    playPetVoice(p.id);
   }
 
   function petStartle(x) {
-    const p = state.pet;
-    if (!p || state.phase !== "playing" || !els.pet) return;
-    const dx = p.x - x;
-    if (Math.abs(dx) > 170) return;
-    p.dir = dx >= 0 ? 1 : -1;
-    p.pause = 0;
-    p.targetX = petPickTarget(p, els.field.clientWidth || 360, p.dir);
-    if (p.hopY === 0) {
-      p.hopV = -(PET_HOP * 0.65);
+    if (state.phase !== "playing") return;
+    let closest = null;
+    let closestDistance = Infinity;
+    for (const p of state.pets) {
+      const dx = p.x - x;
+      if (Math.abs(dx) > 170) continue;
+      p.dir = dx >= 0 ? 1 : -1;
+      p.pause = 0;
+      p.targetX = petPickTarget(p, els.field.clientWidth || 360, p.dir);
+      if (p.hopY === 0) p.hopV = -(p.def.hop * 0.65);
+      if (Math.abs(dx) < closestDistance) {
+        closest = p;
+        closestDistance = Math.abs(dx);
+      }
     }
-    if (p.squeakCooldown <= 0) petSqueak();
+    if (closest && closest.squeakCooldown <= 0) petSqueak(closest);
   }
 
   function petCheer() {
-    const p = state.pet;
-    if (!p || state.phase !== "playing" || !els.pet) return;
+    if (state.phase !== "playing") return;
     const milestone = state.combo > 0 && state.combo % 5 === 0;
-    if (!milestone && Math.random() > 0.32) return;
-    if (p.hopY === 0) p.hopV = -(PET_HOP * (milestone ? 0.9 : 0.55));
-    if (milestone && p.squeakCooldown <= 0) petSqueak();
+    let cheerPet = null;
+    for (const p of state.pets) {
+      if (!milestone && Math.random() > 0.32) continue;
+      if (p.hopY === 0) p.hopV = -(p.def.hop * (milestone ? 0.9 : 0.55));
+      if (milestone && !cheerPet) cheerPet = p;
+    }
+    if (cheerPet && cheerPet.squeakCooldown <= 0) petSqueak(cheerPet);
   }
 
-  function updatePet(dt) {
-    const p = state.pet;
-    if (!p || !els.pet) return;
+  function updatePet(p, dt) {
+    if (!p || !p.el) return;
     const fieldW = els.field.clientWidth;
     const fieldH = els.field.clientHeight;
     if (!fieldW || !fieldH) return;
@@ -1671,11 +1786,11 @@
     if (p.squeakCooldown > 0) p.squeakCooldown = Math.max(0, p.squeakCooldown - dt);
     if (p.squeakTimer > 0) {
       p.squeakTimer -= dt;
-      if (p.squeakTimer <= 0) els.pet.classList.remove("squeaking");
+      if (p.squeakTimer <= 0) p.el.classList.remove("squeaking");
     }
     if (p.landTimer > 0) {
       p.landTimer -= dt;
-      if (p.landTimer <= 0) els.pet.classList.remove("landed");
+      if (p.landTimer <= 0) p.el.classList.remove("landed");
     }
 
     if (p.pause > 0) {
@@ -1684,16 +1799,17 @@
       p.bob = Math.sin(p.idlePhase * 2.6) * 0.5;
       if (p.pause <= 0) {
         p.targetX = petPickTarget(p, fieldW);
-        if (Math.random() < 0.2) petSqueak();
+        if (Math.random() < p.def.chatter) petSqueak(p);
       }
     } else {
       const dx = p.targetX - p.x;
       if (Math.abs(dx) < 3.5) {
-        p.pause = 0.65 + Math.random() * 2.1;
+        const [restMin, restMax] = p.def.pause;
+        p.pause = restMin + Math.random() * (restMax - restMin);
         p.bob = 0;
       } else {
         p.dir = dx > 0 ? 1 : -1;
-        p.x += p.dir * (REDUCED_MOTION ? PET_SPEED * 0.55 : PET_SPEED) * dt;
+        p.x += p.dir * (REDUCED_MOTION ? p.def.speed * 0.55 : p.def.speed) * dt;
         p.walkPhase += dt * 10.5;
         p.bob = -Math.abs(Math.sin(p.walkPhase)) * (REDUCED_MOTION ? 1 : 2.8);
       }
@@ -1701,15 +1817,16 @@
 
     const ground = petGroundAt(p.x);
     if (ground < p.ground - 5 && p.hopY === 0 && p.hopV === 0) {
-      p.hopV = -Math.min(PET_HOP, Math.abs(ground - p.ground) * 3.4 + 70);
+      p.hopV = -Math.min(p.def.hop, Math.abs(ground - p.ground) * 3.4 + 70);
     }
     const ease = Math.min(1, dt * (ground < p.ground ? 18 : 10));
     p.ground += (ground - p.ground) * ease;
 
     p.nextHop -= dt;
     if (p.nextHop <= 0) {
-      if (p.hopY === 0) p.hopV = -(REDUCED_MOTION ? 80 : 120 + Math.random() * 55);
-      p.nextHop = 3.2 + Math.random() * 5;
+      if (p.hopY === 0) p.hopV = -(REDUCED_MOTION ? 80 : p.def.hop * 0.72 + Math.random() * 40);
+      const [hopMin, hopMax] = p.def.hopEvery;
+      p.nextHop = hopMin + Math.random() * (hopMax - hopMin);
     }
 
     if (p.hopY < 0 || p.hopV < 0) {
@@ -1720,12 +1837,29 @@
         p.hopV = 0;
         p.bob = 2.4;
         p.landTimer = 0.16;
-        els.pet.classList.remove("landed");
-        els.pet.classList.add("landed");
+        p.el.classList.remove("landed");
+        p.el.classList.add("landed");
       }
     }
 
-    petApply();
+    petApply(p);
+  }
+
+  function updatePets(dt) {
+    for (const pet of state.pets) updatePet(pet, dt);
+    state.pet = state.pets[0] || null;
+  }
+
+  function petInfo(pet) {
+    return {
+      id: pet.id,
+      x: Math.round(pet.x),
+      y: Math.round(pet.ground + pet.hopY - pet.h),
+      ground: Math.round(pet.ground),
+      dir: pet.dir,
+      hop: Math.round(pet.hopY),
+      squeaking: Boolean(pet.el && pet.el.classList.contains("squeaking")),
+    };
   }
 
   function checkPileDanger() {
@@ -1920,6 +2054,8 @@
   let editingProfileId = "";
   let playerSheetOpener = null;
   let boardOpener = null;
+  let petSheetOpener = null;
+  let petDirty = false;
 
   function currentProfile() {
     return Profiles ? Profiles.find(state.profiles, state.userId) : null;
@@ -1971,7 +2107,8 @@
       name.textContent = profile.name;
       const meta = document.createElement("span");
       meta.className = "player-option-meta";
-      meta.textContent = `${tr("board.best", { score: formatNumber(profile.best) })} · ${tr("board.correct", { count: formatNumber(profile.correct) })}`;
+      const petIcons = profilePets(profile).map(petEmoji).join("");
+      meta.textContent = `${tr("board.best", { score: formatNumber(profile.best) })} · ${tr("board.correct", { count: formatNumber(profile.correct) })}${petIcons ? ` · ${petIcons}` : ""}`;
       text.append(name, meta);
 
       const total = document.createElement("span");
@@ -2073,7 +2210,154 @@
     els.playerBtn.setAttribute("title", label);
     els.playerBtn.classList.toggle("is-empty", !profile);
     if (profile) state.highScore = profile.best;
+    renderPetUI();
     renderBestLine();
+  }
+
+  function profilePets(profile) {
+    if (!profile) return [];
+    if (Pets && typeof Pets.sanitize === "function") return Pets.sanitize(profile.pets);
+    return [PET_FALLBACK.id];
+  }
+
+  function petEmoji(id) {
+    const def = Pets && typeof Pets.byId === "function" ? Pets.byId(id) : null;
+    return def ? def.emoji : "🐾";
+  }
+
+  function renderPetUI() {
+    if (!els.petBtn) return;
+    const profile = currentProfile();
+    const ids = profilePets(profile);
+    setText(els.petCount, profile ? String(ids.length) : "＋");
+    const names = ids.map((id) => tr(`pet.name.${id}`)).join(" · ");
+    const label = profile
+      ? `${tr("pet.openAria", { count: ids.length })}${names ? ` · ${names}` : ""}`
+      : tr("pet.needPlayer");
+    els.petBtn.setAttribute("aria-label", label);
+    els.petBtn.setAttribute("title", label);
+    els.petBtn.classList.toggle("is-empty", !profile);
+  }
+
+  function renderPetSheet() {
+    if (!els.petGrid) return;
+    const profile = currentProfile();
+    const selected = profilePets(profile);
+    setText(
+      els.petSubtitle,
+      profile
+        ? tr("pet.subtitle", { name: profile.name })
+        : tr("pet.needPlayer"),
+    );
+    setText(els.petCountLine, tr("pet.count", { count: selected.length }));
+
+    if (els.petTeam) {
+      els.petTeam.replaceChildren();
+      const slots = Pets ? Pets.MAX_PETS : 3;
+      for (let i = 0; i < slots; i += 1) {
+        const slot = document.createElement("span");
+        const id = selected[i];
+        slot.className = id ? "pet-team-slot is-filled" : "pet-team-slot is-empty";
+        slot.textContent = id ? petEmoji(id) : "🐾";
+        els.petTeam.appendChild(slot);
+      }
+    }
+
+    els.petGrid.replaceChildren();
+    if (!Pets) return;
+    for (const def of Pets.PETS) {
+      const active = selected.includes(def.id);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = active ? "pet-choice is-selected" : "pet-choice";
+      button.dataset.petChoice = def.id;
+      button.setAttribute("role", "checkbox");
+      button.setAttribute("aria-checked", String(active));
+      button.setAttribute("aria-label", `${tr(`pet.name.${def.id}`)}, ${tr(`pet.trait.${def.trait}`)}`);
+
+      const emoji = document.createElement("span");
+      emoji.className = "pet-choice-emoji";
+      emoji.setAttribute("aria-hidden", "true");
+      emoji.textContent = def.emoji;
+
+      const name = document.createElement("span");
+      name.className = "pet-choice-name";
+      name.textContent = tr(`pet.name.${def.id}`);
+
+      const trait = document.createElement("span");
+      trait.className = "pet-choice-trait";
+      trait.textContent = tr(`pet.trait.${def.trait}`);
+
+      button.append(emoji, name, trait);
+      els.petGrid.appendChild(button);
+    }
+  }
+
+  function togglePetChoice(id) {
+    const profile = currentProfile();
+    if (!profile || !Profiles || !Pets) return;
+    const current = profilePets(profile);
+    const index = current.indexOf(id);
+    if (index === -1) {
+      if (current.length >= Pets.MAX_PETS) {
+        playPetVoice(id);
+        toast(tr("pet.max"), "warn");
+        return;
+      }
+      current.push(id);
+    } else {
+      if (current.length <= 1) {
+        playPetVoice(id);
+        toast(tr("pet.min"), "warn");
+        return;
+      }
+      current.splice(index, 1);
+    }
+    Profiles.setPets(state.profiles, profile.id, current);
+    Profiles.save(state.profiles);
+    petDirty = true;
+    playPetVoice(id);
+    renderPetSheet();
+    renderPetUI();
+    renderPlayerList();
+    renderBoard();
+  }
+
+  function openPetSheet() {
+    if (!els.petSheet) return;
+    if (!currentProfile()) {
+      toast(tr("pet.needPlayer"), "warn");
+      openPlayerSheet();
+      return;
+    }
+    petSheetOpener = document.activeElement && document.activeElement.focus ? document.activeElement : els.petBtn;
+    petDirty = false;
+    renderPetSheet();
+    els.petSheet.classList.remove("is-hidden");
+    els.petSheet.setAttribute("aria-hidden", "false");
+    window.setTimeout(() => {
+      if (els.petClose && !els.petSheet.classList.contains("is-hidden")) {
+        els.petClose.focus({ preventScroll: true });
+      }
+    }, 0);
+  }
+
+  function closePetSheet() {
+    if (!els.petSheet || els.petSheet.classList.contains("is-hidden")) return;
+    els.petSheet.classList.add("is-hidden");
+    els.petSheet.setAttribute("aria-hidden", "true");
+    if (petDirty) {
+      petDirty = false;
+      toast(tr("pet.saved"));
+    }
+    renderPetUI();
+    if (
+      petSheetOpener &&
+      document.contains(petSheetOpener) &&
+      !petSheetOpener.classList.contains("is-hidden")
+    ) {
+      petSheetOpener.focus({ preventScroll: true });
+    }
   }
 
   function updateSessionTotal() {
@@ -2449,6 +2733,8 @@
     renderPlayerUI();
     renderPlayerList();
     renderBoard();
+    renderPetUI();
+    if (els.petSheet && !els.petSheet.classList.contains("is-hidden")) renderPetSheet();
     renderAvatarPicker();
     syncPlayerFormMode();
     renderCategoryOptions();
@@ -3966,6 +4252,24 @@
     });
   }
 
+  if (els.petBtn) els.petBtn.addEventListener("click", openPetSheet);
+  if (els.petClose) els.petClose.addEventListener("click", closePetSheet);
+  if (els.petDone) els.petDone.addEventListener("click", closePetSheet);
+  if (els.petSheet) {
+    els.petSheet.addEventListener("click", (event) => {
+      if (event.target === els.petSheet) closePetSheet();
+    });
+  }
+  if (els.petGrid) {
+    els.petGrid.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      const choice = target.closest("[data-pet-choice]");
+      if (!choice) return;
+      togglePetChoice(choice.dataset.petChoice);
+    });
+  }
+
   if (els.packBtn) els.packBtn.addEventListener("click", openPack);
   if (els.packClose) els.packClose.addEventListener("click", closePack);
   if (els.packDone) els.packDone.addEventListener("click", closePack);
@@ -4071,13 +4375,17 @@
     }
   });
 
-  if (els.pet) {
-    els.pet.addEventListener("pointerdown", (event) => {
+  if (els.petLayer) {
+    els.petLayer.addEventListener("pointerdown", (event) => {
+      const node = event.target && event.target.closest ? event.target.closest(".pet") : null;
+      if (!node) return;
       event.stopPropagation();
       event.preventDefault();
       if (state.phase !== "playing") return;
-      petSqueak(true);
-      if (state.pet && state.pet.hopY === 0) state.pet.hopV = -(PET_HOP * 0.8);
+      const pet = state.pets.find((item) => item.el === node);
+      if (!pet) return;
+      petSqueak(pet, true);
+      if (pet.hopY === 0) pet.hopV = -(pet.def.hop * 0.8);
     });
   }
 
@@ -4223,6 +4531,7 @@
           id: profile.id,
           name: profile.name,
           avatar: profile.avatar,
+          pets: (profile.pets || []).slice(),
           total: profile.total,
           best: profile.best,
           correct: profile.correct,
@@ -4243,18 +4552,25 @@
           : null,
       getTheme: () => state.theme,
       setTheme,
-      getPet: () =>
-        state.pet
-          ? {
-              x: Math.round(state.pet.x),
-              y: Math.round(state.pet.ground + state.pet.hopY - PET_H),
-              ground: Math.round(state.pet.ground),
-              dir: state.pet.dir,
-              hop: Math.round(state.pet.hopY),
-              squeaking: els.pet ? els.pet.classList.contains("squeaking") : false,
-            }
-          : null,
-      petSqueak: () => petSqueak(true),
+      getPet: () => (state.pet ? petInfo(state.pet) : null),
+      getPets: () => state.pets.map(petInfo),
+      getPetCatalog: () => (Pets ? Pets.PETS.map((pet) => ({ ...pet })) : []),
+      getActivePets: () => profilePets(currentProfile()),
+      setActivePets: (ids) => {
+        const profile = currentProfile();
+        if (!profile || !Profiles) return [];
+        Profiles.setPets(state.profiles, profile.id, ids);
+        Profiles.save(state.profiles);
+        renderPetUI();
+        renderPlayerUI();
+        renderPetSheet();
+        if (state.phase === "playing" || state.phase === "paused") resetPets();
+        return profilePets(profile);
+      },
+      openPetSheet,
+      petSqueak: () => {
+        if (state.pet) petSqueak(state.pet, true);
+      },
       getSpeed: () => state.speed,
       setSpeed: (key) => {
         if (!(key in SPEED_LEVELS)) return state.speed;

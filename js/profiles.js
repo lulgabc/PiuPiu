@@ -12,6 +12,12 @@
   const USER_KEY = "piupiu.user";
   const MAX_PROFILES = 20;
   const MAX_NAME = 12;
+  const PET_API = global.PiuPets;
+  const MAX_PETS = PET_API ? PET_API.MAX_PETS : 3;
+  const DEFAULT_PETS = PET_API ? PET_API.DEFAULT_PETS.slice() : ["mouse"];
+  const PET_IDS = PET_API
+    ? PET_API.PET_IDS.slice()
+    : ["mouse", "cat", "dog", "rabbit", "frog", "panda", "fox", "penguin", "chick", "unicorn", "turtle", "lion"];
   const AVATARS = [
     "🦊", "🐼", "🐯", "🐸", "🦄", "🐙", "🐶", "🐱",
     "🐰", "🐨", "🐷", "🐵", "🐧", "🦁", "🐮", "🐢",
@@ -46,6 +52,19 @@
     return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
   }
 
+  function sanitizePets(list) {
+    if (PET_API && typeof PET_API.sanitize === "function") return PET_API.sanitize(list);
+    const out = [];
+    if (Array.isArray(list)) {
+      for (const entry of list) {
+        const id = typeof entry === "string" ? entry : entry && entry.id;
+        if (PET_IDS.includes(id) && !out.includes(id)) out.push(id);
+        if (out.length >= MAX_PETS) break;
+      }
+    }
+    return out.length ? out : DEFAULT_PETS.slice();
+  }
+
   function normalizeProfile(raw, index) {
     if (!raw || typeof raw !== "object") return null;
     const name = sanitizeName(raw.name);
@@ -55,6 +74,7 @@
       id: typeof raw.id === "string" && raw.id ? raw.id : makeId(),
       name,
       avatar,
+      pets: sanitizePets(raw.pets),
       total: cleanNumber(raw.total),
       best: cleanNumber(raw.best),
       correct: cleanNumber(raw.correct),
@@ -133,6 +153,7 @@
       id: options.id || makeId(),
       name: clean,
       avatar: AVATARS.includes(avatar) ? avatar : AVATARS[list.length % AVATARS.length],
+      pets: sanitizePets(options.pets),
       total: 0,
       best: cleanNumber(options.best),
       correct: 0,
@@ -155,6 +176,14 @@
     if (!gained) return profile;
     profile.total += gained;
     profile.correct += Math.max(0, Math.round(correct));
+    profile.updatedAt = Date.now();
+    return profile;
+  }
+
+  function setPets(list, id, pets) {
+    const profile = find(list, id);
+    if (!profile) return null;
+    profile.pets = sanitizePets(pets);
     profile.updatedAt = Date.now();
     return profile;
   }
@@ -189,8 +218,11 @@
     USER_KEY,
     MAX_PROFILES,
     MAX_NAME,
+    MAX_PETS,
+    DEFAULT_PETS,
     AVATARS,
     sanitizeName,
+    sanitizePets,
     normalizeList,
     load,
     save,
@@ -199,6 +231,7 @@
     create,
     find,
     addPoints,
+    setPets,
     finishRound,
     rank,
     remove,
