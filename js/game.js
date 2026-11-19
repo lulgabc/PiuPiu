@@ -1618,6 +1618,19 @@
   const PET_GRAVITY = 560;
   const PET_SCALE = 1.34;
   const PET_BODY_VARIANT = new URLSearchParams(location.search).get("petbody") === "cut" ? "cut" : "bean";
+  const PET_SPRITE_PILOT = new URLSearchParams(location.search).get("petdemo") === "sprite";
+  const PET_SPRITE_CAT = {
+    image: "assets/pets/cat-sprite.webp",
+    cell: 160,
+    rows: {
+      Idle: { row: 0, count: 10, fps: 8, loop: true },
+      Walk: { row: 1, count: 10, fps: 10, loop: true },
+      Run: { row: 2, count: 8, fps: 12, loop: true },
+      Jump: { row: 3, count: 8, fps: 12, loop: false },
+      Fall: { row: 4, count: 8, fps: 12, loop: true },
+      Hurt: { row: 5, count: 10, fps: 8, loop: false },
+    },
+  };
   const PET_DPR = Math.min(2, window.devicePixelRatio || 1);
   const PET_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
   const PET_MOVING = ["wander", "climb", "nuzzle", "chase", "startle"];
@@ -1631,6 +1644,11 @@
   };
 
   function randomPetDef() {
+    if (PET_SPRITE_PILOT && Pets && typeof Pets.byId === "function") {
+      const pilot = Pets.byId("cat") || PET_FALLBACK;
+      state.lastPetId = pilot.id;
+      return pilot;
+    }
     const def = Pets && typeof Pets.random === "function" ? Pets.random(state.lastPetId) : PET_FALLBACK;
     state.lastPetId = def.id;
     return def;
@@ -2167,6 +2185,103 @@
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  function createPetSpriteRenderer(pet, def, dpr) {
+    const canvas = pet.canvas;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const cfg = PET_SPRITE_CAT;
+    const image = new Image();
+    let ready = false;
+    let current = "Idle";
+    let frameTime = 0;
+    let dust = [];
+
+    function spawnDust(x, y, count = 2) {
+      for (let i = 0; i < count; i += 1) {
+        if (dust.length > 8) dust.shift();
+        dust.push({
+          x: x + (Math.random() - 0.5) * 6,
+          y: y + (Math.random() - 0.5) * 2,
+          vx: (Math.random() - 0.5) * 14,
+          vy: -6 - Math.random() * 8,
+          life: 0.28 + Math.random() * 0.16,
+          size: 1 + Math.random() * 1.6,
+        });
+      }
+    }
+
+    function chooseSpriteAction() {
+      const b = pet.brain;
+      if (b.action === "startle") return "Hurt";
+      if (pet.hopY < -2) return pet.hopV < 0 ? "Jump" : "Fall";
+      if (b.action === "cheer") return "Jump";
+      if (b.action === "chase") return "Run";
+      if (b.action === "wander" || b.action === "climb" || b.action === "nuzzle") {
+        return b.moving ? "Walk" : "Idle";
+      }
+      return "Idle";
+    }
+
+    function draw(dt) {
+      const w = pet.drawW;
+      const h = pet.drawH;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      if (dust.length) {
+        for (const puff of dust) {
+          const alpha = Math.max(0, puff.life / 0.44) * 0.2;
+          ctx.beginPath();
+          ctx.arc(puff.x, puff.y, puff.size + (0.4 - puff.life) * 4, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(120, 88, 108, ${alpha})`;
+          ctx.fill();
+        }
+      }
+
+      if (!ready) return;
+
+      const next = chooseSpriteAction();
+      if (next !== current) {
+        current = next;
+        frameTime = 0;
+      }
+      frameTime += dt;
+      const meta = cfg.rows[current];
+      let frame = Math.floor(frameTime * meta.fps);
+      frame = meta.loop ? frame % meta.count : Math.min(meta.count - 1, frame);
+      const size = h;
+      const dx = (w - size) / 2;
+      const dy = h - size;
+      const sx = frame * cfg.cell;
+      const sy = meta.row * cfg.cell;
+      ctx.drawImage(image, sx, sy, cfg.cell, cfg.cell, dx, dy, size, size);
+
+      if (dust.length) {
+        for (const puff of dust) {
+          puff.x += puff.vx * dt;
+          puff.y += puff.vy * dt;
+          puff.vy += 28 * dt;
+          puff.life -= dt;
+        }
+        dust = dust.filter((puff) => puff.life > 0);
+      }
+    }
+
+    image.onload = () => {
+      ready = true;
+      draw(0);
+    };
+    image.src = cfg.image;
+
+    return {
+      draw,
+      spawnDust,
+      refreshTheme() {},
+      getAction: () => current,
+      isSprite: true,
+    };
   }
 
   function createPetRenderer(pet, def, dpr) {
@@ -2748,7 +2863,7 @@
     const drawH = h;
     const { el, canvas } = createPetElement(def, w, h, drawW, drawH);
     els.petLayer.appendChild(el);
-    const accessory = Pets && typeof Pets.randomAccessory === "function"
+    const accessory = !PET_SPRITE_PILOT && Pets && typeof Pets.randomAccessory === "function"
       ? Pets.randomAccessory(state.lastAccessory)
       : null;
     if (accessory) state.lastAccessory = accessory.id;
@@ -2813,7 +2928,12 @@
         pawR: 0,
       },
     };
-    pet.renderer = createPetRenderer(pet, def, PET_DPR);
+    pet.renderer = PET_SPRITE_PILOT
+      ? createPetSpriteRenderer(pet, def, PET_DPR)
+      : createPetRenderer(pet, def, PET_DPR);
+    if (!pet.renderer) {
+      pet.renderer = createPetRenderer(pet, def, PET_DPR);
+    }
     if (!pet.renderer) {
       const body = document.createElement("span");
       body.className = "pet-body";
@@ -2951,6 +3071,8 @@
     return {
       id: pet.id,
       accessory: pet.accessory ? pet.accessory.id : null,
+      renderer: pet.renderer && pet.renderer.isSprite ? "sprite" : "canvas",
+      spriteAction: pet.renderer && pet.renderer.getAction ? pet.renderer.getAction() : null,
       x: Math.round(pet.x),
       y: Math.round(pet.ground + pet.hopY - pet.h),
       ground: Math.round(pet.ground),
