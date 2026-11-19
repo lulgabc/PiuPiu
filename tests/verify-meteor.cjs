@@ -35,22 +35,23 @@ assert.match(css, /@keyframes meteorGlow/, "the meteor needs a glow animation");
 
 // ---------- falling speed ----------
 assert.match(game, /const SPEED_KEY = "piupiu\.speed"/, "the speed choice should persist");
-assert.match(game, /const SPEED_LEVELS = \{ normal: 1, fast: 1\.3, turbo: 1\.65 \}/, "three speed levels are required");
+assert.match(game, /const SPEED_LEVELS = \{ normal: 1, fast: 1\.6, turbo: 2\.3 \}/, "the three speeds should be clearly different");
 assert.match(game, /\(fieldH \/ fallSeconds\) \* \(SPEED_LEVELS\[state\.speed\] \|\| 1\)/, "new words should use the chosen speed");
 assert.match(game, /localStorage\.setItem\(SPEED_KEY, key\)/, "the speed should be remembered");
 assert.match(game, /function cycleSpeed\(\)/, "the start-screen speed pill should cycle through the three speeds");
-assert.match(html, /id="speedBtn"/, "the start screen needs a speed pill");
-assert.match(html, /id="speedLabel"/, "the speed pill needs a readable label");
-assert.ok(!html.includes('id="speedGroup"'), "speed belongs in the game interface, not the settings drawer");
+assert.match(html, /id="speedBtn"/, "the game HUD needs a speed control");
 assert.ok(
-  html.indexOf('id="speedBtn"') < html.indexOf('id="setupSheet"'),
-  "the speed control must sit on the start screen",
+  html.indexOf('id="speedBtn"') < html.indexOf('id="startPanel"'),
+  "the speed control belongs in the gameplay HUD, not the home panel",
 );
+assert.match(html, /id="speedLabel"/, "the speed control needs a readable label");
+assert.ok(!html.includes('id="speedGroup"'), "speed belongs in the game interface, not the settings drawer");
+
 for (const speed of ["normal", "fast", "turbo"]) {
   assert.ok(translations.en[`speed.${speed}`], `missing the ${speed} label`);
 }
-assert.match(html, /data-i18n-aria="speed\.title"/, "the speed pill needs an accessible name");
-assert.match(css, /\.speed-pill \{/, "the speed pill needs styling");
+assert.match(html, /data-i18n-aria="speed\.title"/, "the speed control needs an accessible name");
+assert.match(css, /\.speed-tool \{/, "the speed control needs styling");
 
 for (const key of ["meteor.start", "meteor.clear", "meteor.empty", "speed.title", "speed.normal", "speed.fast", "speed.turbo", "speed.set", "speed.pillAria"]) {
   for (const lang of ["zh", "fr", "en"]) {
@@ -60,5 +61,5 @@ for (const key of ["meteor.start", "meteor.clear", "meteor.empty", "speed.title"
 
 console.log("✓ every 10 clears turns the word into a meteor that clears one frozen word per hit");
 console.log("✓ the meteor stops after three frozen words or when the bottom is clear");
-console.log("✓ the speed pill on the start screen cycles normal / fast / turbo and persists");
+console.log("✓ the gameplay speed control cycles normal / fast / turbo and persists");
 console.log("✓ meteor and speed labels translated in zh / fr / en");

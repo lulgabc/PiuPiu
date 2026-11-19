@@ -12,7 +12,7 @@ assert.match(html, /id="setupSheet"/, "the settings sheet should exist");
 assert.match(html, /id="setupVoiceSection"/, "the voice controls should live in settings");
 assert.match(html, /id="voiceSelect"/, "the help voice select should exist");
 assert.match(html, /id="voicePreview"/, "the help voice preview button should exist");
-assert.match(html, /id="packBtn"[^>]*aria-controls="setupSheet"/, "the pack pill should open settings");
+assert.match(html, /id="packBtn"[^>]*aria-controls="packSheet"/, "the pack pill should open the word picker");
 assert.match(html, /id="setupBtn"[^>]*aria-controls="setupSheet"/, "the parent button should open settings");
 
 // ---------- voice catalogue ----------

@@ -21,7 +21,10 @@ assert.match(html, /id="bestLine" class="best home-best"/, "the best score shoul
 
 // ---------- settings drawer ----------
 assert.match(html, /id="setupSheet"[^>]*role="dialog"/, "settings should be a dialog");
-assert.match(html, /id="setupPackSection"/, "word packs belong in settings");
+assert.match(html, /id="packSheet"[^>]*role="dialog"/, "word packs need their own picker dialog");
+assert.match(html, /id="packPreviewIcon"/, "the picker should preview the chosen pack");
+assert.match(html, /id="packDone"/, "the picker needs a done control");
+assert.ok(!html.includes('id="setupPackSection"'), "the parent sheet should no longer mix in word packs");
 assert.match(html, /id="setupVoiceSection"/, "voice selection belongs in settings");
 assert.match(html, /id="setupParentSection"/, "parent notes belong in settings");
 assert.match(html, /id="setupClose"/, "the settings drawer needs a close control");
@@ -38,17 +41,26 @@ assert.match(game, /renderVoiceOptions\(\);/, "voice labels should refresh with 
 // ---------- quiet menu ----------
 assert.match(css, /body\.phase-menu \.hud,/, "menu mode should hide the HUD");
 assert.match(css, /body\.phase-menu \.reward-progress,/, "menu mode should hide the star beam");
-assert.match(css, /body\.phase-menu \.controls \{/, "menu mode should hide the input footer");
+assert.match(css, /body\.phase-menu \.controls,/, "menu mode should hide the input footer");
 assert.match(css, /body\.phase-menu #pauseBtn \{/, "menu mode should hide pause");
 assert.match(css, /\.start-mascot \{/, "the mascot should be styled");
 assert.match(css, /\.pack-pill \{/, "the pack pill should be styled");
-assert.match(html, /id="speedBtn"/, "the falling-speed pill belongs on the start screen");
-assert.match(css, /\.speed-pill \{/, "the speed pill should be styled");
+assert.match(html, /id="speedBtn"/, "the falling-speed control belongs in the gameplay HUD");
+assert.ok(
+  html.indexOf('id="speedBtn"') < html.indexOf('id="startPanel"'),
+  "the speed control must sit outside the home panel",
+);
+assert.match(css, /\.speed-tool \{/, "the speed control should be styled");
+assert.ok(!html.includes('class="key-hint"'), "home buttons should not carry decorative arrows");
+assert.ok(!html.includes('pack-pill-chevron'), "the pack button should not carry an arrow");
+assert.ok(!html.includes('player-pill-chevron'), "the player button should not carry an arrow");
 assert.ok(css.includes(".stat-label {\n  font-size: 11px;"), "HUD labels should be readable, not tiny");
 assert.ok(css.includes(".stat strong {\n  font-size: 20px;"), "HUD values should stand out");
 assert.match(css, /@media \(max-width: 560px\)[\s\S]*?grid-template-areas/, "phones should stack the HUD for full-width stats");
 assert.equal(css.includes(".combo-stat { display: none; }"), false, "every stat should stay visible on phones");
-assert.match(css, /\.setup-sheet \{/, "the settings drawer should be styled");
+assert.match(css, /\.setup-sheet \{/, "the parent drawer should be styled");
+assert.match(css, /\.pack-sheet \{/, "the word picker should be styled");
+assert.match(css, /\.pack-preview \{/, "the chosen pack should have a visual preview");
 
 // ---------- short child-facing copy ----------
 assert.equal(i18n.match(/"start\.step1": "落下来"/g)?.length, 1);

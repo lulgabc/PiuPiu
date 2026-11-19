@@ -60,7 +60,7 @@
   const MUTE_KEY = "piupiu.muted";
   const PACK_KEY = "piupiu.pack";
   const SPEED_KEY = "piupiu.speed";
-  const SPEED_LEVELS = { normal: 1, fast: 1.3, turbo: 1.65 };
+  const SPEED_LEVELS = { normal: 1, fast: 1.6, turbo: 2.3 };
   const SPEED_ORDER = ["normal", "fast", "turbo"];
   const LEVEL_KEY = "piupiu.level";
   const BAND_KEY = "piupiu.band";
@@ -178,11 +178,16 @@
     categorySelect: $("categorySelect"),
     packBtn: $("packBtn"),
     packSummary: $("packSummary"),
+    packSheet: $("packSheet"),
+    packClose: $("packClose"),
+    packDone: $("packDone"),
+    packPreviewIcon: $("packPreviewIcon"),
+    packPreviewName: $("packPreviewName"),
+    packPreviewMeta: $("packPreviewMeta"),
     setupBtn: $("setupBtn"),
     setupSheet: $("setupSheet"),
     setupClose: $("setupClose"),
     setupDone: $("setupDone"),
-    setupPackSection: $("setupPackSection"),
     setupVoiceSection: $("setupVoiceSection"),
     setupParentSection: $("setupParentSection"),
     playSteps: $("playSteps"),
@@ -546,8 +551,8 @@
     els.diffGroup.classList.toggle("is-hidden", banded);
     els.levelSelect.classList.toggle("is-hidden", !showLevel);
 
-    const controls = els.categorySelect.closest(".pack-controls");
-    if (controls) controls.classList.toggle("single", banded && !showLevel);
+    const controls = els.diffGroup.closest(".pack-controls");
+    if (controls) controls.classList.toggle("single", banded);
 
     if (banded) {
       const validBand =
@@ -572,14 +577,18 @@
     const countKey = category && category.countKey ? category.countKey : "pack.count";
     setText(els.packCount, tr(countKey, { count: formatNumber(count) }));
 
-    if (els.packSummary && category) {
-      let modeKey = "difficulty.all";
-      if (banded) {
-        const band = category.bands.find((item) => item.id === state.band);
-        modeKey = state.band !== "all" && band ? band.labelKey : "difficulty.all";
-      } else if (state.difficulty > 0) {
-        modeKey = `difficulty.${state.difficulty}`;
-      }
+    let modeKey = "difficulty.all";
+    if (banded) {
+      const band = category.bands.find((item) => item.id === state.band);
+      modeKey = state.band !== "all" && band ? band.labelKey : "difficulty.all";
+    } else if (state.difficulty > 0) {
+      modeKey = `difficulty.${state.difficulty}`;
+    }
+
+    if (category) {
+      setText(els.packPreviewIcon, category.icon || "✦");
+      setText(els.packPreviewName, tr(category.nameKey));
+      setText(els.packPreviewMeta, tr(modeKey));
       setText(els.packSummary, `${tr(category.nameKey)} · ${tr(modeKey)}`);
     }
   }
@@ -1100,14 +1109,13 @@
     document.body.classList.add(`phase-${state.phase}`);
   }
 
-  function openSetup(section = "pack") {
+  function openSetup() {
     if (!els.setupSheet) return;
-    setupOpener = section === "parent" ? els.setupBtn : els.packBtn;
+    setupOpener = els.setupBtn;
     els.setupSheet.classList.remove("is-hidden");
     els.setupSheet.setAttribute("aria-hidden", "false");
     const card = els.setupSheet.querySelector(".setup-card");
-    const target = section === "parent" ? els.setupParentSection : els.setupPackSection;
-    if (card) card.scrollTop = target ? Math.max(0, target.offsetTop - 12) : 0;
+    if (card) card.scrollTop = 0;
     window.setTimeout(() => {
       if (els.setupClose && !els.setupSheet.classList.contains("is-hidden")) {
         els.setupClose.focus({ preventScroll: true });
@@ -1121,6 +1129,31 @@
     els.setupSheet.setAttribute("aria-hidden", "true");
     if (setupOpener && document.contains(setupOpener) && !setupOpener.classList.contains("is-hidden")) {
       setupOpener.focus({ preventScroll: true });
+    }
+  }
+
+  let packOpener = null;
+
+  function openPack() {
+    if (!els.packSheet) return;
+    packOpener = els.packBtn;
+    renderCategoryOptions();
+    updatePackUI();
+    els.packSheet.classList.remove("is-hidden");
+    els.packSheet.setAttribute("aria-hidden", "false");
+    window.setTimeout(() => {
+      if (els.packClose && !els.packSheet.classList.contains("is-hidden")) {
+        els.packClose.focus({ preventScroll: true });
+      }
+    }, 0);
+  }
+
+  function closePack() {
+    if (!els.packSheet || els.packSheet.classList.contains("is-hidden")) return;
+    els.packSheet.classList.add("is-hidden");
+    els.packSheet.setAttribute("aria-hidden", "true");
+    if (packOpener && document.contains(packOpener) && !packOpener.classList.contains("is-hidden")) {
+      packOpener.focus({ preventScroll: true });
     }
   }
 
@@ -3665,8 +3698,15 @@
     });
   }
 
-  if (els.packBtn) els.packBtn.addEventListener("click", () => openSetup("pack"));
-  if (els.setupBtn) els.setupBtn.addEventListener("click", () => openSetup("parent"));
+  if (els.packBtn) els.packBtn.addEventListener("click", openPack);
+  if (els.packClose) els.packClose.addEventListener("click", closePack);
+  if (els.packDone) els.packDone.addEventListener("click", closePack);
+  if (els.packSheet) {
+    els.packSheet.addEventListener("click", (event) => {
+      if (event.target === els.packSheet) closePack();
+    });
+  }
+  if (els.setupBtn) els.setupBtn.addEventListener("click", openSetup);
   if (els.setupClose) els.setupClose.addEventListener("click", closeSetup);
   if (els.setupDone) els.setupDone.addEventListener("click", closeSetup);
   if (els.setupSheet) {
@@ -3685,6 +3725,8 @@
     const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
     const playerOpen = els.playerSheet && !els.playerSheet.classList.contains("is-hidden");
     const boardOpen = els.boardSheet && !els.boardSheet.classList.contains("is-hidden");
+    const packOpen = els.packSheet && !els.packSheet.classList.contains("is-hidden");
+    const setupOpen = els.setupSheet && !els.setupSheet.classList.contains("is-hidden");
     if (event.key === "Escape" && playerOpen) {
       event.preventDefault();
       closePlayerSheet();
@@ -3695,7 +3737,16 @@
       closeBoard();
       return;
     }
-    if (playerOpen || boardOpen) return;
+    if (playerOpen || boardOpen || packOpen || setupOpen) return;
+    if (
+      event.key === "Escape" &&
+      els.packSheet &&
+      !els.packSheet.classList.contains("is-hidden")
+    ) {
+      event.preventDefault();
+      closePack();
+      return;
+    }
     if (
       event.key === "Escape" &&
       els.setupSheet &&

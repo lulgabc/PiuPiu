@@ -32,7 +32,7 @@
       document.documentElement.classList.add("is-touch");
     }
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2.14.0">
+  <link rel="stylesheet" href="css/style.css?v=2.15.0">
 </head>
 <body class="phase-menu">
   <div id="app">
@@ -76,6 +76,10 @@
           <option value="fr" lang="fr">FR</option>
           <option value="en" lang="en">EN</option>
         </select>
+        <button id="speedBtn" class="icon-btn speed-tool" type="button" data-speed="normal" aria-label="下落速度：普通" data-i18n-aria="speed.title">
+          <span class="speed-tool-bolt" aria-hidden="true">⚡</span>
+          <span id="speedLabel" class="speed-tool-label">普通</span>
+        </button>
         <button id="muteBtn" class="icon-btn" type="button" title="音效开关"
                 data-i18n-title="mute.title" aria-label="音效开关" data-i18n-aria="mute.off" aria-pressed="false">🔊</button>
         <button id="pauseBtn" class="icon-btn" type="button" title="暂停 (Esc)" data-i18n-title="pause.pauseTitle"
@@ -145,41 +149,27 @@
 
           <button id="startBtn" class="primary-btn start-cta" type="button">
             <span data-i18n="start.cta">开始游戏</span>
-            <span class="key-hint" aria-hidden="true">▶</span>
           </button>
 
-          <div class="start-pills">
-            <button id="packBtn" class="pack-pill" type="button" aria-haspopup="dialog" aria-controls="setupSheet" data-i18n-aria="setup.packAria">
-              <span class="pack-pill-icon" aria-hidden="true">🌍</span>
-              <span id="packSummary" class="pack-pill-text">综合词库 · 全部</span>
-              <span class="pack-pill-chevron" aria-hidden="true">›</span>
-            </button>
-            <button id="speedBtn" class="speed-pill" type="button" data-speed="normal" aria-label="下落速度：普通" data-i18n-aria="speed.title">
-              <span class="speed-pill-icon" aria-hidden="true">⚡</span>
-              <span id="speedLabel" class="speed-pill-label">普通</span>
-              <span class="speed-pill-cycle" aria-hidden="true">↻</span>
-            </button>
-          </div>
+          <button id="packBtn" class="pack-pill" type="button" aria-haspopup="dialog" aria-controls="packSheet" data-i18n-aria="setup.packAria">
+            <span id="packSummary" class="pack-pill-text">综合词库 · 全部</span>
+          </button>
 
           <button id="playerBtn" class="player-pill" type="button" aria-haspopup="dialog" aria-controls="playerSheet" data-i18n-aria="player.title">
             <span id="playerAvatar" class="player-pill-avatar" aria-hidden="true">🦊</span>
             <span id="playerName" class="player-pill-name" data-i18n="player.none">创建玩家</span>
             <span id="playerTotal" class="player-pill-total">⭐ 0</span>
-            <span class="player-pill-chevron" aria-hidden="true">›</span>
           </button>
 
           <div class="home-meta">
             <p id="bestLine" class="best home-best">🏆 0</p>
             <button id="installBtn" class="home-install is-hidden" type="button" data-i18n-title="install.cta" data-i18n-aria="install.cta" title="安装到手机" aria-label="安装到手机">
-              <span aria-hidden="true">📲</span>
               <span data-i18n="install.short">安装</span>
             </button>
             <button id="boardBtn" class="home-settings home-board" type="button" aria-haspopup="dialog" aria-controls="boardSheet" aria-label="积分排行" data-i18n-aria="board.title">
-              <span aria-hidden="true">🏅</span>
               <span data-i18n="board.open">排行</span>
             </button>
             <button id="setupBtn" class="home-settings" type="button" aria-haspopup="dialog" aria-controls="setupSheet" data-i18n-aria="setup.openAria">
-              <span aria-hidden="true">⚙</span>
               <span data-i18n="setup.parentButton">家长</span>
             </button>
           </div>
@@ -294,31 +284,47 @@
     </div>
   </div>
 
+  <div id="packSheet" class="pack-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="packTitle" aria-hidden="true">
+    <div class="pack-card" role="document">
+      <div class="pack-head">
+        <h2 id="packTitle" data-i18n="pack.sheetTitle">选择词库</h2>
+        <button id="packClose" class="pack-close" type="button" aria-label="关闭词库选择" data-i18n-aria="pack.close">✕</button>
+      </div>
+
+      <div class="pack-preview">
+        <span id="packPreviewIcon" class="pack-preview-icon" aria-hidden="true">✦</span>
+        <div class="pack-preview-text">
+          <strong id="packPreviewName">综合词库</strong>
+          <span id="packPreviewMeta">全部</span>
+        </div>
+        <span id="packCount" class="pack-count" aria-live="polite">500 个单词</span>
+      </div>
+
+      <label class="pack-field-label" for="categorySelect" data-i18n="pack.category">类别</label>
+      <select id="categorySelect" class="pack-select" aria-label="类别" data-i18n-aria="pack.category">
+        <option value="core" data-i18n="cat.core">综合词库</option>
+      </select>
+
+      <div class="pack-controls">
+        <div id="diffGroup" class="diff-group" role="group" aria-label="难度" data-i18n-aria="pack.level">
+          <button type="button" class="diff-btn is-active" data-level="0" data-i18n="difficulty.all" aria-pressed="true">全部</button>
+          <button type="button" class="diff-btn" data-level="1" data-i18n="difficulty.1" aria-pressed="false">初级</button>
+          <button type="button" class="diff-btn" data-level="2" data-i18n="difficulty.2" aria-pressed="false">中级</button>
+          <button type="button" class="diff-btn" data-level="3" data-i18n="difficulty.3" aria-pressed="false">高级</button>
+        </div>
+        <select id="levelSelect" class="pack-select level-select is-hidden" aria-label="级别" data-i18n-aria="pack.band"></select>
+      </div>
+
+      <button id="packDone" class="primary-btn pack-done" type="button" data-i18n="setup.done">完成</button>
+    </div>
+  </div>
+
   <div id="setupSheet" class="setup-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="setupTitle" aria-hidden="true">
     <div class="setup-card" role="document">
       <div class="setup-head">
-        <h2 id="setupTitle" data-i18n="setup.title">游戏设置</h2>
+        <h2 id="setupTitle" data-i18n="setup.title">家长设置</h2>
         <button id="setupClose" class="setup-close" type="button" aria-label="关闭设置" data-i18n-aria="setup.close">✕</button>
       </div>
-
-      <section id="setupPackSection" class="setup-section">
-        <div class="setup-section-head">
-          <h3 data-i18n="pack.title">词库</h3>
-          <span id="packCount" class="pack-count" aria-live="polite">500 个单词</span>
-        </div>
-        <select id="categorySelect" class="pack-select" aria-label="类别" data-i18n-aria="pack.category">
-          <option value="core" data-i18n="cat.core">综合词库</option>
-        </select>
-        <div class="pack-controls">
-          <div id="diffGroup" class="diff-group" role="group" aria-label="难度" data-i18n-aria="pack.level">
-            <button type="button" class="diff-btn is-active" data-level="0" data-i18n="difficulty.all" aria-pressed="true">全部</button>
-            <button type="button" class="diff-btn" data-level="1" data-i18n="difficulty.1" aria-pressed="false">初级</button>
-            <button type="button" class="diff-btn" data-level="2" data-i18n="difficulty.2" aria-pressed="false">中级</button>
-            <button type="button" class="diff-btn" data-level="3" data-i18n="difficulty.3" aria-pressed="false">高级</button>
-          </div>
-          <select id="levelSelect" class="pack-select level-select is-hidden" aria-label="级别" data-i18n-aria="pack.band"></select>
-        </div>
-      </section>
 
       <section id="setupVoiceSection" class="setup-section">
         <h3 data-i18n="voice.title">朗读声音</h3>
@@ -341,7 +347,7 @@
   </div>
 
 
-  <script src="js/i18n.js?v=2.14.0"></script>
+  <script src="js/i18n.js?v=2.15.0"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
   <script src="js/education.js"></script>
@@ -352,8 +358,8 @@
   <script src="js/emojis.js"></script>
   <script src="js/vendor/pixi.min.js?v=2.0.1"></script>
   <script src="js/vendor/matter.min.js"></script>
-  <script src="js/pixi-ambient.js?v=2.14.0"></script>
-  <script src="js/game.js?v=2.14.0"></script>
-  <script src="js/pwa.js?v=2.14.0"></script>
+  <script src="js/pixi-ambient.js?v=2.15.0"></script>
+  <script src="js/game.js?v=2.15.0"></script>
+  <script src="js/pwa.js?v=2.15.0"></script>
 </body>
 </html>
