@@ -3123,62 +3123,6 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
 
 /* ---------- players & leaderboard ---------- */
 
-.player-row {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  width: 100%;
-  margin-top: 10px;
-}
-
-.player-row .player-pill {
-  flex: 1 1 auto;
-  width: auto;
-  margin-top: 0;
-}
-
-.player-pet {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-width: 56px;
-  min-height: 40px;
-  padding: 0 8px;
-  border: 1px solid rgba(255, 111, 174, 0.35);
-  border-radius: 12px;
-  background: rgba(255, 111, 174, 0.1);
-  color: #ffd7e8;
-  font-family: inherit;
-  font-size: 17px;
-  line-height: 1;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, transform 0.2s;
-}
-
-.player-pet:hover {
-  border-color: rgba(255, 111, 174, 0.7);
-  background: rgba(255, 111, 174, 0.17);
-  transform: translateY(-1px);
-}
-
-.player-pet.is-empty {
-  border-style: dashed;
-  opacity: 0.9;
-}
-
-.player-pet:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px rgba(255, 111, 174, 0.2);
-}
-
-.player-pet-count {
-  font-size: 10px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
 .player-pill {
   display: flex;
   align-items: center;
@@ -3650,171 +3594,6 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
   margin-top: 10px;
 }
 
-/* Pet warehouse */
-.pet-shelf-card {
-  width: min(560px, 100%);
-  padding-bottom: 0;
-}
-
-.pet-shelf .player-done {
-  position: static;
-  z-index: 4;
-  margin-top: 0;
-}
-
-.pet-shelf-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 4;
-  margin-top: 10px;
-  padding: 9px 0 max(18px, env(safe-area-inset-bottom));
-  background: var(--theme-card, #0d1326);
-}
-
-.pet-team {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  min-height: 52px;
-  margin: 2px 0 5px;
-}
-
-.pet-team-slot {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 52px;
-  border: 2px dashed var(--theme-line, rgba(255, 255, 255, 0.16));
-  border-radius: 15px;
-  background: var(--theme-card-2, rgba(255, 255, 255, 0.04));
-  color: var(--theme-card-muted, #93a0c0);
-  font-size: 25px;
-  line-height: 1;
-}
-
-.pet-team-slot.is-filled {
-  border-style: solid;
-  border-color: var(--theme-border, #fff);
-  background: var(--theme-card, #fffdf8);
-  box-shadow: var(--theme-ring, 0 0 0 0 transparent), var(--theme-shadow-sm, 0 3px 8px rgba(0, 0, 0, 0.2));
-  font-size: 30px;
-}
-
-.pet-team-slot.is-empty {
-  opacity: 0.55;
-}
-
-.pet-count-line {
-  margin: 0 0 10px;
-  color: var(--theme-card-muted, #93a0c0);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-align: center;
-}
-
-.pet-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pet-choice {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  min-height: 88px;
-  padding: 9px 5px 7px;
-  border: 2px solid var(--theme-line, rgba(255, 255, 255, 0.12));
-  border-radius: 15px;
-  background: var(--theme-card-2, rgba(255, 255, 255, 0.04));
-  color: var(--theme-card-ink, #fff);
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.18s, background 0.18s, transform 0.18s, box-shadow 0.18s;
-}
-
-.pet-choice:hover {
-  border-color: var(--theme-active, #41e7c7);
-  transform: translateY(-2px);
-}
-
-.pet-choice.is-selected {
-  border-color: var(--theme-active, #41e7c7);
-  background: color-mix(in srgb, var(--theme-active, #41e7c7) 13%, var(--theme-card, #fffdf8));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-active, #41e7c7) 24%, transparent);
-}
-
-.pet-choice.is-selected::after {
-  content: "✓";
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  display: grid;
-  place-items: center;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  background: var(--theme-active, #41e7c7);
-  color: var(--theme-active-ink, #10231f);
-  font-size: 10px;
-  font-weight: 900;
-}
-
-.pet-choice:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-active, #41e7c7) 24%, transparent);
-}
-
-.pet-choice-emoji {
-  font-size: 29px;
-  line-height: 1;
-  filter: drop-shadow(0 3px 3px rgba(60, 30, 60, 0.14));
-  transition: transform 0.18s ease;
-}
-
-.pet-choice:hover .pet-choice-emoji,
-.pet-choice:focus-visible .pet-choice-emoji {
-  transform: scale(1.12) rotate(-4deg);
-}
-
-.pet-choice-name {
-  max-width: 100%;
-  overflow: hidden;
-  font-size: 10.5px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pet-choice-trait {
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--theme-card-muted, #93a0c0);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.pet-note {
-  margin: 10px 0 0;
-  color: var(--theme-card-muted, #93a0c0);
-  font-size: 10.5px;
-  line-height: 1.55;
-  text-align: center;
-}
-
-@media (min-width: 520px) {
-  .pet-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
 /* Leaderboard */
 .board-list {
   display: grid;
@@ -3946,13 +3725,9 @@ html.is-touch .word.golden:not(.settled):not(.miss) {
 }
 
 @media (max-height: 760px) {
-  .player-row {
-    margin-top: 8px;
-  }
-
-  .player-pill,
-  .player-pet {
+  .player-pill {
     min-height: 36px;
+    margin-top: 8px;
   }
 
   .player-card,
@@ -4603,30 +4378,6 @@ html[data-theme] .missed-list span.empty {
 
 html[data-theme] .session-total {
   color: var(--theme-note);
-}
-
-html[data-theme] .player-row .player-pet {
-  border-color: var(--theme-line);
-  background: color-mix(in srgb, var(--theme-active) 10%, var(--theme-card));
-  color: var(--theme-label);
-  box-shadow: var(--theme-ring), var(--theme-shadow-sm);
-}
-
-html[data-theme] .player-pet:hover {
-  border-color: var(--theme-active);
-  background: color-mix(in srgb, var(--theme-active) 16%, var(--theme-card));
-}
-
-html[data-theme] .pet-team-slot {
-  border-color: var(--theme-line);
-  background: var(--theme-card-2);
-  color: var(--theme-card-muted);
-}
-
-html[data-theme] .pet-team-slot.is-filled {
-  border-color: var(--theme-border);
-  background: var(--theme-card);
-  box-shadow: var(--theme-ring), var(--theme-shadow-sm);
 }
 
 html[data-theme] .player-option-current,

@@ -180,15 +180,6 @@
     wordLayer: $("wordLayer"),
     fxLayer: $("fxLayer"),
     petLayer: $("petLayer"),
-    petBtn: $("petBtn"),
-    petCount: $("petCount"),
-    petSheet: $("petSheet"),
-    petClose: $("petClose"),
-    petDone: $("petDone"),
-    petGrid: $("petGrid"),
-    petTeam: $("petTeam"),
-    petSubtitle: $("petSubtitle"),
-    petCountLine: $("petCountLine"),
     overlay: $("overlay"),
     startPanel: $("startPanel"),
     pausePanel: $("pausePanel"),
@@ -367,6 +358,7 @@
     lastFieldW: 0,
     pets: [],
     pet: null,
+    lastPetId: "",
   };
 
   let effectBag = [];
@@ -1215,7 +1207,7 @@
     els.typeInput.classList.remove("wrong");
     els.correctStat.classList.remove("reward");
     resetRewardProgress();
-    resetPets();
+    clearPets();
     updateHUD(true);
   }
 
@@ -1310,6 +1302,7 @@
     playStart();
     state.pool = getSelectedPool();
     resetGame();
+    resetPets();
     state.phase = "playing";
     syncPhaseClass();
     window.dispatchEvent(new CustomEvent("piupiu:roundstart"));
@@ -1591,13 +1584,10 @@
 
   const PET_GRAVITY = 560;
 
-  function activePetIds() {
-    const profile = currentProfile();
-    const source = profile && Array.isArray(profile.pets) ? profile.pets : null;
-    if (Pets && typeof Pets.sanitize === "function") {
-      return Pets.sanitize(source).slice(0, Pets.MAX_PETS);
-    }
-    return [PET_FALLBACK.id];
+  function randomPetDef() {
+    const def = Pets && typeof Pets.random === "function" ? Pets.random(state.lastPetId) : PET_FALLBACK;
+    state.lastPetId = def.id;
+    return def;
   }
 
   function petDef(id) {
@@ -1690,48 +1680,60 @@
     p.el.style.setProperty("--pet-shadow-alpha", (0.86 - lift * 0.4).toFixed(2));
   }
 
-  function resetPets() {
-    if (!els.petLayer) return;
-    els.petLayer.replaceChildren();
+  function clearPets() {
+    if (els.petLayer) els.petLayer.replaceChildren();
     state.pets = [];
     state.pet = null;
-    const ids = activePetIds();
+  }
+
+  function resetPets() {
+    clearPets();
+    if (!els.petLayer) return;
+    const def = randomPetDef();
+    const el = createPetElement(def);
+    els.petLayer.appendChild(el);
     const fieldW = els.field.clientWidth || 360;
     const fieldH = els.field.clientHeight || 480;
-    const count = ids.length;
-    ids.forEach((id, index) => {
-      const def = petDef(id);
-      const el = createPetElement(def);
-      els.petLayer.appendChild(el);
-      const slot = count === 1 ? 0.5 : 0.2 + (0.6 * index) / Math.max(1, count - 1);
-      const minX = def.w / 2 + 10;
-      const maxX = Math.max(minX, fieldW - def.w / 2 - 12);
-      const x = Math.min(maxX, Math.max(minX, fieldW * slot + (Math.random() - 0.5) * 26));
-      const pet = {
-        id: def.id,
-        def,
-        el,
-        w: def.w,
-        h: def.h,
-        x,
-        targetX: x,
-        dir: Math.random() < 0.5 ? -1 : 1,
-        ground: Math.max(64, fieldH - 10),
-        hopY: 0,
-        hopV: 0,
-        bob: 0,
-        walkPhase: Math.random() * Math.PI * 2,
-        idlePhase: Math.random() * Math.PI * 2,
-        pause: 0.5 + Math.random() * 1.4,
-        nextHop: 2 + Math.random() * 3,
-        squeakCooldown: 0.4 + index * 0.5,
-        squeakTimer: 0,
-        landTimer: 0,
-      };
-      state.pets.push(pet);
-      petApply(pet);
-    });
-    state.pet = state.pets[0] || null;
+    const minX = def.w / 2 + 10;
+    const maxX = Math.max(minX, fieldW - def.w / 2 - 12);
+    const x = Math.min(maxX, Math.max(minX, fieldW * (0.26 + Math.random() * 0.48)));
+    const pet = {
+      id: def.id,
+      def,
+      el,
+      w: def.w,
+      h: def.h,
+      x,
+      targetX: x,
+      dir: Math.random() < 0.5 ? -1 : 1,
+      ground: Math.max(64, fieldH - 10),
+      hopY: 0,
+      hopV: 0,
+      bob: 0,
+      walkPhase: Math.random() * Math.PI * 2,
+      idlePhase: Math.random() * Math.PI * 2,
+      pause: 0.5 + Math.random() * 1.4,
+      nextHop: 2 + Math.random() * 3,
+      squeakCooldown: 0,
+      squeakTimer: 0,
+      landTimer: 0,
+    };
+    state.pets = [pet];
+    state.pet = pet;
+    petApply(pet);
+    introducePet(pet);
+  }
+
+  function introducePet(pet) {
+    const bubble = pet.el && pet.el.querySelector(".pet-squeak");
+    if (!bubble) return;
+    bubble.textContent = tr(`pet.name.${pet.id}`);
+    pet.el.classList.add("squeaking");
+    window.setTimeout(() => {
+      if (!pet.el || !pet.el.isConnected) return;
+      pet.el.classList.remove("squeaking");
+      bubble.textContent = tr(pet.def.say);
+    }, 2200);
   }
 
   function petSqueak(pet, force = false) {
@@ -1841,35 +1843,12 @@
         p.el.classList.add("landed");
       }
     }
-  }
 
-  function petSeparate() {
-    const fieldW = els.field.clientWidth || 360;
-    for (let i = 0; i < state.pets.length; i += 1) {
-      const a = state.pets[i];
-      for (let j = i + 1; j < state.pets.length; j += 1) {
-        const b = state.pets[j];
-        if (Math.abs(a.ground - b.ground) > 30) continue;
-        const min = (a.w + b.w) * 0.46;
-        const dx = b.x - a.x;
-        const gap = Math.abs(dx);
-        if (gap >= min) continue;
-        const sign = dx === 0 ? 1 : Math.sign(dx);
-        const push = (min - gap) * 0.38;
-        a.x = Math.max(a.w / 2 + 4, a.x - sign * push);
-        b.x = Math.min(fieldW - b.w / 2 - 4, b.x + sign * push);
-        if (Math.abs(a.targetX - b.targetX) < min) {
-          a.targetX = Math.max(a.w / 2 + 8, a.targetX - sign * push * 2);
-          b.targetX = Math.min(fieldW - b.w / 2 - 8, b.targetX + sign * push * 2);
-        }
-      }
-    }
+    petApply(p);
   }
 
   function updatePets(dt) {
     for (const pet of state.pets) updatePet(pet, dt);
-    petSeparate();
-    for (const pet of state.pets) petApply(pet);
     state.pet = state.pets[0] || null;
   }
 
@@ -2077,8 +2056,6 @@
   let editingProfileId = "";
   let playerSheetOpener = null;
   let boardOpener = null;
-  let petSheetOpener = null;
-  let petDirty = false;
 
   function currentProfile() {
     return Profiles ? Profiles.find(state.profiles, state.userId) : null;
@@ -2130,8 +2107,7 @@
       name.textContent = profile.name;
       const meta = document.createElement("span");
       meta.className = "player-option-meta";
-      const petIcons = profilePets(profile).map(petEmoji).join("");
-      meta.textContent = `${tr("board.best", { score: formatNumber(profile.best) })} · ${tr("board.correct", { count: formatNumber(profile.correct) })}${petIcons ? ` · ${petIcons}` : ""}`;
+      meta.textContent = `${tr("board.best", { score: formatNumber(profile.best) })} · ${tr("board.correct", { count: formatNumber(profile.correct) })}`;
       text.append(name, meta);
 
       const total = document.createElement("span");
@@ -2233,154 +2209,7 @@
     els.playerBtn.setAttribute("title", label);
     els.playerBtn.classList.toggle("is-empty", !profile);
     if (profile) state.highScore = profile.best;
-    renderPetUI();
     renderBestLine();
-  }
-
-  function profilePets(profile) {
-    if (!profile) return [];
-    if (Pets && typeof Pets.sanitize === "function") return Pets.sanitize(profile.pets);
-    return [PET_FALLBACK.id];
-  }
-
-  function petEmoji(id) {
-    const def = Pets && typeof Pets.byId === "function" ? Pets.byId(id) : null;
-    return def ? def.emoji : "🐾";
-  }
-
-  function renderPetUI() {
-    if (!els.petBtn) return;
-    const profile = currentProfile();
-    const ids = profilePets(profile);
-    setText(els.petCount, profile ? String(ids.length) : "＋");
-    const names = ids.map((id) => tr(`pet.name.${id}`)).join(" · ");
-    const label = profile
-      ? `${tr("pet.openAria", { count: ids.length })}${names ? ` · ${names}` : ""}`
-      : tr("pet.needPlayer");
-    els.petBtn.setAttribute("aria-label", label);
-    els.petBtn.setAttribute("title", label);
-    els.petBtn.classList.toggle("is-empty", !profile);
-  }
-
-  function renderPetSheet() {
-    if (!els.petGrid) return;
-    const profile = currentProfile();
-    const selected = profilePets(profile);
-    setText(
-      els.petSubtitle,
-      profile
-        ? tr("pet.subtitle", { name: profile.name })
-        : tr("pet.needPlayer"),
-    );
-    setText(els.petCountLine, tr("pet.count", { count: selected.length }));
-
-    if (els.petTeam) {
-      els.petTeam.replaceChildren();
-      const slots = Pets ? Pets.MAX_PETS : 3;
-      for (let i = 0; i < slots; i += 1) {
-        const slot = document.createElement("span");
-        const id = selected[i];
-        slot.className = id ? "pet-team-slot is-filled" : "pet-team-slot is-empty";
-        slot.textContent = id ? petEmoji(id) : "🐾";
-        els.petTeam.appendChild(slot);
-      }
-    }
-
-    els.petGrid.replaceChildren();
-    if (!Pets) return;
-    for (const def of Pets.PETS) {
-      const active = selected.includes(def.id);
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = active ? "pet-choice is-selected" : "pet-choice";
-      button.dataset.petChoice = def.id;
-      button.setAttribute("role", "checkbox");
-      button.setAttribute("aria-checked", String(active));
-      button.setAttribute("aria-label", `${tr(`pet.name.${def.id}`)}, ${tr(`pet.trait.${def.trait}`)}`);
-
-      const emoji = document.createElement("span");
-      emoji.className = "pet-choice-emoji";
-      emoji.setAttribute("aria-hidden", "true");
-      emoji.textContent = def.emoji;
-
-      const name = document.createElement("span");
-      name.className = "pet-choice-name";
-      name.textContent = tr(`pet.name.${def.id}`);
-
-      const trait = document.createElement("span");
-      trait.className = "pet-choice-trait";
-      trait.textContent = tr(`pet.trait.${def.trait}`);
-
-      button.append(emoji, name, trait);
-      els.petGrid.appendChild(button);
-    }
-  }
-
-  function togglePetChoice(id) {
-    const profile = currentProfile();
-    if (!profile || !Profiles || !Pets) return;
-    const current = profilePets(profile);
-    const index = current.indexOf(id);
-    if (index === -1) {
-      if (current.length >= Pets.MAX_PETS) {
-        playPetVoice(id);
-        toast(tr("pet.max"), "warn");
-        return;
-      }
-      current.push(id);
-    } else {
-      if (current.length <= 1) {
-        playPetVoice(id);
-        toast(tr("pet.min"), "warn");
-        return;
-      }
-      current.splice(index, 1);
-    }
-    Profiles.setPets(state.profiles, profile.id, current);
-    Profiles.save(state.profiles);
-    petDirty = true;
-    playPetVoice(id);
-    renderPetSheet();
-    renderPetUI();
-    renderPlayerList();
-    renderBoard();
-  }
-
-  function openPetSheet() {
-    if (!els.petSheet) return;
-    if (!currentProfile()) {
-      toast(tr("pet.needPlayer"), "warn");
-      openPlayerSheet();
-      return;
-    }
-    petSheetOpener = document.activeElement && document.activeElement.focus ? document.activeElement : els.petBtn;
-    petDirty = false;
-    renderPetSheet();
-    els.petSheet.classList.remove("is-hidden");
-    els.petSheet.setAttribute("aria-hidden", "false");
-    window.setTimeout(() => {
-      if (els.petClose && !els.petSheet.classList.contains("is-hidden")) {
-        els.petClose.focus({ preventScroll: true });
-      }
-    }, 0);
-  }
-
-  function closePetSheet() {
-    if (!els.petSheet || els.petSheet.classList.contains("is-hidden")) return;
-    els.petSheet.classList.add("is-hidden");
-    els.petSheet.setAttribute("aria-hidden", "true");
-    if (petDirty) {
-      petDirty = false;
-      toast(tr("pet.saved"));
-    }
-    renderPetUI();
-    if (
-      petSheetOpener &&
-      document.contains(petSheetOpener) &&
-      !petSheetOpener.classList.contains("is-hidden")
-    ) {
-      petSheetOpener.focus({ preventScroll: true });
-    }
   }
 
   function updateSessionTotal() {
@@ -2756,8 +2585,6 @@
     renderPlayerUI();
     renderPlayerList();
     renderBoard();
-    renderPetUI();
-    if (els.petSheet && !els.petSheet.classList.contains("is-hidden")) renderPetSheet();
     renderAvatarPicker();
     syncPlayerFormMode();
     renderCategoryOptions();
@@ -4275,24 +4102,6 @@
     });
   }
 
-  if (els.petBtn) els.petBtn.addEventListener("click", openPetSheet);
-  if (els.petClose) els.petClose.addEventListener("click", closePetSheet);
-  if (els.petDone) els.petDone.addEventListener("click", closePetSheet);
-  if (els.petSheet) {
-    els.petSheet.addEventListener("click", (event) => {
-      if (event.target === els.petSheet) closePetSheet();
-    });
-  }
-  if (els.petGrid) {
-    els.petGrid.addEventListener("click", (event) => {
-      const target = event.target;
-      if (!target || typeof target.closest !== "function") return;
-      const choice = target.closest("[data-pet-choice]");
-      if (!choice) return;
-      togglePetChoice(choice.dataset.petChoice);
-    });
-  }
-
   if (els.packBtn) els.packBtn.addEventListener("click", openPack);
   if (els.packClose) els.packClose.addEventListener("click", closePack);
   if (els.packDone) els.packDone.addEventListener("click", closePack);
@@ -4578,19 +4387,7 @@
       getPet: () => (state.pet ? petInfo(state.pet) : null),
       getPets: () => state.pets.map(petInfo),
       getPetCatalog: () => (Pets ? Pets.PETS.map((pet) => ({ ...pet })) : []),
-      getActivePets: () => profilePets(currentProfile()),
-      setActivePets: (ids) => {
-        const profile = currentProfile();
-        if (!profile || !Profiles) return [];
-        Profiles.setPets(state.profiles, profile.id, ids);
-        Profiles.save(state.profiles);
-        renderPetUI();
-        renderPlayerUI();
-        renderPetSheet();
-        if (state.phase === "playing" || state.phase === "paused") resetPets();
-        return profilePets(profile);
-      },
-      openPetSheet,
+      randomPet: () => (Pets ? Pets.random(state.lastPetId).id : PET_FALLBACK.id),
       petSqueak: () => {
         if (state.pet) petSqueak(state.pet, true);
       },

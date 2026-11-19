@@ -10,7 +10,6 @@ global.localStorage = {
   clear: () => store.clear(),
 };
 
-const pets = require("../js/pets.js");
 const profiles = require("../js/profiles.js");
 const { translations } = require("../js/i18n.js");
 const game = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
@@ -18,8 +17,6 @@ const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
 const sw = fs.readFileSync(path.join(__dirname, "../sw.js"), "utf8");
 
 assert.equal(profiles.MAX_NAME, 12);
-assert.equal(profiles.MAX_PETS, 3, "each player can bring up to three pets");
-assert.ok(pets.PETS.length >= 12, "the warehouse should offer a broad pet palette");
 assert.ok(profiles.AVATARS.length >= 16, "the avatar palette should offer at least 16 faces");
 
 // ---------- creation ----------
@@ -33,7 +30,6 @@ assert.equal(mia.name, "Mia", "names should be trimmed");
 assert.equal(mia.avatar, "🐼");
 assert.equal(mia.total, 0);
 assert.equal(mia.best, 0);
-assert.deepEqual(mia.pets, ["mouse"], "new players start with the mouse");
 assert.equal(list.length, 1);
 
 assert.deepEqual(profiles.create(list, "mia", "🐯"), { error: "duplicate" });
@@ -70,19 +66,9 @@ assert.equal(profiles.getActiveId(list), leo.id);
 profiles.setActiveId("missing");
 assert.equal(profiles.getActiveId(list), "");
 
-profiles.setPets(list, mia.id, ["cat", "cat", "dog", "fox", "lion"]);
-assert.deepEqual(mia.pets, ["cat", "dog", "fox"], "pet teams dedupe and stop at three");
-profiles.save(list);
-assert.deepEqual(profiles.load()[0].pets, ["cat", "dog", "fox"], "the team should persist");
-profiles.setPets(list, mia.id, []);
-assert.deepEqual(mia.pets, ["mouse"], "a player must keep at least one pet");
-profiles.save(list);
-assert.deepEqual(profiles.setPets(list, "missing", ["cat"]), null);
-
 const stored = JSON.parse(store.get(profiles.KEY));
 assert.equal(stored.length, 2);
 assert.equal(stored[1].total, 80);
-assert.deepEqual(stored[0].pets, ["mouse"], "the saved team should stay valid");
 
 // Corrupt entries, duplicate ids/names and negative numbers must not break the app.
 store.set(
@@ -101,7 +87,6 @@ assert.deepEqual(cleaned.map((p) => p.name), ["Ava", "Bo"]);
 assert.equal(cleaned[0].total, 0);
 assert.equal(cleaned[0].best, 0);
 assert.ok(profiles.AVATARS.includes(cleaned[0].avatar), "bad avatars fall back to the palette");
-assert.deepEqual(cleaned[0].pets, ["mouse"], "missing pet teams fall back to the mouse");
 assert.equal(cleaned[1].total, 12);
 
 // ---------- deletion and migration options ----------

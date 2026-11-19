@@ -1,16 +1,12 @@
-/* PiuPiu — the pet warehouse.
+/* PiuPiu — the pet catalog.
  *
  * Every pet is a sticker-like emoji friend with its own silhouette, pace,
- * jumping style and synthesized voice. A player can bring one to three of
- * them into the game; the definitions here are shared by the profile store,
- * the warehouse screen and the in-game pet engine.
+ * jumping style and synthesized voice. The game draws one at random for each
+ * round; players do not choose or keep a pet team.
  */
 
 (function (global) {
   "use strict";
-
-  const MAX_PETS = 3;
-  const DEFAULT_PETS = ["mouse"];
 
   // w/h shape the sticker badge and the pet's footprint. speed is in px/s,
   // hop is the jump impulse, pause/hopEvery are idle timings in seconds.
@@ -25,7 +21,6 @@
       pause: [0.65, 2.1],
       hopEvery: [2.4, 5.2],
       chatter: 0.2,
-      trait: "fast",
       shape: "round",
       say: "pet.say.mouse",
     },
@@ -39,7 +34,6 @@
       pause: [1.2, 3.2],
       hopEvery: [3.0, 6.0],
       chatter: 0.12,
-      trait: "calm",
       shape: "round",
       say: "pet.say.cat",
     },
@@ -53,7 +47,6 @@
       pause: [0.45, 1.6],
       hopEvery: [2.0, 4.0],
       chatter: 0.3,
-      trait: "chatty",
       shape: "round",
       say: "pet.say.dog",
     },
@@ -67,7 +60,6 @@
       pause: [0.35, 1.1],
       hopEvery: [1.2, 2.6],
       chatter: 0.1,
-      trait: "jumper",
       shape: "tall",
       say: "pet.say.rabbit",
     },
@@ -81,7 +73,6 @@
       pause: [1.0, 2.6],
       hopEvery: [1.6, 3.4],
       chatter: 0.18,
-      trait: "jumper",
       shape: "wide",
       say: "pet.say.frog",
     },
@@ -95,7 +86,6 @@
       pause: [1.6, 3.4],
       hopEvery: [3.6, 6.5],
       chatter: 0.08,
-      trait: "calm",
       shape: "chunky",
       say: "pet.say.panda",
     },
@@ -109,7 +99,6 @@
       pause: [0.5, 1.8],
       hopEvery: [2.0, 4.2],
       chatter: 0.22,
-      trait: "fast",
       shape: "pointy",
       say: "pet.say.fox",
     },
@@ -123,7 +112,6 @@
       pause: [1.2, 2.8],
       hopEvery: [3.2, 6.0],
       chatter: 0.16,
-      trait: "calm",
       shape: "tall",
       say: "pet.say.penguin",
     },
@@ -137,7 +125,6 @@
       pause: [0.4, 1.5],
       hopEvery: [1.6, 3.0],
       chatter: 0.34,
-      trait: "chatty",
       shape: "tiny",
       say: "pet.say.chick",
     },
@@ -151,7 +138,6 @@
       pause: [0.7, 2.2],
       hopEvery: [2.0, 4.0],
       chatter: 0.1,
-      trait: "jumper",
       shape: "tall",
       say: "pet.say.unicorn",
     },
@@ -165,7 +151,6 @@
       pause: [2.0, 4.5],
       hopEvery: [5.0, 9.0],
       chatter: 0.06,
-      trait: "slow",
       shape: "wide",
       say: "pet.say.turtle",
     },
@@ -179,7 +164,6 @@
       pause: [1.2, 3.0],
       hopEvery: [3.0, 6.0],
       chatter: 0.14,
-      trait: "calm",
       shape: "chunky",
       say: "pet.say.lion",
     },
@@ -194,25 +178,18 @@
     return BY_ID[id] || null;
   }
 
-  function sanitize(list) {
-    const out = [];
-    if (Array.isArray(list)) {
-      for (const entry of list) {
-        const id = typeof entry === "string" ? entry : entry && entry.id;
-        if (BY_ID[id] && !out.includes(id)) out.push(id);
-        if (out.length >= MAX_PETS) break;
-      }
-    }
-    return out.length ? out : DEFAULT_PETS.slice();
+  // Draw one pet for the round. Passing the previous pet id avoids an
+  // immediate repeat, so back-to-back games feel more varied.
+  function random(excludeId) {
+    const pool = excludeId && PETS.length > 1 ? PETS.filter((pet) => pet.id !== excludeId) : PETS;
+    return pool[Math.floor(Math.random() * pool.length)] || PETS[0];
   }
 
   const api = {
-    MAX_PETS,
-    DEFAULT_PETS,
     PETS,
     PET_IDS,
     byId,
-    sanitize,
+    random,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
