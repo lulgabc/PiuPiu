@@ -835,6 +835,41 @@ body.phase-paused .pet {
   display: none;
 }
 
+/* Static word wall used by the fill-the-screen mode. The cards are real
+   Matter.js bodies, so clearing one lets the rest collapse under gravity. */
+.word.fill-word {
+  padding: 0 10px;
+  border-radius: 13px;
+  place-items: center;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.word.fill-word .word-text {
+  max-width: 100%;
+  line-height: 1;
+}
+
+body.mode-fill .reward-progress,
+body.mode-fill .danger-line,
+body.mode-fill .speed-tool {
+  display: none;
+}
+
+body.mode-fill .toast {
+  top: 14px;
+  bottom: auto;
+}
+
+.fill-bonus {
+  margin: -2px 0 10px;
+  color: #c77b13;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
 .word.miss {
   animation: missBlink 0.32s ease-out;
 }
@@ -2665,6 +2700,56 @@ html.is-touch .mic-btn.listening .mic-dot {
   font-weight: 700;
 }
 
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin: 12px 0 10px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #cfd7ee;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.15;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mode-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mode-option:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+.mode-option.is-active {
+  background: linear-gradient(135deg, #ff6fae, #ff9461 58%, #ffc64b);
+  color: #fffdf8;
+  box-shadow: 0 2px 0 rgba(207, 79, 134, 0.55);
+}
+
+.mode-option-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .play-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3032,6 +3117,68 @@ body.phase-menu #pauseBtn {
 
   .home-meta {
     gap: 7px;
+  }
+}
+
+@media (max-width: 400px) and (max-height: 700px) {
+  .start-panel {
+    padding: 12px 14px;
+  }
+
+  .start-panel h1 {
+    font-size: 42px;
+  }
+
+  .start-tagline {
+    font-size: 12px;
+  }
+
+  .play-steps {
+    margin: 8px 0;
+    gap: 6px;
+  }
+
+  .play-step {
+    padding: 6px 3px;
+  }
+
+  .mode-switch {
+    margin: 7px 0;
+  }
+
+  .mode-option {
+    min-height: 34px;
+    font-size: 11px;
+  }
+
+  .start-cta {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .pack-pill {
+    min-height: 36px;
+    margin-top: 7px;
+  }
+
+  .player-pill {
+    min-height: 34px;
+    margin-top: 7px;
+  }
+
+  .home-meta {
+    margin-top: 6px;
+  }
+
+  .home-install,
+  .home-settings {
+    min-height: 26px;
+  }
+}
+
+@media (max-width: 400px) and (max-height: 620px) {
+  .play-steps {
+    display: none;
   }
 }
 
@@ -4486,6 +4633,30 @@ html[data-theme] .play-step {
 
 html[data-theme] .play-label {
   color: var(--theme-card-ink);
+}
+
+html[data-theme] .mode-switch {
+  border: var(--theme-border-w) solid var(--theme-border);
+  background: var(--theme-card-2);
+  box-shadow: var(--theme-ring), var(--theme-shadow-sm);
+}
+
+html[data-theme] .mode-option {
+  color: var(--theme-card-muted);
+}
+
+html[data-theme] .mode-option:hover {
+  background: color-mix(in srgb, var(--theme-active) 12%, transparent);
+}
+
+html[data-theme] .mode-option.is-active {
+  background: var(--theme-cta);
+  color: var(--theme-cta-ink);
+  box-shadow: var(--theme-cta-shadow);
+}
+
+html[data-theme] .fill-bonus {
+  color: var(--theme-total);
 }
 
 html[data-theme] .play-step:nth-child(2) {

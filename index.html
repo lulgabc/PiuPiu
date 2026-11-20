@@ -45,7 +45,7 @@
       document.documentElement.classList.add("is-touch");
     }
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2.24.0">
+  <link rel="stylesheet" href="css/style.css?v=2.25.0">
 </head>
 <body class="phase-menu">
   <div id="app">
@@ -61,7 +61,7 @@
           <strong id="score">0</strong>
         </div>
         <div class="stat correct-stat" id="correctStat">
-          <span class="stat-label" data-i18n="hud.correct">正确</span>
+          <span id="correctLabel" class="stat-label" data-i18n="hud.correct">正确</span>
           <strong id="correct">0</strong>
         </div>
         <div class="stat combo-stat" id="comboStat">
@@ -69,11 +69,11 @@
           <strong id="combo">×0</strong>
         </div>
         <div class="stat level-stat">
-          <span class="stat-label" data-i18n="hud.level">等级</span>
+          <span class="stat-label" id="levelLabel" data-i18n="hud.level">等级</span>
           <strong id="level">1</strong>
         </div>
         <div class="stat pile-stat" id="pileStat">
-          <span class="stat-label" data-i18n="hud.pile">堆积</span>
+          <span class="stat-label" id="pileLabel" data-i18n="hud.pile">堆积</span>
           <strong id="pile">0%</strong>
         </div>
         <div class="stat time-stat">
@@ -126,7 +126,7 @@
       </div>
 
       <div class="pile-gauge" aria-hidden="true">
-        <span class="gauge-label" data-i18n="gauge.label">堆积</span>
+        <span id="gaugeLabel" class="gauge-label" data-i18n="gauge.label">堆积</span>
         <div class="gauge-track"><div id="pileFill" class="gauge-fill"></div></div>
       </div>
 
@@ -156,9 +156,20 @@
           <p class="tagline start-tagline" data-i18n="start.tagline">读出来，就爆炸！</p>
 
           <div id="playSteps" class="play-steps">
-            <div class="play-step"><span class="play-icon" aria-hidden="true">🌧️</span><span class="play-label" data-i18n="start.step1">落下来</span></div>
-            <div class="play-step"><span class="play-icon" aria-hidden="true">🎤</span><span class="play-label" data-i18n="start.step2">大声读</span></div>
-            <div class="play-step"><span class="play-icon" aria-hidden="true">💥</span><span class="play-label" data-i18n="start.step3">爆炸</span></div>
+            <div class="play-step"><span id="stepIcon1" class="play-icon" aria-hidden="true">🌧️</span><span id="stepLabel1" class="play-label" data-i18n="start.step1">落下来</span></div>
+            <div class="play-step"><span class="play-icon" aria-hidden="true">🎤</span><span id="stepLabel2" class="play-label" data-i18n="start.step2">大声读</span></div>
+            <div class="play-step"><span class="play-icon" aria-hidden="true">💥</span><span id="stepLabel3" class="play-label" data-i18n="start.step3">爆炸</span></div>
+          </div>
+
+          <div id="modeSwitch" class="mode-switch" role="group" aria-label="游戏方式" data-i18n-aria="mode.aria">
+            <button class="mode-option is-active" type="button" data-mode="rain" aria-pressed="true">
+              <span class="mode-option-icon" aria-hidden="true">🌧️</span>
+              <span data-i18n="mode.rain">单词雨</span>
+            </button>
+            <button class="mode-option" type="button" data-mode="fill" aria-pressed="false">
+              <span class="mode-option-icon" aria-hidden="true">🧩</span>
+              <span data-i18n="mode.fill">整屏消除</span>
+            </button>
           </div>
 
           <button id="startBtn" class="primary-btn start-cta" type="button">
@@ -198,18 +209,20 @@
         </section>
 
         <section id="overPanel" class="panel hidden" aria-labelledby="overTitle">
-          <p class="eyebrow" data-i18n="over.eyebrow">🎉 堆积到顶了</p>
+          <p id="overEyebrow" class="eyebrow" data-i18n="over.eyebrow">🎉 堆积到顶了</p>
           <h2 id="overTitle" data-i18n="over.title">本轮结束</h2>
-          <p class="tagline" data-i18n="over.tagline">单词堆满啦，再来一次吧！</p>
+          <p id="overTagline" class="tagline" data-i18n="over.tagline">单词堆满啦，再来一次吧！</p>
 
           <div class="result-grid">
-            <div><span data-i18n="over.score">得分</span><strong id="finalScore">0</strong></div>
-            <div><span data-i18n="over.cleared">爆破</span><strong id="finalCleared">0</strong></div>
-            <div><span data-i18n="over.combo">最高连击</span><strong id="finalCombo">×0</strong></div>
-            <div><span data-i18n="over.time">坚持</span><strong id="finalTime">0:00</strong></div>
+            <div><span id="overScoreLabel" data-i18n="over.score">得分</span><strong id="finalScore">0</strong></div>
+            <div><span id="overClearedLabel" data-i18n="over.cleared">爆破</span><strong id="finalCleared">0</strong></div>
+            <div><span id="overComboLabel" data-i18n="over.combo">最高连击</span><strong id="finalCombo">×0</strong></div>
+            <div><span id="overTimeLabel" data-i18n="over.time">坚持</span><strong id="finalTime">0:00</strong></div>
           </div>
 
-          <p class="missed-title" data-i18n="over.missedTitle">这些词再练一练</p>
+          <p id="fillBonusLine" class="fill-bonus is-hidden"></p>
+
+          <p id="missedTitle" class="missed-title" data-i18n="over.missedTitle">这些词再练一练</p>
           <div id="missedList" class="missed-list"></div>
           <p id="recordLine" class="record"></p>
           <p id="sessionTotal" class="session-total" aria-live="polite"></p>
@@ -379,7 +392,7 @@
   </div>
 
 
-  <script src="js/i18n.js?v=2.24.0"></script>
+  <script src="js/i18n.js?v=2.25.0"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
   <script src="js/education.js"></script>
@@ -391,8 +404,8 @@
   <script src="js/emojis.js"></script>
   <script src="js/vendor/pixi.min.js?v=2.0.1"></script>
   <script src="js/vendor/matter.min.js"></script>
-  <script src="js/pixi-ambient.js?v=2.24.0"></script>
-  <script src="js/game.js?v=2.24.0"></script>
-  <script src="js/pwa.js?v=2.24.0"></script>
+  <script src="js/pixi-ambient.js?v=2.25.0"></script>
+  <script src="js/game.js?v=2.25.0"></script>
+  <script src="js/pwa.js?v=2.25.0"></script>
 </body>
 </html>

@@ -70,6 +70,15 @@
   const THEMES = ["candy", "bubblegum", "cream"];
   const THEME_COLORS = { candy: "#ffe9f3", bubblegum: "#1c1036", cream: "#f7f0e2" };
   const INTRO_KEY = "piupiu.introSeen";
+  const MODE_KEY = "piupiu.mode";
+  const GAME_MODES = ["rain", "fill"];
+  const MODE_PARAM = new URLSearchParams(location.search).get("mode");
+  const INITIAL_MODE =
+    MODE_PARAM === "fill" || MODE_PARAM === "rain"
+      ? MODE_PARAM
+      : readString(MODE_KEY, "rain") === "fill"
+        ? "fill"
+        : "rain";
   const PAD = 12;
   const DANGER_Y = 10;
   const GAME_FPS = 60;
@@ -214,6 +223,12 @@
     setupParentSection: $("setupParentSection"),
     themeGroup: $("themeGroup"),
     playSteps: $("playSteps"),
+    stepIcon1: $("stepIcon1"),
+    stepLabel1: $("stepLabel1"),
+    stepLabel2: $("stepLabel2"),
+    stepLabel3: $("stepLabel3"),
+    modeSwitch: $("modeSwitch"),
+    modeOptions: [...document.querySelectorAll("#modeSwitch [data-mode]")],
     startMascot: $("startMascot"),
     secretNote: $("secretNote"),
     voiceToggle: $("voiceToggle"),
@@ -228,6 +243,7 @@
     packCount: $("packCount"),
     score: $("score"),
     correct: $("correct"),
+    correctLabel: $("correctLabel"),
     correctStat: $("correctStat"),
     rewardProgress: $("rewardProgress"),
     rewardTrack: $("rewardTrack"),
@@ -235,9 +251,12 @@
     combo: $("combo"),
     comboStat: $("comboStat"),
     level: $("level"),
+    levelLabel: $("levelLabel"),
     pile: $("pile"),
+    pileLabel: $("pileLabel"),
     pileStat: $("pileStat"),
     pileFill: $("pileFill"),
+    gaugeLabel: $("gaugeLabel"),
     time: $("time"),
     heard: $("heard"),
     praise: $("praise"),
@@ -274,6 +293,15 @@
     finalCleared: $("finalCleared"),
     finalCombo: $("finalCombo"),
     finalTime: $("finalTime"),
+    overEyebrow: $("overEyebrow"),
+    overTitle: $("overTitle"),
+    overTagline: $("overTagline"),
+    overScoreLabel: $("overScoreLabel"),
+    overClearedLabel: $("overClearedLabel"),
+    overComboLabel: $("overComboLabel"),
+    overTimeLabel: $("overTimeLabel"),
+    fillBonusLine: $("fillBonusLine"),
+    missedTitle: $("missedTitle"),
     recordLine: $("recordLine"),
     missedList: $("missedList"),
   };
@@ -299,6 +327,10 @@
     speed: readString(SPEED_KEY, "normal"),
     voicePreviewTimer: 0,
     lastWord: "",
+    mode: INITIAL_MODE,
+    fillTotal: 0,
+    fillBonus: 0,
+    fillFinishing: false,
     score: 0,
     combo: 0,
     bestCombo: 0,
@@ -669,6 +701,40 @@
     const label = tr("speed.pillAria", { speed: tr(`speed.${key}`) });
     els.speedBtn.setAttribute("aria-label", label);
     els.speedBtn.setAttribute("title", label);
+  }
+
+  function updateModeUI() {
+    const fill = state.mode === "fill";
+    document.body.classList.toggle("mode-fill", fill);
+    document.body.classList.toggle("mode-rain", !fill);
+    for (const button of els.modeOptions) {
+      const active = button.dataset.mode === state.mode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    }
+    setText(els.stepIcon1, fill ? "🧩" : "🌧️");
+    setText(els.stepLabel1, tr(fill ? "mode.fillStep1" : "start.step1"));
+    setText(els.stepLabel2, tr("start.step2"));
+    setText(els.stepLabel3, tr(fill ? "mode.fillStep3" : "start.step3"));
+    setText(els.correctLabel, tr(fill ? "hud.cleared" : "hud.correct"));
+    setText(els.levelLabel, tr(fill ? "hud.remaining" : "hud.level"));
+    setText(els.pileLabel, tr(fill ? "hud.progress" : "hud.pile"));
+    setText(els.gaugeLabel, tr(fill ? "gauge.progress" : "gauge.label"));
+  }
+
+  function setMode(mode) {
+    if (!GAME_MODES.includes(mode) || mode === state.mode) {
+      updateModeUI();
+      return state.mode;
+    }
+    state.mode = mode;
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+    } catch {}
+    updateModeUI();
+    updateHUD(true);
+    if (state.phase === "over") renderOverPanel();
+    return state.mode;
   }
 
   function applyFallingSpeed(previous, next) {
@@ -1215,6 +1281,9 @@
     state.settled = [];
     state.bag = shuffle((state.pool.length ? state.pool : WORD_BANK).slice());
     state.lastWord = "";
+    state.fillTotal = 0;
+    state.fillBonus = 0;
+    state.fillFinishing = false;
     syncSpeechPhrases();
     state.score = 0;
     state.roundRecorded = true;
@@ -1339,6 +1408,7 @@
     syncPhaseClass();
     window.dispatchEvent(new CustomEvent("piupiu:roundstart"));
     hideOverlay();
+    if (state.mode === "fill") buildFillBoard();
     setAmbientRunning(true);
     els.pauseBtn.disabled = false;
     updatePauseButton();
@@ -1347,7 +1417,7 @@
     if (state.micEnabled) startSpeech();
     updateMicUI();
     els.typeInput.blur();
-    toast(tr("toast.start"));
+    toast(tr(state.mode === "fill" ? "toast.fillStart" : "toast.start"));
   }
 
   function frame(timestamp) {
@@ -1361,31 +1431,33 @@
     state.lastFrame = timestamp;
 
     state.elapsed += dt;
-    const nextLevel = 1 + Math.floor(state.elapsed / 40);
-    if (nextLevel !== state.level) {
-      state.level = nextLevel;
-      onLevelUp();
-    }
+    if (state.mode === "rain") {
+      const nextLevel = 1 + Math.floor(state.elapsed / 40);
+      if (nextLevel !== state.level) {
+        state.level = nextLevel;
+        onLevelUp();
+      }
 
-    state.spawnTimer -= dt;
-    if (state.spawnTimer <= 0) {
-      spawnWord();
-      const base = Math.max(1.15, 2.35 - (state.level - 1) * 0.13);
-      state.spawnTimer = base * (0.88 + Math.random() * 0.3);
-    }
+      state.spawnTimer -= dt;
+      if (state.spawnTimer <= 0) {
+        spawnWord();
+        const base = Math.max(1.15, 2.35 - (state.level - 1) * 0.13);
+        state.spawnTimer = base * (0.88 + Math.random() * 0.3);
+      }
 
-    const fieldH = els.field.clientHeight;
-    for (const word of state.words.slice()) {
-      if (state.phase !== "playing") break;
-      updateWordFace(word, dt);
-      moveWord(word, dt, fieldH);
+      const fieldH = els.field.clientHeight;
+      for (const word of state.words.slice()) {
+        if (state.phase !== "playing") break;
+        updateWordFace(word, dt);
+        moveWord(word, dt, fieldH);
+      }
     }
 
     if (state.phase !== "playing") return;
     if (state.physics && state.settled.length) {
       Physics.Engine.update(state.physics.engine, 1000 / 60);
       syncPhysicsPile();
-      if (checkPileDanger()) return;
+      if (state.mode === "rain" && checkPileDanger()) return;
     }
     if (state.phase !== "playing") return;
     updateMeteor(dt);
@@ -1509,6 +1581,100 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* fill-the-screen mode                                                */
+  /* ------------------------------------------------------------------ */
+
+  function drawFillWords(count) {
+    const source = uniqueWords((state.pool.length ? state.pool : WORD_BANK).slice());
+    const short = source.filter((word) => word.length <= 14);
+    const pool = short.length >= Math.min(count, 8) ? short : source;
+    if (!pool.length) return [];
+    let bag = shuffle(pool.slice());
+    const picked = [];
+    while (picked.length < count) {
+      if (!bag.length) bag = shuffle(pool.slice());
+      let word = bag.pop();
+      if (picked.length && word === picked[picked.length - 1] && bag.length) {
+        const alt = bag.pop();
+        bag.push(word);
+        word = alt;
+      }
+      picked.push(word);
+      if (picked.length > count * 2) break;
+    }
+    return picked;
+  }
+
+  function buildFillBoard() {
+    if (state.mode !== "fill" || !els.field) return;
+    const fieldW = els.field.clientWidth;
+    const fieldH = els.field.clientHeight;
+    if (!fieldW || !fieldH) return;
+    destroyPhysics();
+    const columns = fieldW < 430 ? 2 : 3;
+    const pad = 10;
+    const gapX = 8;
+    const gapY = 5;
+    const cellW = Math.floor((fieldW - pad * 2 - gapX * (columns - 1)) / columns);
+    const baseFont = fieldW < 360 ? 21 : fieldW < 430 ? 23 : 25;
+    const cardH = Math.round(baseFont * 1.7) + 10;
+    const rows = Math.max(
+      3,
+      Math.floor((fieldH - pad * 2 + gapY) / (cardH + gapY)),
+    );
+    const count = Math.max(8, Math.min(40, columns * rows));
+    const words = drawFillWords(count);
+    if (!words.length) return;
+
+    const startY = fieldH - pad - cardH;
+
+    let placed = 0;
+    for (let i = 0; i < words.length; i += 1) {
+      const row = Math.floor(i / columns);
+      const col = i % columns;
+      const y = startY - row * (cardH + gapY);
+      if (y < pad) break;
+      const x = pad + col * (cellW + gapX);
+      const word = words[i];
+      const wordFont = Math.max(
+        12,
+        Math.min(baseFont, Math.floor((cellW - 32) / (Math.max(4, word.length) * 0.6))),
+      );
+      const el = document.createElement("div");
+      el.className = "word settled fill-word";
+      el.style.width = `${cellW}px`;
+      el.style.height = `${cardH}px`;
+      el.style.fontSize = `${wordFont}px`;
+      el.style.setProperty("--hue", hueFor(word));
+      const span = document.createElement("span");
+      span.className = "word-text";
+      span.textContent = word;
+      el.appendChild(span);
+      els.wordLayer.appendChild(el);
+
+      const settled = {
+        word,
+        el,
+        x,
+        y,
+        w: cellW,
+        h: cardH,
+        emoji: EMOJI[word.toLowerCase()] || "",
+        golden: false,
+      };
+      state.settled.push(settled);
+      attachSettledBody(settled);
+      placed += 1;
+    }
+
+    state.fillTotal = placed;
+    state.cleared = 0;
+    state.fillBonus = 0;
+    syncSpeechPhrases();
+    updateHUD(true);
+  }
+
+  /* ------------------------------------------------------------------ */
   /* soft pile physics                                                   */
   /* ------------------------------------------------------------------ */
 
@@ -1595,7 +1761,8 @@
     const left = body.position.x - baseW / 2;
     const top = body.position.y - baseH / 2;
     settled.el.style.transform = `translate3d(${left}px, ${top}px, 0) rotate(${body.angle}rad)`;
-    settled.el.style.zIndex = String(Math.max(1, 1000 - Math.round(body.position.y)));
+    settled.el.style.zIndex =
+      settled === state.focusedWord ? "2000" : String(Math.max(1, 1000 - Math.round(body.position.y)));
   }
 
   function syncPhysicsPile() {
@@ -3142,6 +3309,24 @@
     window.setTimeout(() => els.field.classList.remove("shake"), 340);
   }
 
+  function completeFillRound() {
+    if (state.mode !== "fill" || state.fillFinishing) return;
+    if (state.phase !== "playing" && state.phase !== "paused") return;
+    state.fillFinishing = true;
+    const par = Math.max(12, state.fillTotal * 3.2);
+    state.fillBonus = Math.max(0, Math.round((par - state.elapsed) * 8));
+    if (state.fillBonus > 0) {
+      state.score += state.fillBonus;
+      addProfilePoints(state.fillBonus);
+    }
+    updateHUD(true);
+    window.setTimeout(() => {
+      if (!state.fillFinishing) return;
+      state.fillFinishing = false;
+      if (state.phase === "playing" || state.phase === "paused") endGame();
+    }, 720);
+  }
+
   function endGame() {
     if (state.phase === "over") return;
     state.phase = "over";
@@ -3226,21 +3411,31 @@
   /* ------------------------------------------------------------------ */
 
   function updateHUD(force = false) {
+    const fill = state.mode === "fill";
     setText(els.score, formatNumber(state.score));
     setText(els.correct, String(state.cleared));
     setText(els.combo, `×${state.combo}`);
-    setText(els.level, String(state.level));
+    setText(els.level, fill ? String(state.settled.length) : String(state.level));
     setText(els.time, formatTime(state.elapsed));
 
-    const fieldH = els.field.clientHeight || 1;
-    let minY = fieldH;
-    for (const s of state.settled) minY = Math.min(minY, s.y);
-    const pilePct = state.settled.length ? Math.min(100, Math.round(((fieldH - minY) / fieldH) * 100)) : 0;
-    setText(els.pile, `${pilePct}%`);
+    let progress = 0;
+    if (fill) {
+      progress = state.fillTotal
+        ? Math.min(100, Math.round((state.cleared / state.fillTotal) * 100))
+        : 0;
+    } else {
+      const fieldH = els.field.clientHeight || 1;
+      let minY = fieldH;
+      for (const s of state.settled) minY = Math.min(minY, s.y);
+      progress = state.settled.length
+        ? Math.min(100, Math.round(((fieldH - minY) / fieldH) * 100))
+        : 0;
+    }
+    setText(els.pile, `${progress}%`);
 
-    if (force || state.lastHud.pilePct !== pilePct) {
-      els.pileFill.style.height = `${pilePct}%`;
-      state.lastHud.pilePct = pilePct;
+    if (force || state.lastHud.pilePct !== progress) {
+      els.pileFill.style.height = `${progress}%`;
+      state.lastHud.pilePct = progress;
     }
 
     const hot = state.combo >= 2;
@@ -3249,7 +3444,7 @@
       state.lastHud.hot = hot;
     }
 
-    const danger = pilePct >= 68;
+    const danger = !fill && progress >= 68;
     if (force || state.lastHud.danger !== danger) {
       els.pileStat.classList.toggle("danger", danger);
       els.field.classList.toggle("danger", danger);
@@ -3715,6 +3910,28 @@
   }
 
   function renderOverPanel() {
+    const fill = state.mode === "fill";
+    setText(els.overEyebrow, tr(fill ? "fill.overEyebrow" : "over.eyebrow"));
+    setText(els.overTitle, tr(fill ? "fill.overTitle" : "over.title"));
+    setText(els.overTagline, tr(fill ? "fill.overTagline" : "over.tagline"));
+    setText(els.overScoreLabel, tr("over.score"));
+    setText(els.overClearedLabel, tr(fill ? "fill.clearedLabel" : "over.cleared"));
+    setText(els.overComboLabel, tr("over.combo"));
+    setText(els.overTimeLabel, tr(fill ? "fill.timeLabel" : "over.time"));
+    if (els.restartBtn) els.restartBtn.textContent = tr(fill ? "fill.again" : "over.cta");
+    setText(
+      els.missedTitle,
+      tr(fill && !state.missedWords.length ? "fill.allClear" : "over.missedTitle"),
+    );
+    if (els.missedList) {
+      els.missedList.classList.toggle("is-hidden", fill && !state.missedWords.length);
+    }
+    if (els.fillBonusLine) {
+      els.fillBonusLine.classList.toggle("is-hidden", !fill);
+      els.fillBonusLine.textContent = fill
+        ? tr("fill.bonus", { score: formatNumber(state.fillBonus) })
+        : "";
+    }
     setText(els.finalScore, formatNumber(state.score));
     setText(els.finalCleared, String(state.cleared));
     setText(els.finalCombo, `×${state.bestCombo}`);
@@ -3797,6 +4014,7 @@
   }
 
   function refreshLanguage() {
+    updateModeUI();
     updateHUD(true);
     updateMicUI();
     updatePauseButton();
@@ -3877,7 +4095,10 @@
     const tokens = normalized.split(" ").filter(Boolean);
     if (!tokens.length) return null;
 
-    const candidates = state.words.slice().sort((a, b) => b.y - a.y);
+    const candidates =
+      state.mode === "fill"
+        ? state.settled.slice().sort((a, b) => b.y - a.y)
+        : state.words.slice().sort((a, b) => b.y - a.y);
 
     // A whole-utterance match wins first. Hyphenated number words are spoken
     // with a space, so "twenty one" should clear twenty-one rather than twenty.
@@ -4302,10 +4523,17 @@
   }
 
   function explodeWord(word) {
-    const index = state.words.indexOf(word);
-    if (index === -1) return;
+    const activeIndex = state.words.indexOf(word);
+    const settledIndex = activeIndex === -1 ? state.settled.indexOf(word) : -1;
+    if (activeIndex === -1 && settledIndex === -1) return;
     if (state.focusedWord === word) clearFocus();
-    state.words.splice(index, 1);
+    if (activeIndex !== -1) {
+      state.words.splice(activeIndex, 1);
+    } else {
+      removeSettledBody(word);
+      state.settled.splice(settledIndex, 1);
+      wakePhysicsPile();
+    }
     syncSpeechPhrases();
 
     const fRect = els.field.getBoundingClientRect();
@@ -4324,13 +4552,13 @@
     state.combo += 1;
     state.bestCombo = Math.max(state.bestCombo, state.combo);
     const golden = Boolean(word.golden);
-    const basePoints = 10 + Math.round(heightRatio * 10);
+    const basePoints = state.mode === "fill" ? 20 : 10 + Math.round(heightRatio * 10);
     const multiplier = 1 + Math.min(state.combo - 1, 10) * 0.1;
     const points = Math.round(basePoints * multiplier) + (golden ? 25 : 0);
     state.score += points;
     state.cleared += 1;
     addProfilePoints(points);
-    advanceRewardProgress();
+    if (state.mode === "rain") advanceRewardProgress();
 
     const effect = nextEffect();
     state.lastEffect = effect;
@@ -4361,8 +4589,12 @@
     petCheer();
     showHeard(tr("heard.correct", { word: word.word }));
     if (!golden) showPraise();
-    if (state.cleared % 5 === 0) triggerRewardClear(rel);
-    if (state.cleared % METEOR_EVERY === 0) startMeteor(cx, cy);
+    if (state.mode === "rain") {
+      if (state.cleared % 5 === 0) triggerRewardClear(rel);
+      if (state.cleared % METEOR_EVERY === 0) startMeteor(cx, cy);
+    } else if (state.settled.length === 0) {
+      completeFillRound();
+    }
   }
 
   function burst(el, rel, hue) {
@@ -4440,8 +4672,9 @@
   /* ------------------------------------------------------------------ */
 
   function lowestFallingWord() {
+    const list = state.mode === "fill" ? state.settled : state.words;
     let lowest = null;
-    for (const word of state.words) {
+    for (const word of list) {
       if (!lowest || word.y > lowest.y) lowest = word;
     }
     return lowest;
@@ -4773,9 +5006,12 @@
 
     const targets = new Map();
     for (const word of state.words) targets.set(word.word, 4);
+    if (state.mode === "fill") {
+      for (const word of state.settled) targets.set(word.word, 4);
+    }
     // The bag's tail is what nextWord() will spawn next; bias upcoming targets
     // even if the browser only applies the phrase list when recognition starts.
-    if (state.phase === "playing") {
+    if (state.phase === "playing" && state.mode === "rain") {
       for (const word of state.bag.slice(-5)) {
         if (!targets.has(word)) targets.set(word, 2);
       }
@@ -5204,6 +5440,9 @@
 
   els.startBtn.addEventListener("click", startGame);
   els.restartBtn.addEventListener("click", startGame);
+  for (const button of els.modeOptions) {
+    button.addEventListener("click", () => setMode(button.dataset.mode));
+  }
   els.resumeBtn.addEventListener("click", resumeGame);
   els.quitBtn.addEventListener("click", goHome);
   els.homeBtn.addEventListener("click", goHome);
@@ -5547,7 +5786,9 @@
     loadPackSelection();
     if (!(state.speed in SPEED_LEVELS)) state.speed = "normal";
     if (!THEMES.includes(state.theme)) state.theme = "candy";
+    if (!GAME_MODES.includes(state.mode)) state.mode = "rain";
     applyTheme(state.theme);
+    updateModeUI();
     renderCategoryOptions();
     updatePackUI();
     updateSpeedUI();
@@ -5590,6 +5831,20 @@
       resumeGame,
       endGame,
       spawnWord,
+      buildFillBoard,
+      setMode,
+      getMode: () => state.mode,
+      getFill: () =>
+        state.mode === "fill"
+          ? {
+              total: state.fillTotal,
+              remaining: state.settled.length,
+              cleared: state.cleared,
+              bonus: state.fillBonus,
+              finishing: state.fillFinishing,
+              words: state.settled.map((s) => s.word),
+            }
+          : null,
       settleWord,
       explodeWord,
       findMatch,
