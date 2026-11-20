@@ -176,11 +176,11 @@
         hop = -Math.abs(Math.sin(p * Math.PI * 3)) * Math.min(30, targetH * 0.13);
       }
 
-      let sx = 1 + (0.032 + 0.022 * energy) * Math.sin(t * (2.15 + energy * 1.1));
-      let sy = 1 - (0.028 + 0.02 * energy) * Math.sin(t * (2.15 + energy * 1.1) + 0.7);
-      let shear = (0.055 + 0.035 * energy) * Math.sin(t * (1.55 + energy * 0.7) + this.phase * 0.4);
-      let rot = (0.03 + 0.02 * energy) * Math.sin(t * (1.15 + energy * 0.5) + this.phase);
-      let bob = Math.sin(t * 2) * 2.2 + hop;
+      let sx = 1 + (0.04 + 0.026 * energy) * Math.sin(t * (2.15 + energy * 1.1));
+      let sy = 1 - (0.034 + 0.024 * energy) * Math.sin(t * (2.15 + energy * 1.1) + 0.7);
+      let shear = (0.075 + 0.04 * energy) * Math.sin(t * (1.55 + energy * 0.7) + this.phase * 0.4);
+      let rot = (0.045 + 0.025 * energy) * Math.sin(t * (1.15 + energy * 0.5) + this.phase);
+      let bob = Math.sin(t * 2) * 3 + hop;
 
       if (!STATIC && this.sleeping) {
         sx = 1 + 0.012 * Math.sin(t * 1.1);
