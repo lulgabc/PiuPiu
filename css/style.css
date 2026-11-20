@@ -2858,35 +2858,65 @@ html.is-touch .mic-btn.listening .mic-dot {
 }
 
 .play-steps {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  position: relative;
+  height: 108px;
   margin: 14px 0 12px;
 }
 
+/* Three scrapbook stickers, scattered with a random position, tilt and hue. */
 .play-step {
+  position: absolute;
+  top: 0;
+  left: var(--x, 0%);
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 9px 4px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
+  width: 30.5%;
+  min-height: 66px;
+  padding: 10px 5px 8px;
+  border: 3px solid #fffdf8;
+  border-radius: var(--shape, 16px 12px 18px 11px / 13px 17px 12px 18px);
+  background:
+    radial-gradient(90% 72% at 28% 0%, rgba(255, 255, 255, 0.68), transparent 62%),
+    linear-gradient(155deg, hsl(var(--sticker-hue, 320) 90% 85%), hsl(var(--sticker-hue, 320) 78% 75%));
+  box-shadow:
+    0 4px 0 rgba(95, 45, 90, 0.12),
+    0 10px 18px rgba(95, 45, 90, 0.14);
+  transform: translateY(var(--y, 0px)) rotate(var(--rot, 0deg));
+  transform-origin: 50% 55%;
   text-align: center;
 }
 
+.play-step::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 42%;
+  height: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  border-radius: 3px;
+  background: color-mix(in srgb, #fff 64%, transparent);
+  box-shadow: 0 1px 2px rgba(95, 45, 90, 0.1);
+  opacity: 0.9;
+  transform: translateX(-50%) rotate(var(--tape-rot, -3deg));
+  pointer-events: none;
+}
+
 .play-icon {
-  font-size: 24px;
+  font-size: 23px;
   line-height: 1;
 }
 
 .play-label {
-  color: #e8edff;
-  font-size: 11.5px;
+  max-width: 94%;
+  color: #4d2b50;
+  font-size: 11px;
   font-weight: 800;
-  line-height: 1.2;
-  white-space: nowrap;
+  line-height: 1.15;
+  white-space: normal;
 }
 
 .play-steps.is-intro .play-step {
@@ -2902,8 +2932,10 @@ html.is-touch .mic-btn.listening .mic-dot {
 }
 
 @keyframes stepNudge {
-  0%, 100% { transform: none; }
-  45% { transform: translateY(-4px) scale(1.035); }
+  0%, 100% { transform: translateY(var(--y, 0px)) rotate(var(--rot, 0deg)) scale(1); }
+  45% {
+    transform: translateY(calc(var(--y, 0px) - 5px)) rotate(var(--rot, 0deg)) scale(1.045);
+  }
 }
 
 .start-cta {
@@ -3241,12 +3273,21 @@ body.phase-menu #pauseBtn {
   }
 
   .play-steps {
+    height: 96px;
     margin: 8px 0;
-    gap: 6px;
   }
 
   .play-step {
-    padding: 6px 3px;
+    min-height: 58px;
+    padding: 8px 4px 6px;
+  }
+
+  .play-icon {
+    font-size: 20px;
+  }
+
+  .play-label {
+    font-size: 9.5px;
   }
 
   .mode-switch {
@@ -4763,9 +4804,29 @@ html[data-theme] .record {
 
 html[data-theme] .play-step {
   border: var(--theme-border-w) solid var(--theme-border);
-  background: var(--theme-card-2);
-  box-shadow: var(--theme-ring), var(--theme-shadow-sm);
+  background:
+    radial-gradient(92% 74% at 28% 0%, rgba(255, 255, 255, 0.66), transparent 62%),
+    color-mix(in srgb, hsl(var(--sticker-hue, 320) 88% 80%) 58%, var(--theme-card-2));
   color: var(--theme-card-ink);
+  box-shadow:
+    var(--theme-ring),
+    0 4px 0 color-mix(in srgb, hsl(var(--sticker-hue, 320) 55% 58%) 34%, transparent),
+    var(--theme-shadow-sm);
+}
+
+html[data-theme="bubblegum"] .play-step {
+  border-color: hsl(var(--sticker-hue, 320) 84% 64%);
+  background:
+    radial-gradient(92% 74% at 28% 0%, rgba(255, 255, 255, 0.14), transparent 62%),
+    color-mix(in srgb, hsl(var(--sticker-hue, 320) 62% 46%) 30%, var(--theme-card-2));
+  color: var(--theme-card-ink);
+}
+
+html[data-theme="cream"] .play-step {
+  border-color: color-mix(in srgb, hsl(var(--sticker-hue, 320) 48% 70%) 54%, var(--theme-border));
+  background:
+    radial-gradient(92% 74% at 28% 0%, rgba(255, 255, 255, 0.7), transparent 62%),
+    color-mix(in srgb, hsl(var(--sticker-hue, 320) 45% 88%) 58%, var(--theme-card-2));
 }
 
 html[data-theme] .play-label {
@@ -4794,14 +4855,6 @@ html[data-theme] .mode-option.is-active {
 
 html[data-theme] .fill-bonus {
   color: var(--theme-total);
-}
-
-html[data-theme] .play-step:nth-child(2) {
-  background: var(--theme-gold-bg);
-}
-
-html[data-theme] .play-step:nth-child(3) {
-  background: color-mix(in srgb, var(--theme-active) 14%, var(--theme-card));
 }
 
 html[data-theme] .primary-btn {

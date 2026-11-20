@@ -35,6 +35,20 @@ assert.doesNotMatch(html, /id="voicePopover"/, "the old voice popover should be 
 assert.match(game, /function syncPhaseClass\(/, "the page should track game phase");
 assert.match(game, /function openSetup\(/, "settings should open from the home shortcuts");
 assert.match(game, /function closeSetup\(/, "settings should close cleanly");
+assert.match(game, /function scatterPlaySteps\(/, "the three picture steps should be scattered as stickers");
+assert.match(game, /const STICKER_HUES = \[/, "the stickers should pick from a varied candy palette");
+assert.match(game, /const STICKER_SHAPES = \[/, "the stickers should use several irregular cut shapes");
+assert.match(game, /--sticker-hue/, "each sticker should get its own hue");
+assert.match(game, /--tape-rot/, "each sticker should get a randomly tilted tape piece");
+assert.match(css, /\.play-steps \{[\s\S]{0,80}position: relative/, "the step area should become a scatter board");
+assert.match(css, /\.play-step \{[\s\S]{0,220}position: absolute/, "each step should be pasted independently");
+assert.match(css, /\.play-step \{[\s\S]{0,320}width: 30\.5%/, "stickers should stay inside their three slots");
+assert.match(css, /translateY\(var\(--y, 0px\)\) rotate\(var\(--rot, 0deg\)\)/, "the random paste position and tilt should drive the transform");
+assert.match(css, /\.play-step::before \{[\s\S]{0,520}rotate\(var\(--tape-rot/, "the tape should be visibly tilted");
+assert.match(css, /html\[data-theme="bubblegum"\] \.play-step/, "the dark theme needs a sticker palette");
+assert.match(css, /html\[data-theme="cream"\] \.play-step/, "the cream theme needs a sticker palette");
+assert.match(game, /applyTheme\(state\.theme\);\s*updateModeUI\(\);\s*scatterPlaySteps\(\)/, "stickers should be scattered on first paint");
+assert.match(game, /updateModeUI\(\);\s*scatterPlaySteps\(\);/, "switching game mode should re-paste the stickers");
 assert.match(game, /function maybeShowIntro\(/, "the first-run play-step animation should be wired");
 assert.match(game, /renderVoiceOptions\(\);/, "voice labels should refresh with the language");
 
@@ -72,6 +86,6 @@ for (const key of ["setup.title", "setup.done", "setup.parent", "setup.parentBut
   assert.equal(matches.length, 3, `${key} should be translated in zh / fr / en`);
 }
 
-console.log("✓ home screen leads with a mascot, three picture steps and one primary CTA");
+console.log("✓ home screen leads with a mascot, three scattered sticker steps and one primary CTA");
 console.log("✓ word packs, voice, install and parent notes are progressively disclosed");
 console.log("✓ menu mode hides the HUD, star beam and input footer");

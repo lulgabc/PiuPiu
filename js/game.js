@@ -223,6 +223,7 @@
     setupParentSection: $("setupParentSection"),
     themeGroup: $("themeGroup"),
     playSteps: $("playSteps"),
+    playStepItems: [...document.querySelectorAll("#playSteps .play-step")],
     stepIcon1: $("stepIcon1"),
     stepLabel1: $("stepLabel1"),
     stepLabel2: $("stepLabel2"),
@@ -704,6 +705,32 @@
     els.speedBtn.setAttribute("title", label);
   }
 
+  const STICKER_HUES = [8, 38, 152, 190, 265, 318];
+  const STICKER_SHAPES = [
+    "24px 9px 21px 11px / 10px 23px 9px 24px",
+    "10px 23px 9px 24px / 24px 10px 22px 9px",
+    "22px 11px 25px 8px / 9px 24px 11px 23px",
+    "9px 25px 11px 22px / 23px 9px 24px 10px",
+  ];
+
+  function scatterPlaySteps() {
+    if (!els.playStepItems.length) return;
+    const hues = shuffle(STICKER_HUES.slice());
+    const slots = [0, 34, 68];
+    els.playStepItems.forEach((step, index) => {
+      const x = slots[index] + (Math.random() * 2.4 - 1.2);
+      step.style.setProperty("--x", `${x.toFixed(2)}%`);
+      step.style.setProperty("--y", `${(2 + Math.random() * 22).toFixed(1)}px`);
+      step.style.setProperty("--rot", `${(Math.random() * 18 - 9).toFixed(1)}deg`);
+      step.style.setProperty("--tape-rot", `${(Math.random() * 12 - 6).toFixed(1)}deg`);
+      step.style.setProperty("--sticker-hue", String(hues[index % hues.length]));
+      step.style.setProperty(
+        "--shape",
+        STICKER_SHAPES[Math.floor(Math.random() * STICKER_SHAPES.length)],
+      );
+    });
+  }
+
   function updateModeUI() {
     const fill = state.mode === "fill";
     document.body.classList.toggle("mode-fill", fill);
@@ -733,6 +760,7 @@
       localStorage.setItem(MODE_KEY, mode);
     } catch {}
     updateModeUI();
+    scatterPlaySteps();
     updateHUD(true);
     if (state.phase === "over") renderOverPanel();
     return state.mode;
@@ -5972,6 +6000,7 @@
     if (!GAME_MODES.includes(state.mode)) state.mode = "rain";
     applyTheme(state.theme);
     updateModeUI();
+    scatterPlaySteps();
     renderCategoryOptions();
     updatePackUI();
     updateSpeedUI();
