@@ -84,19 +84,35 @@
   const GAME_FPS = 60;
   const ACCENT_HUES = [265, 190, 318, 42, 158, 225, 288, 12];
   const PET_FALLBACK = {
-    id: "cat",
-    emoji: "🐱",
-    w: 48,
-    h: 48,
-    speed: 60,
+    id: "mochi",
+    emoji: "👾",
+    w: 60,
+    h: 60,
+    aspect: 0.9,
+    speed: 56,
     hop: 155,
-    pause: [1.2, 3.2],
-    hopEvery: [3.0, 6.0],
-    chatter: 0.12,
+    pause: [0.8, 2.2],
+    hopEvery: [2.2, 4.4],
+    chatter: 0.16,
     shape: "round",
-    body: "#ffd9a0",
-    pattern: "stripes",
-    say: "pet.say.cat",
+    body: "#f5a0bd",
+    accent: "#ffdae8",
+    pattern: "plain",
+    say: "pet.say.mochi",
+    image: "assets/monsters/mochi.webp",
+    base: "assets/monsters/mochi-base.webp",
+    eyeCount: 2,
+    eyeLayout: "row",
+    eyeX: 0.5,
+    eyeY: 0.35,
+    eyeSpread: 0.16,
+    eyeGap: 0.14,
+    mouthX: 0.5,
+    mouthY: 0.52,
+    mouthW: 0.24,
+    mouthH: 0.1,
+    ink: "#3a233e",
+    voice: { wave: "sine", notes: [520, 780], dur: 0.07, step: 0.07, gain: 0.02, slide: 1.32 },
   };
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -1088,41 +1104,22 @@
   }
 
   function playPetVoice(id) {
-    if (id === "cat") {
-      playCat();
-    } else if (id === "dog") {
-      playDog();
-    } else if (id === "rabbit") {
-      tone(520, 0.08, "sine", 0.02, 0, 1200);
-      tone(900, 0.1, "sine", 0.016, 0.09, 1600);
-    } else if (id === "frog") {
-      tone(180, 0.08, "square", 0.026, 0, 150);
-      tone(150, 0.09, "square", 0.022, 0.11, 125);
-      tone(200, 0.12, "square", 0.02, 0.23, 165);
-    } else if (id === "panda") {
-      tone(220, 0.18, "sine", 0.02, 0, 180);
-      tone(180, 0.2, "sine", 0.018, 0.14, 150);
-    } else if (id === "fox") {
-      tone(600, 0.07, "triangle", 0.022, 0, 1000);
-      tone(1100, 0.08, "triangle", 0.018, 0.08, 700);
-    } else if (id === "penguin") {
-      tone(300, 0.09, "square", 0.02);
-      tone(260, 0.12, "square", 0.018, 0.12);
-    } else if (id === "chick") {
-      tone(1400, 0.05, "sine", 0.018);
-      tone(1800, 0.06, "sine", 0.016, 0.07);
-    } else if (id === "unicorn") {
-      sequence([880, 1174.66, 1567.98], "sine", 0.018, 0.06);
-    } else if (id === "turtle") {
-      tone(120, 0.22, "sine", 0.025, 0, 90);
-      tone(90, 0.28, "sine", 0.02, 0.18, 70);
-    } else if (id === "lion") {
-      tone(150, 0.18, "sawtooth", 0.022, 0, 90);
-      tone(110, 0.25, "sawtooth", 0.018, 0.12, 70);
-      noiseBurst(0.08, 0.012);
-    } else {
+    const def = Pets && typeof Pets.byId === "function" ? Pets.byId(id) : null;
+    const voice = def && def.voice;
+    if (!voice || !Array.isArray(voice.notes) || !voice.notes.length) {
       playSqueak();
+      return;
     }
+    const wave = voice.wave || "sine";
+    const gain = Number.isFinite(voice.gain) ? voice.gain : 0.02;
+    const dur = Number.isFinite(voice.dur) ? voice.dur : 0.08;
+    const step = Number.isFinite(voice.step) ? voice.step : 0.07;
+    const slide = Number.isFinite(voice.slide) ? voice.slide : 1;
+    voice.notes.forEach((frequency, index) => {
+      const note = Math.max(60, Math.min(2200, frequency));
+      tone(note, dur, wave, gain, index * step, Math.max(60, Math.round(note * slide)));
+    });
+    if (voice.noise) noiseBurst(voice.noise, gain * 0.5);
   }
 
   function playPetStep() {
@@ -1969,21 +1966,8 @@
   /* ------------------------------------------------------------------ */
 
   const PET_GRAVITY = 560;
-  const PET_SCALE = 1.34;
-  const PET_PARAMS = new URLSearchParams(location.search);
-  const PET_BODY_VARIANT = PET_PARAMS.get("petbody") === "cut" ? "cut" : "bean";
-  const PET_VECTOR_PREVIEW = ["vector", "bean", "cut"].includes(PET_PARAMS.get("petbody"));
-  const PET_SPRITE_MODE = !PET_VECTOR_PREVIEW;
-  const PET_SPRITE_IDS = ["cat", "dog", "bunny", "chick", "bear", "fox", "panda", "penguin", "frog", "dragon", "slime", "ghost"];
-  const PET_SPRITE_ACTIONS = {
-    Idle: { row: 0, count: 8, fps: 8, loop: true },
-    Jump: { row: 1, count: 8, fps: 12, loop: true },
-    Sleep: { row: 2, count: 8, fps: 6, loop: true },
-    Happy: { row: 3, count: 8, fps: 10, loop: true },
-  };
-  const PET_SPRITE_DEFS = Object.fromEntries(
-    PET_SPRITE_IDS.map((id) => [id, { image: `assets/pets/${id}.webp` }]),
-  );
+  const PET_SCALE = 1.5;
+  const PET_BODY_VARIANT = "bean";
   const PET_DPR = Math.min(2, window.devicePixelRatio || 1);
   const PET_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
   const PET_MOVING = ["wander", "climb", "nuzzle", "chase", "startle"];
@@ -2535,105 +2519,282 @@
     }
   }
 
-  function createPetSpriteRenderer(pet, def, dpr) {
+  function createMonsterRenderer(pet, def, dpr) {
     const canvas = pet.canvas;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    const sprite = PET_SPRITE_DEFS[def.id];
-    if (!sprite) return null;
     const image = new Image();
+    const base = new Image();
+    let imageReady = false;
+    let patches = null;
     let ready = false;
-    let current = "Idle";
-    let frameTime = 0;
+    let elapsed = 0;
     let dust = [];
-    ctx.imageSmoothingEnabled = false;
+    let nextBlink = 2.2 + Math.random() * 3.8;
+    let blinkAt = null;
+    let nextMouth = 3.2 + Math.random() * 4.5;
+    let mouthAt = null;
+    let current = "Idle";
+    const phase = Math.random() * Math.PI * 2;
+    const ink = def.ink || "#3a233e";
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    function eyeBand() {
+      const layout = def.eyeLayout || "row";
+      const count = def.eyeCount || 2;
+      const eyeX = def.eyeX == null ? 0.5 : def.eyeX;
+      const eyeY = def.eyeY == null ? 0.34 : def.eyeY;
+      const spread = def.eyeSpread == null ? 0.16 : def.eyeSpread;
+      if (layout === "column") {
+        const gap = def.eyeGap == null ? 0.14 : def.eyeGap;
+        return { x: eyeX, y: eyeY, rx: 0.2, ry: 0.11 + ((count - 1) * gap) / 2 + 0.12 };
+      }
+      if (count === 1) return { x: eyeX, y: eyeY, rx: 0.17, ry: 0.16 };
+      return { x: eyeX, y: eyeY, rx: spread + 0.14, ry: 0.15 };
+    }
+
+    function mouthBand() {
+      return {
+        x: def.mouthX == null ? 0.5 : def.mouthX,
+        y: def.mouthY == null ? 0.57 : def.mouthY,
+        rx: (def.mouthW == null ? 0.28 : def.mouthW) + 0.05,
+        ry: (def.mouthH == null ? 0.13 : def.mouthH) + 0.05,
+      };
+    }
+
+    function makeBandPatch(source, band) {
+      if (!source.width || !source.height) return null;
+      const iw = source.width;
+      const ih = source.height;
+      const rx = Math.max(2, band.rx * iw);
+      const ry = Math.max(2, band.ry * ih);
+      const w = Math.ceil(rx * 2);
+      const h = Math.ceil(ry * 2);
+      const cx = band.x * iw;
+      const cy = band.y * ih;
+      const patch = document.createElement("canvas");
+      patch.width = w;
+      patch.height = h;
+      const px = patch.getContext("2d");
+      if (!px) return null;
+      px.drawImage(source, w / 2 - cx, h / 2 - cy);
+      px.globalCompositeOperation = "destination-in";
+      px.save();
+      px.translate(w / 2, h / 2);
+      px.scale(w / 2, h / 2);
+      const mask = px.createRadialGradient(0, 0, 0, 0, 0, 1);
+      mask.addColorStop(0, "rgba(0,0,0,1)");
+      mask.addColorStop(0.8, "rgba(0,0,0,1)");
+      mask.addColorStop(1, "rgba(0,0,0,0)");
+      px.beginPath();
+      px.arc(0, 0, 1, 0, Math.PI * 2);
+      px.fillStyle = mask;
+      px.fill();
+      px.restore();
+      return { canvas: patch, x: cx - w / 2, y: cy - h / 2, w, h };
+    }
+
+    function buildPatches() {
+      if (!imageReady) return;
+      if (base.width && base.height) {
+        const eye = makeBandPatch(base, eyeBand());
+        const mouthBase = makeBandPatch(base, mouthBand());
+        const mouthFace = makeBandPatch(image, mouthBand());
+        patches = eye && mouthBase && mouthFace ? { eye, mouthBase, mouthFace } : null;
+      }
+      ready = true;
+    }
 
     function spawnDust(x, y, count = 2) {
       for (let i = 0; i < count; i += 1) {
-        if (dust.length > 8) dust.shift();
+        if (dust.length > 10) dust.shift();
         dust.push({
-          x: x + (Math.random() - 0.5) * 6,
+          x: x + (Math.random() - 0.5) * 8,
           y: y + (Math.random() - 0.5) * 2,
-          vx: (Math.random() - 0.5) * 14,
-          vy: -6 - Math.random() * 8,
-          life: 0.28 + Math.random() * 0.16,
-          size: 1 + Math.random() * 1.6,
+          vx: (Math.random() - 0.5) * 18,
+          vy: -10 - Math.random() * 14,
+          life: 0.34 + Math.random() * 0.2,
+          size: 1.2 + Math.random() * 2,
         });
       }
     }
 
-    function chooseSpriteAction() {
-      const b = pet.brain;
-      if (b.action === "nap") return "Sleep";
-      if (b.action === "cheer" || b.action === "nuzzle") return "Happy";
-      if (pet.hopY < -2) return "Jump";
-      if (b.action === "wander" || b.action === "climb") {
-        return b.moving ? "Jump" : "Idle";
+    function closedEyes(fitW, fitH, ox, oy) {
+      const count = def.eyeCount || 2;
+      const layout = def.eyeLayout || "row";
+      const eyeX = def.eyeX == null ? 0.5 : def.eyeX;
+      const eyeY = def.eyeY == null ? 0.34 : def.eyeY;
+      const spread = def.eyeSpread == null ? 0.16 : def.eyeSpread;
+      const gap = def.eyeGap == null ? 0.14 : def.eyeGap;
+      const points = [];
+      if (layout === "column") {
+        for (let i = 0; i < count; i += 1) {
+          points.push({ x: eyeX, y: eyeY + (i - (count - 1) / 2) * gap });
+        }
+      } else if (count <= 1) {
+        points.push({ x: eyeX, y: eyeY });
+      } else {
+        const step = spread / ((count - 1) / 2);
+        for (let i = 0; i < count; i += 1) {
+          points.push({ x: eyeX + (i - (count - 1) / 2) * step, y: eyeY });
+        }
       }
-      if (b.action === "chase" || b.action === "startle") return "Jump";
-      return "Idle";
+      ctx.save();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = Math.max(1.5, fitW * 0.009);
+      ctx.lineCap = "round";
+      for (const point of points) {
+        const cx = ox + point.x * fitW;
+        const cy = oy + point.y * fitH;
+        const half = fitW * (count === 1 ? 0.075 : 0.045);
+        const drop = fitH * 0.018;
+        ctx.beginPath();
+        ctx.moveTo(cx - half, cy);
+        ctx.quadraticCurveTo(cx, cy + drop, cx + half, cy);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     function draw(dt) {
       const w = pet.drawW;
       const h = pet.drawH;
+      const calm = REDUCED_MOTION;
+      elapsed += dt;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
       if (dust.length) {
         for (const puff of dust) {
-          const alpha = Math.max(0, puff.life / 0.44) * 0.2;
+          const alpha = Math.max(0, puff.life / 0.5) * 0.2;
           ctx.beginPath();
-          ctx.arc(puff.x, puff.y, puff.size + (0.4 - puff.life) * 4, 0, Math.PI * 2);
+          ctx.arc(puff.x, puff.y, puff.size + (0.5 - puff.life) * 4, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(120, 88, 108, ${alpha})`;
           ctx.fill();
         }
       }
 
       if (!ready) return;
-
-      const next = chooseSpriteAction();
-      if (next !== current) {
-        current = next;
-        frameTime = 0;
+      const iw = image.width;
+      const ih = image.height;
+      const fitH = h;
+      const fitW = fitH * (iw / ih);
+      const ox = (w - fitW) / 2;
+      const oy = h - fitH;
+      const b = pet.brain || {};
+      const t = elapsed + phase;
+      const energy = b.action === "cheer" || b.action === "nuzzle" ? 1 : b.moving ? 0.45 : 0;
+      let sx = 1 + (calm ? 0.008 : 0.032 + 0.018 * energy) * Math.sin(t * 2.1);
+      let sy = 1 - (calm ? 0.006 : 0.026 + 0.016 * energy) * Math.sin(t * 2.1 + 0.7);
+      let shear = (calm ? 0.006 : 0.045 + 0.026 * energy) * Math.sin(t * 1.5 + phase * 0.4);
+      let rot = (calm ? 0.004 : 0.02 + 0.012 * energy) * Math.sin(t * 1.1 + phase);
+      let bob = calm ? 0 : Math.sin(t * 2) * 2.2;
+      if (b.action === "nap") {
+        sx = 1 + 0.008 * Math.sin(t * 1.1);
+        sy = 1 + 0.012 * Math.sin(t * 1.1 + 1.2);
+        shear = 0.004 * Math.sin(t * 0.9);
+        rot = 0.004 * Math.sin(t * 0.8);
+        bob = 0;
       }
-      if (!REDUCED_MOTION) frameTime += dt;
-      const meta = PET_SPRITE_ACTIONS[current];
-      let frame = Math.floor(frameTime * meta.fps);
-      frame = meta.loop ? frame % meta.count : Math.min(meta.count - 1, frame);
-      const size = Math.min(64, h);
-      const dx = (w - size) / 2;
-      const dy = h - size;
-      const sx = frame * 64;
-      const sy = meta.row * 64;
-      ctx.drawImage(image, sx, sy, 64, 64, dx, dy, size, size);
+
+      ctx.save();
+      ctx.translate(w / 2, h + bob);
+      ctx.rotate(rot);
+      ctx.scale(sx, sy);
+      ctx.transform(1, 0, shear, 1, 0, 0);
+      ctx.translate(-w / 2, -h);
+      ctx.drawImage(image, ox, oy, fitW, fitH);
+
+      if (patches) {
+        let blink = false;
+        if (b.action === "nap") {
+          blink = true;
+        } else if (blinkAt != null) {
+          if (elapsed - blinkAt < 0.18) blink = true;
+          else blinkAt = null;
+        } else if (elapsed > nextBlink) {
+          blinkAt = elapsed;
+          nextBlink = elapsed + 2.5 + Math.random() * 4;
+          blink = true;
+        }
+        if (blink) {
+          const p = patches.eye;
+          const sx2 = fitW / iw;
+          const sy2 = fitH / ih;
+          ctx.drawImage(p.canvas, ox + p.x * sx2, oy + p.y * sy2, p.w * sx2, p.h * sy2);
+          closedEyes(fitW, fitH, ox, oy);
+        }
+
+        let open = 0;
+        if (b.action === "cheer" || b.action === "nuzzle" || pet.squeakTimer > 0) open = 1;
+        else if (b.action === "chase") open = 0.55;
+        if (!calm && elapsed > nextMouth) {
+          mouthAt = elapsed;
+          nextMouth = elapsed + 4 + Math.random() * 5;
+        }
+        if (mouthAt != null) {
+          const age = elapsed - mouthAt;
+          if (age >= 0.5) mouthAt = null;
+          else open = Math.max(open, Math.sin((age / 0.5) * Math.PI));
+        }
+        if (b.action === "nap") open = 0;
+        if (open > 0.02) {
+          const mb = patches.mouthBase;
+          const mf = patches.mouthFace;
+          const sx2 = fitW / iw;
+          const sy2 = fitH / ih;
+          const dx = ox + mb.x * sx2;
+          const dy = oy + mb.y * sy2;
+          const dw = mb.w * sx2;
+          const dh = mb.h * sy2;
+          ctx.drawImage(mb.canvas, dx, dy, dw, dh);
+          const scaleY = 1 + 0.2 * open;
+          ctx.drawImage(mf.canvas, dx, dy + dh / 2 - (dh * scaleY) / 2, dw, dh * scaleY);
+        }
+      }
+      ctx.restore();
 
       if (dust.length) {
         for (const puff of dust) {
           puff.x += puff.vx * dt;
           puff.y += puff.vy * dt;
-          puff.vy += 28 * dt;
+          puff.vy += 30 * dt;
           puff.life -= dt;
         }
         dust = dust.filter((puff) => puff.life > 0);
       }
+
+      if (b.action === "nap") current = "Sleep";
+      else if (b.action === "cheer" || b.action === "nuzzle") current = "Happy";
+      else if (pet.hopY < -2) current = "Jump";
+      else if (b.moving) current = "Walk";
+      else current = "Idle";
     }
 
     image.onload = () => {
-      ready = true;
+      imageReady = true;
+      buildPatches();
       draw(0);
     };
+    base.onload = buildPatches;
     image.onerror = () => {
       pet.renderer = createPetRenderer(pet, def, dpr);
     };
-    image.src = sprite.image;
+    base.onerror = () => {
+      patches = null;
+      if (imageReady) ready = true;
+    };
+    image.src = def.image;
+    base.src = def.base;
 
     return {
       draw,
       spawnDust,
       refreshTheme() {},
       getAction: () => current,
-      isSprite: true,
+      kind: "monster",
+      isMonster: true,
     };
   }
 
@@ -3216,10 +3377,7 @@
     const drawH = h;
     const { el, canvas } = createPetElement(def, w, h, drawW, drawH);
     els.petLayer.appendChild(el);
-    const accessory = !PET_SPRITE_MODE && Pets && typeof Pets.randomAccessory === "function"
-      ? Pets.randomAccessory(state.lastAccessory)
-      : null;
-    if (accessory) state.lastAccessory = accessory.id;
+    const accessory = null;
     const fieldW = els.field.clientWidth || 360;
     const fieldH = els.field.clientHeight || 480;
     const minX = drawW / 2 + 2;
@@ -3281,9 +3439,7 @@
         pawR: 0,
       },
     };
-    pet.renderer = PET_SPRITE_MODE
-      ? createPetSpriteRenderer(pet, def, PET_DPR)
-      : createPetRenderer(pet, def, PET_DPR);
+    pet.renderer = createMonsterRenderer(pet, def, PET_DPR);
     if (!pet.renderer) {
       pet.renderer = createPetRenderer(pet, def, PET_DPR);
     }
@@ -3424,7 +3580,7 @@
     return {
       id: pet.id,
       accessory: pet.accessory ? pet.accessory.id : null,
-      renderer: pet.renderer && pet.renderer.isSprite ? "sprite" : "canvas",
+      renderer: pet.renderer && pet.renderer.kind ? pet.renderer.kind : "canvas",
       spriteAction: pet.renderer && pet.renderer.getAction ? pet.renderer.getAction() : null,
       x: Math.round(pet.x),
       y: Math.round(pet.ground + pet.hopY - pet.h),

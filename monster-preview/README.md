@@ -1,5 +1,7 @@
 # 宠物小精灵原型（2 / 35）
 
+> 35 只正式宠物已接入 2.26.0 游戏；本目录保留最初的 2 只风格原型，以及全部 35 只的静态图鉴 `gallery.html`。
+
 这是从用户提供的 35 只线稿怪物中先做出的 2 只风格原型，**尚未接入正式游戏**。
 
 ## 两只原型
@@ -23,6 +25,7 @@
 - `pets/mochi.webp`、`pets/gummy.webp`：完成脸部的果冻贴纸
 - `pets/mochi-base.webp`、`pets/gummy-base.webp`：去掉眼睛/嘴巴的底层，用于眨眼/张嘴动画
 - 预览地址：`/monster-preview/`
+- 35 只图鉴：`/monster-preview/gallery.html`
 
 ## 后续
 
