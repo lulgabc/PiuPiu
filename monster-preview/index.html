@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffeaf3" />
+  <title>PiuPiu 宠物小精灵 · 风格确认</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">PIUPIU PET LAB · 01</p>
+    <h1>软果冻宠物小精灵</h1>
+    <p class="sub">从 35 张线稿里先做 2 只。点宠物或按钮，看眨眼、扭动、张嘴和开心跳。</p>
+  </header>
+
+  <main class="roster">
+    <section class="pet-card" data-pet="mochi">
+      <div class="stage large">
+        <canvas class="pet-canvas" data-pet="mochi" data-size="large" aria-label="麻薯宠物动画"></canvas>
+      </div>
+      <div class="pet-head">
+        <div>
+          <h2>麻薯 <span>Mochi</span></h2>
+          <p>草莓果冻 · 小角獠牙 · 奶盖高光</p>
+        </div>
+        <span class="tag">软果冻贴纸</span>
+      </div>
+      <div class="pet-foot">
+        <div class="mini-wrap">
+          <canvas class="pet-canvas mini" data-pet="mochi" data-size="mini" aria-label="麻薯游戏内大小"></canvas>
+          <span>游戏内大小</span>
+        </div>
+        <div class="actions">
+          <button data-pet="mochi" data-act="blink" type="button">眨眼</button>
+          <button data-pet="mochi" data-act="happy" type="button">开心</button>
+          <button data-pet="mochi" data-act="sleep" type="button">睡觉</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="pet-card" data-pet="gummy">
+      <div class="stage large">
+        <canvas class="pet-canvas" data-pet="gummy" data-size="large" aria-label="软糖宠物动画"></canvas>
+      </div>
+      <div class="pet-head">
+        <div>
+          <h2>软糖 <span>Gummy</span></h2>
+          <p>薄荷果冻 · 大眼大嘴 · 会张嘴</p>
+        </div>
+        <span class="tag tag-mint">软果冻贴纸</span>
+      </div>
+      <div class="pet-foot">
+        <div class="mini-wrap">
+          <canvas class="pet-canvas mini" data-pet="gummy" data-size="mini" aria-label="软糖游戏内大小"></canvas>
+          <span>游戏内大小</span>
+        </div>
+        <div class="actions">
+          <button data-pet="gummy" data-act="blink" type="button">眨眼</button>
+          <button data-pet="gummy" data-act="chomp" type="button">张嘴</button>
+          <button data-pet="gummy" data-act="happy" type="button">开心</button>
+          <button data-pet="gummy" data-act="sleep" type="button">睡觉</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="note">
+    <span>线稿 → 自动分色 → 白色模切边 → 果冻高光 → 眨眼 / 张嘴 / 扭动</span>
+    <a href="../">回到 PiuPiu</a>
+  </footer>
+
+  <script src="monster-pet.js"></script>
+</body>
+</html>
