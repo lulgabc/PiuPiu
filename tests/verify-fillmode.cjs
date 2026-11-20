@@ -151,6 +151,9 @@ assert.match(game, /getFill: \(\) =>/, "debug should expose wall progress");
 
 console.log("✓ the home screen offers word rain and a fill-the-screen mode");
 console.log("✓ fill mode randomly fills the field with a mode-sized word wall");
+console.log("✓ card widths follow each word and every card gets its own candy hue");
+console.log("✓ tapping or focusing a card highlights it and speaks the word");
+console.log("✓ twelve random micro-effects keep the wall alive");
 console.log("✓ every wall word is a Matter.js body; clears collapse the remaining pile");
 console.log("✓ the round ends only when all words are gone and scores a speed bonus");
 console.log("✓ HUD, result copy, speech bias, help and effects all follow the mode");
