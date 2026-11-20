@@ -32,12 +32,54 @@ assert.match(game, /toast\(tr\(state\.mode === "fill" \? "toast\.fillStart" : "t
 // ---------- the wall ----------
 assert.match(game, /function buildFillBoard\(/, "fill mode needs a board builder");
 assert.match(game, /function drawFillWords\(/, "the board should draw random words from the active pack");
-assert.match(game, /const columns = fieldW < 430 \? 2 : 3/, "the wall should use two columns on phones and three on wider screens");
-assert.match(game, /const cardH = Math\.round\(baseFont \* 1\.7\) \+ 10/, "the wall should size cards by the responsive font");
-assert.match(game, /state\.fillTotal = placed/, "the round should remember how many words it started with");
-assert.match(game, /state\.settled\.push\(settled\)/, "wall words should become physics targets");
-assert.match(game, /attachSettledBody\(settled\)/, "every wall word should be a Matter.js body");
-assert.match(game, /y < pad\) break/, "the wall should stop before overflowing the field");
+assert.match(game, /const availableW = fieldW - pad \* 2/, "the wall should measure the usable field width");
+assert.match(game, /let width = el\.offsetWidth/, "card width should come from the word itself");
+assert.match(game, /while \(width > availableW && font > 13\)/, "long words should shrink to fit instead of using equal columns");
+assert.match(game, /el\.style\.minWidth = "56px"/, "short words should keep a comfortable touch target");
+assert.doesNotMatch(game, /el\.style\.width = `\$\{cellW\}px`/, "fill cards must not be forced to one equal width");
+assert.match(game, /const cardH = Math\.round\(baseFont \* 1\.7\) \+ 10/, "the wall should keep one readable row height");
+assert.match(game, /state\.fillTotal = used\.size/, "the round should remember how many words it started with");
+assert.match(game, /state\.settled\.push\(card\)/, "wall words should become physics targets");
+assert.match(game, /attachSettledBody\(card\)/, "every wall word should be a Matter.js body");
+assert.match(game, /const usedRows = rows\.slice\(0, maxRows\)/, "the wall should drop rows that would overflow the field");
+
+// ---------- independent colours ----------
+assert.match(game, /const FILL_HUES = \[/, "fill cards should use a curated candy hue set");
+assert.match(game, /Math\.floor\(Math\.random\(\) \* 10 - 5\)/, "each card should jitter its hue so neighbours differ");
+assert.match(game, /el\.style\.setProperty\("--fill-hue", String\(hue\)\)/, "every card should carry its own hue");
+assert.match(css, /html\[data-theme\] \.word\.fill-word \{[\s\S]{0,260}hsl\(var\(--fill-hue/, "fill cards should colour their border, background and ink from the hue");
+assert.match(css, /html\[data-theme="bubblegum"\] \.word\.fill-word/, "the dark theme needs its own fill-card palette");
+assert.match(css, /html\[data-theme="cream"\] \.word\.fill-word/, "the cream theme needs its own fill-card palette");
+
+// ---------- click to hear ----------
+assert.match(game, /function speakFillWord\(card\)/, "clicking a word should have a dedicated hint action");
+assert.match(game, /els\.wordLayer\.addEventListener\("click"/, "the wall should listen for word taps");
+assert.match(game, /event\.target\.closest\("\.fill-word"\)/, "taps should resolve to a fill word");
+assert.match(game, /focusWord\(card\);\s*showHeard\(tr\("help\.listen"/, "a tap should highlight the word and show the listening hint");
+assert.match(game, /speakHelp\(card\)/, "a tap should speak the word with the help voice");
+assert.match(game, /el\.setAttribute\("role", "button"\)/, "fill cards should be announced as buttons");
+assert.match(game, /el\.tabIndex = 0/, "fill cards should be reachable from the keyboard");
+assert.match(css, /\.word\.fill-word \{[\s\S]{0,220}pointer-events: auto/, "fill cards must accept pointer events");
+assert.match(css, /\.word\.fill-word:focus-visible/, "keyboard focus should be visible");
+
+// ---------- random block effects ----------
+const fxBlock = game.match(/const FILL_EFFECTS = \[([\s\S]*?)\];/);
+assert.ok(fxBlock, "the fill mode should define a random effect list");
+const fxNames = [...fxBlock[1].matchAll(/"([a-zA-Z]+)"/g)].map((m) => m[1]);
+assert.ok(fxNames.length >= 10, "at least ten block effects should be available");
+for (const name of ["pulse", "bounce", "wobble", "flash", "glow", "hueShift", "rainbow", "shimmer", "sparkle", "confetti", "emoji", "ring"]) {
+  assert.ok(fxNames.includes(name), `missing block effect: ${name}`);
+}
+assert.match(game, /function updateFillEffects\(dt\)/, "effects should be scheduled inside the game loop");
+assert.match(game, /function applyFillEffect\(card\)/, "each random effect needs an applier");
+assert.match(game, /state\.fillFxTimer = 0\.65 \+ Math\.random\(\) \* 0\.85/, "effects should fire on a lively random cadence");
+assert.match(game, /if \(state\.mode === "fill"\) updateFillEffects\(dt\)/, "the game loop should only run fill effects in fill mode");
+assert.match(css, /\.fill-shine \{/, "cards need a shine sweep layer");
+const keyframes = [...css.matchAll(/@keyframes (fill[A-Za-z]+)/g)].map((m) => m[1]);
+assert.ok(keyframes.length >= 7, "the stylesheet should define the fill-card animation set");
+for (const name of ["fillPulse", "fillBounce", "fillWobble", "fillFlash", "fillGlow", "fillRainbow", "fillShineSweep"]) {
+  assert.ok(keyframes.includes(name), `missing keyframes: ${name}`);
+}
 
 // ---------- mode-aware gameplay ----------
 assert.match(game, /if \(state\.mode === "rain"\) \{[\s\S]{0,600}spawnWord\(\)/, "falling words should only spawn in rain mode");

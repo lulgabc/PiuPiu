@@ -331,6 +331,7 @@
     fillTotal: 0,
     fillBonus: 0,
     fillFinishing: false,
+    fillFxTimer: 0,
     score: 0,
     combo: 0,
     bestCombo: 0,
@@ -1284,6 +1285,7 @@
     state.fillTotal = 0;
     state.fillBonus = 0;
     state.fillFinishing = false;
+    state.fillFxTimer = 0;
     syncSpeechPhrases();
     state.score = 0;
     state.roundRecorded = true;
@@ -1460,6 +1462,7 @@
       if (state.mode === "rain" && checkPileDanger()) return;
     }
     if (state.phase !== "playing") return;
+    if (state.mode === "fill") updateFillEffects(dt);
     updateMeteor(dt);
     if (state.phase !== "playing") return;
     updatePets(dt);
@@ -1605,73 +1608,229 @@
     return picked;
   }
 
+  const FILL_HUES = [338, 12, 28, 46, 63, 155, 172, 192, 212, 268, 292, 318];
+  const FILL_EFFECTS = [
+    "pulse",
+    "bounce",
+    "wobble",
+    "flash",
+    "glow",
+    "hueShift",
+    "rainbow",
+    "shimmer",
+    "sparkle",
+    "confetti",
+    "emoji",
+    "ring",
+  ];
+  const FILL_EFFECT_CLASSES = [
+    "fill-pulse",
+    "fill-bounce",
+    "fill-wobble",
+    "fill-flash",
+    "fill-glow",
+    "fill-rainbow",
+    "fill-shimmer",
+  ];
+
   function buildFillBoard() {
     if (state.mode !== "fill" || !els.field) return;
     const fieldW = els.field.clientWidth;
     const fieldH = els.field.clientHeight;
     if (!fieldW || !fieldH) return;
     destroyPhysics();
-    const columns = fieldW < 430 ? 2 : 3;
     const pad = 10;
     const gapX = 8;
     const gapY = 5;
-    const cellW = Math.floor((fieldW - pad * 2 - gapX * (columns - 1)) / columns);
     const baseFont = fieldW < 360 ? 21 : fieldW < 430 ? 23 : 25;
     const cardH = Math.round(baseFont * 1.7) + 10;
-    const rows = Math.max(
-      3,
-      Math.floor((fieldH - pad * 2 + gapY) / (cardH + gapY)),
-    );
-    const count = Math.max(8, Math.min(40, columns * rows));
-    const words = drawFillWords(count);
+    const availableW = fieldW - pad * 2;
+    const maxRows = Math.max(3, Math.floor((fieldH - pad * 2 + gapY) / (cardH + gapY)));
+    const maxCards = Math.min(36, Math.max(16, maxRows * 3 + 2));
+    const words = drawFillWords(maxCards);
     if (!words.length) return;
 
-    const startY = fieldH - pad - cardH;
-
-    let placed = 0;
-    for (let i = 0; i < words.length; i += 1) {
-      const row = Math.floor(i / columns);
-      const col = i % columns;
-      const y = startY - row * (cardH + gapY);
-      if (y < pad) break;
-      const x = pad + col * (cellW + gapX);
-      const word = words[i];
-      const wordFont = Math.max(
-        12,
-        Math.min(baseFont, Math.floor((cellW - 32) / (Math.max(4, word.length) * 0.6))),
-      );
+    let hueBag = shuffle(FILL_HUES.slice());
+    let hueIndex = 0;
+    const cards = [];
+    for (const word of words) {
+      if (cards.length >= maxCards) break;
       const el = document.createElement("div");
       el.className = "word settled fill-word";
-      el.style.width = `${cellW}px`;
       el.style.height = `${cardH}px`;
-      el.style.fontSize = `${wordFont}px`;
-      el.style.setProperty("--hue", hueFor(word));
+      el.style.fontSize = `${baseFont}px`;
+      el.style.minWidth = "56px";
+      const hue = (hueBag[hueIndex % hueBag.length] + Math.floor(Math.random() * 10 - 5) + 360) % 360;
+      hueIndex += 1;
+      if (hueIndex % hueBag.length === 0) hueBag = shuffle(FILL_HUES.slice());
+      el.style.setProperty("--fill-hue", String(hue));
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", word);
+      el.tabIndex = 0;
       const span = document.createElement("span");
       span.className = "word-text";
       span.textContent = word;
+      const shine = document.createElement("span");
+      shine.className = "fill-shine";
+      shine.setAttribute("aria-hidden", "true");
       el.appendChild(span);
+      el.appendChild(shine);
       els.wordLayer.appendChild(el);
 
-      const settled = {
+      let font = baseFont;
+      let width = el.offsetWidth;
+      while (width > availableW && font > 13) {
+        font -= 1;
+        el.style.fontSize = `${font}px`;
+        width = el.offsetWidth;
+      }
+      if (width > availableW) {
+        el.remove();
+        continue;
+      }
+      cards.push({
         word,
         el,
-        x,
-        y,
-        w: cellW,
+        x: 0,
+        y: 0,
+        w: width,
         h: cardH,
+        hue,
         emoji: EMOJI[word.toLowerCase()] || "",
         golden: false,
-      };
-      state.settled.push(settled);
-      attachSettledBody(settled);
-      placed += 1;
+      });
+    }
+    if (!cards.length) return;
+
+    const rows = [];
+    let row = [];
+    let rowWidth = 0;
+    for (const card of cards) {
+      const nextWidth = row.length ? rowWidth + gapX + card.w : card.w;
+      if (row.length && nextWidth > availableW) {
+        rows.push({ cards: row, width: rowWidth });
+        row = [];
+        rowWidth = 0;
+      }
+      row.push(card);
+      rowWidth = row.length === 1 ? card.w : rowWidth + gapX + card.w;
+    }
+    if (row.length) rows.push({ cards: row, width: rowWidth });
+
+    const usedRows = rows.slice(0, maxRows);
+    const used = new Set();
+    for (const rowData of usedRows) {
+      for (const card of rowData.cards) used.add(card);
+    }
+    for (const card of cards) {
+      if (!used.has(card)) card.el.remove();
     }
 
-    state.fillTotal = placed;
+    const startY = fieldH - pad - cardH;
+    usedRows.forEach((rowData, rowIndex) => {
+      const y = startY - rowIndex * (cardH + gapY);
+      let x = Math.max(pad, Math.round((fieldW - rowData.width) / 2));
+      for (const card of rowData.cards) {
+        card.x = x;
+        card.y = y;
+        state.settled.push(card);
+        attachSettledBody(card);
+        x += card.w + gapX;
+      }
+    });
+
+    state.fillTotal = used.size;
     state.cleared = 0;
     state.fillBonus = 0;
+    state.fillFxTimer = 0.6;
     syncSpeechPhrases();
     updateHUD(true);
+  }
+
+  function fillCardCenter(card) {
+    const fRect = els.field.getBoundingClientRect();
+    const r = card.el.getBoundingClientRect();
+    return {
+      x: r.left - fRect.left + r.width / 2,
+      y: r.top - fRect.top + r.height / 2,
+    };
+  }
+
+  function clearFillEffectClasses(el) {
+    for (const name of FILL_EFFECT_CLASSES) el.classList.remove(name);
+  }
+
+  function playFillClass(card, cls, ms) {
+    const el = card.el;
+    clearFillEffectClasses(el);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    window.setTimeout(() => el.classList.remove(cls), ms);
+  }
+
+  function applyFillEffect(card) {
+    if (!card || !card.el || !card.el.isConnected) return;
+    const calm = REDUCED_MOTION;
+    const pool = calm
+      ? ["flash", "glow", "hueShift", "shimmer", "sparkle", "confetti", "emoji", "ring"]
+      : FILL_EFFECTS;
+    const effect = pool[Math.floor(Math.random() * pool.length)];
+    const { x: cx, y: cy } = fillCardCenter(card);
+    const hue = card.hue;
+
+    if (effect === "pulse") return playFillClass(card, "fill-pulse", 620);
+    if (effect === "bounce") return playFillClass(card, "fill-bounce", 720);
+    if (effect === "wobble") return playFillClass(card, "fill-wobble", 760);
+    if (effect === "flash") return playFillClass(card, "fill-flash", 640);
+    if (effect === "glow") return playFillClass(card, "fill-glow", 1250);
+    if (effect === "rainbow") return playFillClass(card, "fill-rainbow", 1250);
+    if (effect === "shimmer") return playFillClass(card, "fill-shimmer", 950);
+    if (effect === "hueShift") {
+      const next = (hue + 70 + Math.random() * 120) % 360;
+      card.hue = next;
+      card.el.style.setProperty("--fill-hue", String(Math.round(next)));
+      return playFillClass(card, "fill-flash", 480);
+    }
+    if (effect === "sparkle") {
+      createFlash(cx, cy, hue);
+      spawnStars(cx, cy, hue, 8);
+      return;
+    }
+    if (effect === "confetti") {
+      spawnSparks(cx, cy, hue, 18);
+      spawnStars(cx, cy, hue, 4);
+      return;
+    }
+    if (effect === "emoji") {
+      const emoji = ["✨", "💖", "🌟", "🎉", "🍬", "🫧", "⭐"][Math.floor(Math.random() * 7)];
+      spawnEmojiBurst({ emoji }, cx, cy);
+      createFlash(cx, cy, hue);
+      return;
+    }
+    if (effect === "ring") {
+      const ring = document.createElement("div");
+      ring.className = "ring";
+      ring.style.left = `${cx}px`;
+      ring.style.top = `${cy}px`;
+      ring.style.setProperty("--hue", hue);
+      addFx(ring);
+    }
+  }
+
+  function updateFillEffects(dt) {
+    if (state.mode !== "fill" || state.phase !== "playing") return;
+    state.fillFxTimer -= dt;
+    if (state.fillFxTimer > 0) return;
+    state.fillFxTimer = 0.65 + Math.random() * 0.85;
+    if (!state.settled.length) return;
+    applyFillEffect(state.settled[Math.floor(Math.random() * state.settled.length)]);
+  }
+
+  function speakFillWord(card) {
+    if (state.phase !== "playing" || state.mode !== "fill" || !card) return;
+    focusWord(card);
+    showHeard(tr("help.listen", { word: card.word }));
+    speakHelp(card);
   }
 
   /* ------------------------------------------------------------------ */
@@ -2657,7 +2816,7 @@
     let ground = fieldH - Math.max(10, Math.round(fieldH * 0.02));
     for (const settled of state.settled) {
       if (x >= settled.x - 4 && x <= settled.x + settled.w + 4 && settled.y < ground) {
-        ground = settled.y;
+        ground = Math.max(64, settled.y - 5);
       }
     }
     return Math.max(64, ground);
@@ -5699,6 +5858,30 @@
     });
   }
 
+  if (els.wordLayer) {
+    els.wordLayer.addEventListener("click", (event) => {
+      if (state.phase !== "playing" || state.mode !== "fill") return;
+      const node = event.target && event.target.closest ? event.target.closest(".fill-word") : null;
+      if (!node) return;
+      const card = state.settled.find((item) => item.el === node);
+      if (!card) return;
+      event.preventDefault();
+      event.stopPropagation();
+      speakFillWord(card);
+    });
+    els.wordLayer.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (state.phase !== "playing" || state.mode !== "fill") return;
+      const node = event.target && event.target.closest ? event.target.closest(".fill-word") : null;
+      if (!node) return;
+      const card = state.settled.find((item) => item.el === node);
+      if (!card) return;
+      event.preventDefault();
+      event.stopPropagation();
+      speakFillWord(card);
+    });
+  }
+
   els.field.addEventListener("pointerdown", (event) => {
     if (state.phase !== "playing") return;
     if (event.button !== undefined && event.button !== 0) return;
@@ -5706,7 +5889,7 @@
     if (
       target &&
       typeof target.closest === "function" &&
-      target.closest("button, input, textarea, select, a, .overlay")
+      target.closest("button, input, textarea, select, a, .overlay, .fill-word")
     ) {
       return;
     }

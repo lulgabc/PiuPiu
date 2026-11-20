@@ -836,18 +836,125 @@ body.phase-paused .pet {
 }
 
 /* Static word wall used by the fill-the-screen mode. The cards are real
-   Matter.js bodies, so clearing one lets the rest collapse under gravity. */
+   Matter.js bodies, so clearing one lets the rest collapse under gravity.
+   Width follows the word; each card gets its own hue and random micro-FX. */
 .word.fill-word {
+  overflow: hidden;
   padding: 0 10px;
   border-radius: 13px;
   place-items: center;
   white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 0.55s ease,
+    border-color 0.55s ease,
+    color 0.55s ease,
+    box-shadow 0.55s ease;
   will-change: transform;
 }
 
+.word.fill-word:focus-visible {
+  outline: 3px solid var(--theme-gold-border, #ffd35f);
+  outline-offset: 3px;
+}
+
 .word.fill-word .word-text {
+  position: relative;
+  z-index: 1;
   max-width: 100%;
   line-height: 1;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.fill-shine {
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.72) 50%,
+    transparent 65%
+  );
+  opacity: 0;
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+
+.word.fill-word.fill-pulse .word-text {
+  animation: fillPulse 0.62s ease;
+}
+
+.word.fill-word.fill-bounce .word-text {
+  animation: fillBounce 0.72s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.word.fill-word.fill-wobble .word-text {
+  animation: fillWobble 0.76s ease;
+}
+
+.word.fill-word.fill-flash {
+  animation: fillFlash 0.64s ease;
+}
+
+.word.fill-word.fill-glow {
+  animation: fillGlow 1.25s ease;
+}
+
+.word.fill-word.fill-rainbow {
+  animation: fillRainbow 1.25s linear;
+}
+
+.word.fill-word.fill-shimmer .fill-shine {
+  animation: fillShineSweep 0.95s ease;
+}
+
+@keyframes fillPulse {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+}
+
+@keyframes fillBounce {
+  0%, 100% { transform: translateY(0); }
+  38% { transform: translateY(-9px) scale(1.04); }
+  68% { transform: translateY(2px) scale(0.98); }
+}
+
+@keyframes fillWobble {
+  0%, 100% { transform: rotate(0) scale(1); }
+  25% { transform: rotate(-6deg) scale(1.04); }
+  55% { transform: rotate(5deg) scale(1.05); }
+  80% { transform: rotate(-2deg) scale(1.01); }
+}
+
+@keyframes fillFlash {
+  0%, 100% { filter: none; }
+  32% { filter: brightness(1.55) saturate(1.45); }
+}
+
+@keyframes fillGlow {
+  0%, 100% { filter: none; }
+  45% { filter: brightness(1.16) drop-shadow(0 0 16px hsl(var(--fill-hue, 300) 90% 68% / 0.9)); }
+}
+
+@keyframes fillRainbow {
+  from { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(360deg); }
+}
+
+@keyframes fillShineSweep {
+  0% { opacity: 0; transform: translateX(-130%); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(130%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word.fill-word.fill-pulse .word-text,
+  .word.fill-word.fill-bounce .word-text,
+  .word.fill-word.fill-wobble .word-text {
+    animation: none;
+  }
 }
 
 body.mode-fill .reward-progress,
@@ -4507,6 +4614,36 @@ html[data-theme] .word.settled {
   color: var(--theme-settled-ink);
   box-shadow: var(--theme-ring), 0 3px 0 color-mix(in srgb, var(--theme-settled-ink) 18%, transparent);
   opacity: 1;
+}
+html[data-theme] .word.fill-word {
+  border: var(--theme-border-w) solid hsl(var(--fill-hue, 300) 86% 72% / 0.9);
+  background: hsl(var(--fill-hue, 300) 88% 91%);
+  color: hsl(var(--fill-hue, 300) 55% 29%);
+  box-shadow:
+    var(--theme-ring),
+    0 4px 0 hsl(var(--fill-hue, 300) 58% 78% / 0.55),
+    0 10px 18px hsl(var(--fill-hue, 300) 45% 42% / 0.12);
+  opacity: 1;
+}
+
+html[data-theme="cream"] .word.fill-word {
+  border-color: hsl(var(--fill-hue, 300) 45% 73% / 0.95);
+  background: hsl(var(--fill-hue, 300) 45% 91%);
+  color: hsl(var(--fill-hue, 300) 38% 28%);
+  box-shadow:
+    var(--theme-ring),
+    0 4px 0 hsl(var(--fill-hue, 300) 35% 80% / 0.55),
+    0 10px 18px hsl(var(--fill-hue, 300) 25% 36% / 0.09);
+}
+
+html[data-theme="bubblegum"] .word.fill-word {
+  border-color: hsl(var(--fill-hue, 300) 82% 62%);
+  background: hsl(var(--fill-hue, 300) 55% 26%);
+  color: hsl(var(--fill-hue, 300) 88% 89%);
+  box-shadow:
+    0 0 0 2px hsl(var(--fill-hue, 300) 85% 60% / 0.24),
+    0 5px 0 hsl(var(--fill-hue, 300) 60% 14%),
+    0 12px 20px rgba(0, 0, 0, 0.28);
 }
 
 html[data-theme] .word.golden {
