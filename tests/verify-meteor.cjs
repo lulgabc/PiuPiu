@@ -6,6 +6,7 @@ const { translations } = require("../js/i18n.js");
 const game = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
 const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+const arcade = fs.readFileSync(path.join(__dirname, "../css/arcade.css"), "utf8");
 
 // ---------- meteor every ten clears ----------
 assert.match(game, /const METEOR_EVERY = 10/, "the meteor should fire every 10 clears");
@@ -55,6 +56,11 @@ for (const speed of ["normal", "fast", "turbo"]) {
 }
 assert.match(html, /data-i18n-aria="speed\.title"/, "the speed control needs an accessible name");
 assert.match(css, /\.speed-tool \{/, "the speed control needs styling");
+assert.match(html, /class="speed-meter"[^>]*><i><\/i><i><\/i><i><\/i>/, "the speed control needs a three-bar meter");
+assert.match(arcade, /\[data-speed="fast"\][\s\S]{0,80}--speed-color: #ff9f43/, "fast should change the meter colour");
+assert.match(arcade, /\[data-speed="turbo"\][\s\S]{0,80}--speed-color: var\(--arc-coral\)/, "turbo should change the meter colour");
+assert.match(arcade, /\.speed-tool \.speed-tool-label[\s\S]{0,100}display: block/, "the speed label should stay visible");
+assert.match(arcade, /body\.mode-rain \.level-stat \{\s*display: none;/, "rain mode should free HUD space for the wider speed control");
 
 for (const key of ["meteor.start", "meteor.clear", "meteor.empty", "speed.title", "speed.normal", "speed.fast", "speed.turbo", "speed.set", "speed.pillAria"]) {
   for (const lang of ["zh", "fr", "en"]) {

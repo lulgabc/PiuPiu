@@ -43,7 +43,9 @@ assert.match(game, /function syncPhaseClass\(/, "the page should track game phas
 assert.match(game, /function openSetup\(/, "settings should open from the home shortcuts");
 assert.match(game, /function closeSetup\(/, "settings should close cleanly");
 assert.match(arcade, /\.mode-switch \{[\s\S]{0,140}grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "modes should share one arcade row");
-assert.match(arcade, /\.mode-option\.is-active \{[\s\S]{0,180}box-shadow: 0 0 18px/, "the selected mode should glow");
+assert.match(arcade, /\.mode-option\.is-active \{[\s\S]{0,260}box-shadow:[\s\S]{0,120}0 0 24px/, "the selected mode should glow");
+assert.match(arcade, /\.mode-art \{[\s\S]{0,160}height: 72px/, "each mode needs a mini screen");
+assert.match(arcade, /\.mode-option\[data-mode="paint"\] \{[\s\S]{0,80}#ff7aa2/, "each mode needs its own accent");
 assert.match(arcade, /\.story-hero \{/, "the arcade hero needs its own layout");
 assert.match(arcade, /\.story-pills \{/, "pack and player should share a quiet meta row");
 assert.match(game, /renderVoiceOptions\(\);/, "voice labels should refresh with the language");

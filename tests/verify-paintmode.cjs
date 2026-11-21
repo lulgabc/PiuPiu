@@ -18,7 +18,7 @@ const explode = game.slice(
 
 // ---------- mode picker ----------
 assert.match(html, /data-mode="paint"[^>]*aria-pressed="false"/, "the paintball mode should be selectable");
-assert.match(html, /data-mode="paint"[\s\S]{0,260}data-i18n="mode\.paint"/, "the paintball mode needs a label");
+assert.match(html, /data-mode="paint"[\s\S]{0,2000}data-i18n="mode\.paint"/, "the paintball mode needs a label");
 assert.match(html, /id="paintLayer"[^>]*aria-hidden="true"/, "paint stains need their own background layer");
 assert.match(game, /const GAME_MODES = \["rain", "fill", "paint"\]/, "there should be three game modes");
 assert.match(game, /GAME_MODES\.includes\(MODE_PARAM\)/, "the url mode should resolve through the shared list");

@@ -62,7 +62,7 @@ for (const icon of [
 }
 
 // ---------- static icon slots ----------
-for (const icon of ["spark", "rain", "grid", "palette", "bolt", "volume", "settings", "pause"]) {
+for (const icon of ["spark", "rain", "volume", "settings", "pause"]) {
   assert.match(html, new RegExp(`<use href="#ui-${icon}">`), `missing static icon use: ${icon}`);
 }
 assert.equal((html.match(/class="reward-node"/g) || []).length, 5, "progress dots should be empty decorative spans");
@@ -106,7 +106,8 @@ assert.match(game, /els\.recordLine\.appendChild\(iconSvg\("trophy"\)\)/, "a new
 // ---------- styling ----------
 assert.match(css, /\.ui-icon \{[\s\S]{0,220}stroke: currentColor/, "icons should take their colour from text");
 assert.match(css, /\.brand-mark \.ui-icon \{[\s\S]{0,100}width: 14px/, "the brand spark needs a 14px size");
-assert.match(css, /\.mode-option-icon \.ui-icon \{[\s\S]{0,80}width: 22px/, "mode icons need a 22px size");
+assert.match(css, /\.mode-art \{[\s\S]{0,160}height: 72px/, "mode art needs a readable mini-screen height");
+assert.match(css, /\.mode-art-svg \{[\s\S]{0,100}width: 100%/, "mode art should fill its screen");
 assert.match(css, /\.pack-category-icon \.ui-icon \{[\s\S]{0,100}width: 19px/, "category icons need a 19px size");
 assert.match(css, /\.player-pill-total \.ui-icon,[\s\S]{0,160}width: 10px/, "point stars need a 10px size");
 assert.match(css, /\.board-rank\.rank-1 \{ color: var\(--arc-lemon\)/, "the first rank should be lemon");

@@ -30,7 +30,12 @@ for (const mode of ["rain", "fill", "paint"]) {
 }
 assert.match(css, /\.play-steps \{\s*display: none;/, "the old three-step strip should be hidden");
 assert.match(css, /\.mode-switch \{[\s\S]{0,140}grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "modes should sit in one arcade row");
-assert.match(css, /\.mode-option-copy small \{\s*display: none;/, "the arcade mode row should stay compact");
+assert.match(css, /\.mode-option-copy small \{\s*display: block;/, "the mode hint should stay visible under the name");
+assert.match(html, /class="mode-art"/, "each mode needs a mini arcade screen");
+assert.match(html, /class="mode-art-svg"/, "the mini scenes should be SVG");
+for (const color of ["#6ed6ff", "#8ef4a8", "#ff7aa2"]) {
+  assert.ok(css.includes(color), `missing mode accent ${color}`);
+}
 assert.match(css, /\.start-panel::before \{\s*display: none;/, "the paper tape should be retired");
 assert.match(css, /body\.phase-menu \.overlay \{\s*background: transparent;/, "the menu should sit directly on the dark field");
 assert.match(css, /\.start-cta::after \{[\s\S]{0,100}content: "▶"/, "the primary action should get a play arrow");
@@ -132,7 +137,7 @@ assert.equal(translations.zh["start.heroTitle"], "读出来，消掉它");
 assert.equal(translations.zh["theme.candy"], "薄荷街机");
 assert.equal(translations.zh["theme.bubblegum"], "紫罗兰街机");
 assert.equal(translations.zh["theme.cream"], "柠檬街机");
-assert.equal(pkg.version, "2.30.1");
+assert.equal(pkg.version, "2.30.2");
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true);
 
 console.log("✓ the arcade skin loads after the base CSS and is offline-safe");
