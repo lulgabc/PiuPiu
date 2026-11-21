@@ -47,7 +47,7 @@ const helpBody = game.slice(game.indexOf("function speakHelp(word)"), game.index
 assert.match(helpBody, /const releaseMic = IS_IOS && state\.micEnabled/, "iOS keeps its audio-route handling");
 assert.match(helpBody, /if \(state\.micEnabled\) stopSpeech\(\)/, "all platforms should mute the mic while the hint speaks");
 assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\) \+ 4500/, "the hint should hold a safety guard while speaking");
-assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\) \+ 350/, "delayed TTS finals should be ignored for a short window");
+assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\) \+ 200/, "delayed TTS finals should be ignored for a short window");
 assert.match(helpBody, /const delay = IS_IOS \? \(releaseMic \? 150 : wasSpeaking \? 60 : 0\) : 0/, "iOS should wait for the audio route/cancel to settle");
 assert.match(helpBody, /window\.setTimeout\(startSpeak, delay\)/, "the delayed iOS utterance should still start");
 assert.match(game, /if \(state\.helpSpeaking \|\| now < state\.helpGuardUntil\) return;/, "TTS results and their tail should be ignored");
