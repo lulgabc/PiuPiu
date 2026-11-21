@@ -3801,6 +3801,8 @@
     return Math.max(64, ground);
   }
 
+  const PAINT_HOP_INTERVAL = 2;
+
   function paintCardTop(card) {
     return Math.max(64, card.y + 3);
   }
@@ -3931,7 +3933,7 @@
         st.card = st.target;
         st.target = null;
         st.phase = "rest";
-        st.timer = 0.32 + Math.random() * 0.5;
+        st.timer = Math.max(0.4, PAINT_HOP_INTERVAL - st.duration);
         p.brain.action = "observe";
         p.brain.time = 0;
         p.brain.duration = st.timer;
@@ -4424,7 +4426,7 @@
       card: null,
       target: null,
       phase: "rest",
-      timer: 0.55 + Math.random() * 0.55,
+      timer: PAINT_HOP_INTERVAL - 0.4,
       fromX: pet.x,
       fromY: pet.ground,
       toX: pet.x,

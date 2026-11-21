@@ -45,6 +45,9 @@ assert.match(game, /function paintPetOverlap\(/, "the pet should prefer a card w
 assert.match(game, /function paintStartJump\(/, "the pet should jump between cards");
 assert.match(game, /st\.phase = "jump"/, "the pet should enter a jump phase");
 assert.match(game, /st\.phase = "rest"/, "the pet should pause on a card before the next hop");
+assert.match(game, /const PAINT_HOP_INTERVAL = 2;/, "paint hops should happen once every two seconds");
+assert.match(game, /Math\.max\(0\.4, PAINT_HOP_INTERVAL - st\.duration\)/, "the rest should complete a two-second hop cycle");
+assert.match(game, /timer: PAINT_HOP_INTERVAL - 0\.4/, "the first hop should not fire too early");
 assert.match(game, /Math\.sin\(Math\.PI \* t\) \* st\.hop/, "the hop should follow a rounded arc");
 assert.match(game, /state\.settled\.includes\(st\.card\)/, "a removed card should trigger a new hop");
 assert.match(game, /paintCardTop\(st\.card\)/, "the pet should stand on the card top edge");
