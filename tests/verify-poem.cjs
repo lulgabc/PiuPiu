@@ -151,7 +151,7 @@ for (const key of [
   }
 }
 
-assert.equal(pkg.version, "2.32.0");
+assert.equal(pkg.version, "2.32.1");
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true);
 assert.ok(sw.includes("./css/poetry.css") && sw.includes("./js/poetry.js"), "poetry assets should be offline-safe");
 

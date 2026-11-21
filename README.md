@@ -4,7 +4,7 @@
 
 **[在线试玩 →](https://lulgabc.github.io/PiuPiu/)**
 
-**[视觉方向探索 →](https://lulgabc.github.io/PiuPiu/design-lab/)** 三个统一首页、游戏 HUD 和词库页的设计稿；方向 C「街机泡泡」已落地为 2.32.0，并新增「爱读诗」模式。
+**[视觉方向探索 →](https://lulgabc.github.io/PiuPiu/design-lab/)** 三个统一首页、游戏 HUD 和词库页的设计稿；方向 C「街机泡泡」已落地为 2.32.1，并新增「爱读诗」模式。
 
 单词从屏幕顶部随机落下。你对着麦克风正确读出单词，它就会带着不同颜色和动画效果消失；如果一直没读对，单词会落到底部并不断堆积。单词堆到屏幕顶端时，本轮结束。
 
@@ -364,7 +364,7 @@ PiuAmbient.next();
 - **完整诗集已内置**：153 首诗、8 个分类、2034 行诗句，默认加载，离线可用。
 - 诗集数据来自 **A World Full of Poems**（DK, 2020，Sylvia M. Vardell 编选）；诗歌版权归各位诗人所有，已获授权收录。
 - 如果需要重新生成诗集数据，运行 `python3 tools/extract-poems.py`（需要 PyMuPDF）。它会写入 `js/poetry.js`，并在 `~/Downloads/PiuPiu-poetry-library.json` 留一份可导入的备份。
-- 「诗集 → 导入完整诗集」仍然保留，用来导入其他自定义诗集或备份；导入内容会覆盖内置诗集并保存在本机 localStorage。
+- 「诗集 → 导入其他诗集」仍然保留，用来导入其他自定义诗集或备份；导入内容会覆盖内置诗集并保存在本机 localStorage。
 
 ### 整屏消除的词块
 
