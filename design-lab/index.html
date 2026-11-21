@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PiuPiu · 统一视觉方向探索</title>
+<style>
+  :root {
+    color-scheme: light;
+    --lab-bg: #f2efe9;
+    --lab-ink: #28232c;
+    --lab-muted: #716a76;
+    --lab-line: rgba(40, 35, 44, 0.12);
+    --lab-card: #fffdf9;
+    --phone-bezel: #17151c;
+    --radius-phone: 42px;
+    font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont,
+      "SF Pro Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+      "Microsoft YaHei", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(70% 50% at 50% -10%, #fffaf2, transparent 65%),
+      var(--lab-bg);
+    color: var(--lab-ink);
+    font-family: inherit;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: default; }
+  img { display: block; }
+
+  .lab {
+    max-width: 1050px;
+    margin: 0 auto;
+    padding: 44px 24px 80px;
+  }
+
+  .lab-head {
+    display: grid;
+    gap: 18px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--lab-line);
+  }
+  .kicker {
+    margin: 0;
+    color: #b45472;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .lab-head h1 {
+    margin: 0;
+    max-width: 760px;
+    font-size: clamp(34px, 5vw, 54px);
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    line-height: 1.02;
+  }
+  .lab-intro {
+    margin: 0;
+    max-width: 690px;
+    color: var(--lab-muted);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.7;
+  }
+  .lab-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .lab-nav a {
+    padding: 9px 13px;
+    border: 1px solid var(--lab-line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.65);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .lab-nav a:hover { background: #fff; }
+
+  .rules {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 22px 0 48px;
+  }
+  .rule {
+    padding: 14px 15px;
+    border: 1px solid var(--lab-line);
+    border-radius: 18px;
+    background: rgba(255, 253, 249, 0.74);
+  }
+  .rule b { display: block; margin-bottom: 4px; font-size: 13px; }
+  .rule span { display: block; color: var(--lab-muted); font-size: 11px; line-height: 1.5; }
+
+  .direction {
+    padding: 38px 0 54px;
+    border-top: 1px solid var(--lab-line);
+    scroll-margin-top: 20px;
+  }
+  .dir-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .dir-head > div:first-child { max-width: 700px; }
+  .dir-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid var(--lab-line);
+    color: #9c5268;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+  }
+  .dir-head h2 {
+    margin: 12px 0 6px;
+    font-size: clamp(26px, 3.4vw, 40px);
+    font-weight: 900;
+    letter-spacing: -0.045em;
+  }
+  .dir-head p {
+    margin: 0;
+    color: var(--lab-muted);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.65;
+  }
+  .swatches { display: flex; flex-shrink: 0; gap: 6px; }
+  .swatches i {
+    display: block;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.8);
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
+
+  .screens {
+    display: grid;
+    grid-template-columns: repeat(3, 300px);
+    justify-content: center;
+    gap: 18px;
+    overflow-x: auto;
+    padding: 4px 2px 14px;
+    scrollbar-width: thin;
+  }
+  .phone-wrap { display: grid; gap: 9px; justify-items: center; }
+  .phone {
+    position: relative;
+    width: 300px;
+    height: 650px;
+    padding: 7px;
+    border-radius: var(--radius-phone);
+    background: linear-gradient(145deg, #27232e, #0e0c12);
+    box-shadow:
+      0 26px 60px rgba(31, 24, 38, 0.24),
+      inset 0 0 0 1px rgba(255,255,255,.14);
+  }
+  .phone::after {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border-radius: 37px;
+    border: 1px solid rgba(255,255,255,.08);
+    pointer-events: none;
+  }
+  .screen {
+    position: relative;
+    width: 286px;
+    height: 636px;
+    overflow: hidden;
+    border-radius: 34px;
+  }
+  .caption {
+    color: var(--lab-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .dir-notes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .dir-note {
+    padding: 13px 15px;
+    border: 1px solid var(--lab-line);
+    border-radius: 16px;
+    background: rgba(255,253,249,.7);
+  }
+  .dir-note b { display: block; margin-bottom: 3px; font-size: 12px; }
+  .dir-note span { display: block; color: var(--lab-muted); font-size: 10.5px; line-height: 1.5; }
+
+  .compare {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 18px;
+  }
+  .compare div {
+    padding: 12px 14px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 14px;
+    background: rgba(255,255,255,.05);
+  }
+  .compare b { display: block; margin-bottom: 4px; color: #ffd0dd; font-size: 11px; }
+  .compare span { display: block; color: #cdc3d1; font-size: 10.5px; line-height: 1.5; }
+
+  .recommend {
+    margin-top: 24px;
+    padding: 26px 28px;
+    border-radius: 24px;
+    background: #29242f;
+    color: #fff8f1;
+  }
+  .recommend h2 { margin: 0 0 8px; font-size: 20px; letter-spacing: -0.02em; }
+  .recommend p { margin: 0; color: #cdc3d1; font-size: 13px; line-height: 1.7; }
+  .recommend b { color: #ffd0dd; }
+
+  /* ================================================================== */
+  /* A · 果冻游乐场                                                     */
+  /* ================================================================== */
+  .vA { --a-ink: #4a3552; --a-muted: #907293; --a-pink: #ff7d9f; --a-pink-deep: #e65d89; --a-mint: #78dcc9; --a-butter: #ffe3a1; }
+  .vA .screen {
+    background:
+      radial-gradient(90% 55% at 50% 0%, #fff9e9, transparent 60%),
+      linear-gradient(180deg, #fff8f1 0%, #fff0f6 58%, #f5ecff 100%);
+    color: var(--a-ink);
+    font-weight: 700;
+  }
+
+  .a-bar { display: flex; align-items: center; justify-content: space-between; padding: 15px 16px 0; }
+  .a-brand { display: flex; align-items: center; gap: 5px; font-size: 19px; font-weight: 900; letter-spacing: -0.045em; color: #3b2a43; }
+  .a-brand span { color: var(--a-pink); font-size: 17px; }
+  .a-actions { display: flex; gap: 7px; }
+  .a-icon { width: 31px; height: 31px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 4px 10px rgba(137, 87, 112, .14); font-size: 13px; }
+
+  .a-mascot { position: relative; display: grid; place-items: center; width: 176px; height: 164px; margin: 8px auto 0; }
+  .a-halo { position: absolute; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle at 40% 28%, #fff8c7, #ffd9e8 54%, rgba(255,217,232,0) 72%); }
+  .a-mascot img { position: relative; z-index: 1; width: 128px; filter: drop-shadow(0 16px 18px rgba(89, 52, 81, .18)); }
+  .a-spark { position: absolute; color: #ffc54a; font-size: 16px; }
+  .a-spark.s1 { left: 8px; top: 37px; }
+  .a-spark.s2 { right: 5px; top: 25px; font-size: 20px; color: #ff9ab6; }
+  .a-spark.s3 { right: 26px; bottom: 23px; font-size: 12px; color: #78dcc9; }
+
+  .a-home h3 { margin: 0; text-align: center; font-size: 25px; font-weight: 900; letter-spacing: -0.045em; }
+  .a-sub { margin: 3px 0 14px; text-align: center; color: var(--a-muted); font-size: 10px; font-weight: 700; }
+  .a-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 0 13px; }
+  .a-mode { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 84px; border: 0; border-radius: 20px; background: #fff; color: #634a68; box-shadow: 0 5px 0 #efdde6; }
+  .a-mode span { font-size: 23px; line-height: 1; }
+  .a-mode b { font-size: 10.5px; font-weight: 800; }
+  .a-mode.is-on { background: linear-gradient(155deg, #ffe4ee, #ffd1e2); box-shadow: 0 5px 0 #f2b6cc, inset 0 1px 0 #fff; }
+  .a-start { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 26px); height: 58px; margin: 14px 13px 0; border: 0; border-radius: 21px; background: linear-gradient(135deg, #ff8ea9, #ff6d99); color: #fff; font-size: 19px; font-weight: 900; box-shadow: 0 7px 0 #df557f, 0 14px 24px rgba(223,85,127,.22); }
+  .a-start span { font-size: 14px; }
+  .a-meta { display: flex; justify-content: center; gap: 7px; padding: 12px 12px 0; }
+  .a-meta span { max-width: 145px; overflow: hidden; padding: 7px 10px; border-radius: 999px; background: #fff; color: #6b526d; font-size: 9.5px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 3px 0 #efdde6; }
+  .a-meta b { color: #e65d89; }
+
+  .a-game { background: linear-gradient(180deg, #dff8f4 0%, #f3ecff 58%, #fff8f0 100%); }
+  .a-hud { display: flex; align-items: center; gap: 7px; padding: 13px 11px 0; }
+  .a-score { display: flex; align-items: baseline; gap: 5px; padding: 7px 9px; border-radius: 14px; background: #fff; box-shadow: 0 4px 0 #e5d5ec; }
+  .a-score small { color: #9a7f9d; font-size: 7px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+  .a-score b { font-size: 18px; font-weight: 900; letter-spacing: -.04em; }
+  .a-score em { color: #ed6e95; font-size: 10px; font-style: normal; font-weight: 900; }
+  .a-stars { display: flex; flex: 1; justify-content: center; gap: 4px; }
+  .a-stars i { width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 2px #e7d6e0; }
+  .a-stars i.on { background: #ffd35f; box-shadow: 0 0 9px rgba(255, 211, 95, .52); }
+  .a-round { width: 33px; height: 33px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 4px 0 #e5d5ec; font-size: 12px; }
+  .a-field { position: relative; height: 492px; margin: 10px 8px 0; border-radius: 26px; background: radial-gradient(circle at 20% 10%, #fff, rgba(255,255,255,0) 38%), linear-gradient(180deg, #d9f7f1, #eee6ff); overflow: hidden; }
+  .a-cloud { position: absolute; border-radius: 999px; background: rgba(255,255,255,.58); filter: blur(1px); }
+  .a-cloud.c1 { width: 110px; height: 36px; left: -30px; top: 92px; }
+  .a-cloud.c2 { width: 90px; height: 28px; right: -22px; top: 185px; }
+  .a-cloud.c3 { width: 130px; height: 40px; left: 90px; bottom: 122px; opacity: .6; }
+  .a-word { position: absolute; padding: 10px 13px; border: 2px solid var(--c); border-radius: 15px; background: #fff; color: #513c58; font-size: 15px; font-weight: 900; box-shadow: 0 5px 0 rgba(83, 57, 90, .08); }
+  .a-word.w1 { left: 12%; top: 9%; --c: #b994ff; }
+  .a-word.w2 { right: 8%; top: 24%; --c: #6fd9c8; }
+  .a-word.w3 { left: 7%; top: 42%; --c: #ff9fbb; }
+  .a-word.w4 { right: 13%; top: 55%; --c: #ffd166; }
+  .a-word.w5 { left: 9%; top: 66%; --c: #9ee6c9; }
+  .a-word.w6 { right: 7%; top: 70%; --c: #92b8f2; font-size: 12px; }
+  .a-game-pet { position: absolute; left: 50%; bottom: 18px; width: 94px; transform: translateX(-50%); filter: drop-shadow(0 10px 10px rgba(82,55,84,.16)); }
+  .a-pet-cloud { position: absolute; left: 50%; bottom: 8px; width: 116px; height: 26px; transform: translateX(-50%); border-radius: 50%; background: rgba(255,255,255,.7); }
+  .a-listen { position: absolute; right: 12px; bottom: 12px; left: 12px; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 6px 0 14px; border-radius: 24px; background: #fff; box-shadow: 0 5px 0 #e5d5ec; color: #7a5f7d; font-size: 10px; font-weight: 800; }
+  .a-listen i { width: 7px; height: 7px; border-radius: 50%; background: #ff6e98; box-shadow: 0 0 0 4px #ffe0ea; }
+  .a-listen button { display: grid; place-items: center; width: 35px; height: 35px; margin-left: auto; border: 0; border-radius: 50%; background: #f6eef9; font-size: 14px; }
+
+  .a-packs { padding: 16px 14px; background: #fffaf4; }
+  .a-sheet-head { display: flex; align-items: center; justify-content: space-between; }
+  .a-sheet-head h3 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -.04em; }
+  .a-sheet-head button { display: grid; place-items: center; width: 31px; height: 31px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 3px 0 #efdde6; font-size: 13px; }
+  .a-pack-hero { display: flex; align-items: center; gap: 10px; margin-top: 13px; padding: 10px; border-radius: 19px; background: linear-gradient(135deg, #ffe0ec, #fff5d9); }
+  .a-pack-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: #fff; font-size: 22px; }
+  .a-pack-hero strong { display: block; font-size: 14px; }
+  .a-pack-hero small { display: block; margin-top: 2px; color: #9a7e97; font-size: 9px; }
+  .a-check { display: grid; place-items: center; width: 23px; height: 23px; margin-left: auto; border-radius: 50%; background: #ff7d9f; color: #fff; font-size: 11px; }
+  .a-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 12px; padding: 3px; border-radius: 13px; background: #f4e9ef; }
+  .a-tabs b { padding: 7px 0; border-radius: 10px; text-align: center; color: #9a7f9d; font-size: 9.5px; font-weight: 800; }
+  .a-tabs b.on { background: #fff; color: #5b4260; box-shadow: 0 2px 6px rgba(103,71,103,.1); }
+  .a-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
+  .a-grid button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 70px; border: 0; border-radius: 16px; background: #fff; color: #674e6c; box-shadow: 0 4px 0 #f0e2e9; }
+  .a-grid span { font-size: 21px; }
+  .a-grid small { font-size: 9px; font-weight: 800; }
+  .a-diff { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin-top: 10px; padding: 3px; border-radius: 14px; background: #f4e9ef; }
+  .a-diff b { padding: 8px 0; border-radius: 10px; text-align: center; color: #9a7f9d; font-size: 9px; font-weight: 800; }
+  .a-diff b.on { background: #fff; color: #5b4260; box-shadow: 0 2px 6px rgba(103,71,103,.1); }
+  .a-done { width: 100%; height: 48px; margin-top: 12px; border: 0; border-radius: 18px; background: linear-gradient(135deg, #ff8ea9, #ff6d99); color: #fff; font-size: 16px; font-weight: 900; box-shadow: 0 6px 0 #df557f; }
+
+  /* ================================================================== */
+  /* B · 贴纸故事书                                                     */
+  /* ================================================================== */
+  .vB { --b-paper: #fbf6ea; --b-ink: #2f2a25; --b-coral: #e9664f; --b-teal: #2f8f83; --b-yellow: #f2c14e; --b-blue: #5b7db1; }
+  .vB .screen { background: radial-gradient(circle at 20% 20%, rgba(47,42,37,.03) 0 1px, transparent 1.4px) 0 0/13px 13px, var(--b-paper); color: var(--b-ink); font-weight: 700; }
+  .b-top { display: flex; align-items: center; justify-content: space-between; padding: 15px 15px 0; }
+  .b-logo { display: inline-block; padding: 5px 10px 4px; border: 2px solid var(--b-ink); border-radius: 9px; background: #fff6d9; font-size: 16px; font-weight: 900; letter-spacing: -.04em; transform: rotate(-2deg); }
+  .b-gear { display: grid; place-items: center; width: 31px; height: 31px; border: 2px solid var(--b-ink); border-radius: 50%; background: var(--b-paper); font-size: 12px; }
+  .b-hero { position: relative; display: flex; align-items: center; gap: 12px; margin: 16px 13px 0; padding: 12px 12px 12px 10px; border: 2px solid var(--b-ink); border-radius: 16px; background: #fff; box-shadow: 4px 4px 0 rgba(47,42,37,.14); transform: rotate(-.5deg); }
+  .b-tape { position: absolute; top: -11px; left: 50%; width: 66px; height: 20px; transform: translateX(-50%) rotate(2deg); background: rgba(242,193,78,.72); box-shadow: 0 1px 0 rgba(47,42,37,.16); }
+  .b-hero img { width: 103px; flex: 0 0 auto; }
+  .b-hero small { display: block; color: #8f8275; font-size: 8.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .b-hero h3 { margin: 4px 0 0; font-size: 25px; font-weight: 900; letter-spacing: -.05em; line-height: .98; }
+  .b-hero h3 span { color: var(--b-coral); }
+  .b-tickets { display: grid; gap: 8px; margin: 16px 13px 0; }
+  .b-ticket { position: relative; display: flex; align-items: center; gap: 9px; min-height: 55px; padding: 7px 10px; border: 2px solid var(--b-ink); border-radius: 13px; background: #fff; text-align: left; box-shadow: 3px 3px 0 rgba(47,42,37,.13); }
+  .b-ticket > span { font-size: 21px; }
+  .b-ticket b { font-size: 12px; }
+  .b-ticket i { margin-left: auto; color: #887b6d; font-size: 8.5px; font-style: normal; }
+  .b-ticket.on { background: #ffe6df; transform: rotate(-1deg); }
+  .b-ticket.on::after { content: "★"; position: absolute; right: -7px; top: -9px; display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid var(--b-ink); border-radius: 50%; background: var(--b-yellow); font-size: 11px; }
+  .b-start { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 26px); height: 55px; margin: 15px 13px 0; border: 2px solid var(--b-ink); border-radius: 14px; background: var(--b-coral); color: #fff; font-size: 18px; font-weight: 900; box-shadow: 4px 4px 0 var(--b-ink); }
+  .b-start span { font-size: 15px; }
+  .b-meta { display: flex; justify-content: center; gap: 7px; padding: 12px 10px 0; }
+  .b-meta span { padding: 5px 8px; border: 1.5px solid var(--b-ink); border-radius: 6px; background: #fff; font-size: 8.5px; font-weight: 800; transform: rotate(-1deg); }
+  .b-meta span:last-child { background: #fff2c9; transform: rotate(1deg); }
+
+  .b-game { background: radial-gradient(circle at 20% 20%, rgba(47,42,37,.035) 0 1px, transparent 1.4px) 0 0/13px 13px, #f8f2e5; }
+  .b-hud { margin: 13px 11px 0; border: 2px solid var(--b-ink); border-radius: 13px; background: #fff; box-shadow: 3px 3px 0 rgba(47,42,37,.14); }
+  .b-hud-row { display: flex; align-items: center; gap: 6px; padding: 7px 8px; }
+  .b-stat { display: flex; align-items: baseline; gap: 3px; padding-right: 7px; border-right: 1.5px dashed rgba(47,42,37,.25); }
+  .b-stat small { color: #8a7d70; font-size: 7px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .b-stat b { font-size: 15px; }
+  .b-stars { display: flex; flex: 1; gap: 3px; justify-content: center; }
+  .b-stars i { display: grid; place-items: center; width: 13px; height: 13px; border: 1.5px solid var(--b-ink); border-radius: 50%; background: #fff; font-size: 7px; font-style: normal; }
+  .b-stars i.on { background: var(--b-yellow); }
+  .b-mini { display: grid; place-items: center; width: 27px; height: 27px; border: 1.5px solid var(--b-ink); border-radius: 50%; background: var(--b-paper); font-size: 10px; }
+  .b-field { position: relative; height: 480px; margin: 10px 8px 0; border: 2px solid var(--b-ink); border-radius: 16px; background: #fffaf0; overflow: hidden; }
+  .b-field::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(47,42,37,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(47,42,37,.05) 1px, transparent 1px); background-size: 24px 24px; }
+  .b-word { position: absolute; padding: 8px 11px; border: 2px solid var(--b-ink); border-radius: 7px; background: var(--bg); color: var(--b-ink); font-size: 13px; font-weight: 900; box-shadow: 3px 3px 0 rgba(47,42,37,.16); }
+  .b-word.w1 { left: 9%; top: 9%; --bg: #ffe1d8; transform: rotate(-2deg); }
+  .b-word.w2 { right: 7%; top: 21%; --bg: #d9f2ec; transform: rotate(1.5deg); }
+  .b-word.w3 { left: 6%; top: 38%; --bg: #fff0bd; transform: rotate(1deg); }
+  .b-word.w4 { right: 10%; top: 47%; --bg: #dbe7f7; transform: rotate(-1.5deg); }
+  .b-word.w5 { left: 22%; top: 61%; --bg: #eadffb; transform: rotate(2deg); }
+  .b-word.w6 { right: 6%; top: 72%; --bg: #ffe1d8; font-size: 11px; transform: rotate(-1deg); }
+  .b-pet { position: absolute; left: 50%; bottom: 15px; width: 86px; transform: translateX(-50%) rotate(-2deg); filter: drop-shadow(3px 5px 0 rgba(47,42,37,.12)); }
+  .b-listen { position: absolute; right: 12px; bottom: 11px; left: 12px; display: flex; align-items: center; gap: 7px; height: 42px; padding: 0 7px 0 12px; border: 2px solid var(--b-ink); border-radius: 10px; background: #fff; box-shadow: 3px 3px 0 rgba(47,42,37,.13); color: #7f7265; font-size: 9px; font-weight: 800; }
+  .b-listen i { width: 7px; height: 7px; border: 1.5px solid var(--b-ink); border-radius: 50%; background: var(--b-coral); }
+  .b-listen button { display: grid; place-items: center; width: 30px; height: 30px; margin-left: auto; border: 1.5px solid var(--b-ink); border-radius: 50%; background: var(--b-paper); font-size: 11px; }
+
+  .b-packs { padding: 15px 12px; }
+  .b-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; }
+  .b-sheet-head h3 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -.05em; }
+  .b-sheet-head button { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid var(--b-ink); border-radius: 50%; background: var(--b-paper); font-size: 11px; }
+  .b-folders { display: flex; align-items: flex-end; gap: 4px; margin: 14px 0 0; }
+  .b-folder { padding: 7px 12px 5px; border: 2px solid var(--b-ink); border-bottom: 0; border-radius: 9px 9px 0 0; background: #e7ded1; color: #74695d; font-size: 9px; font-weight: 900; }
+  .b-folder.on { background: #fff; color: var(--b-ink); }
+  .b-folder i { font-style: normal; color: var(--b-coral); }
+  .b-panel { padding: 10px; border: 2px solid var(--b-ink); border-radius: 0 12px 12px 12px; background: #fff; box-shadow: 4px 4px 0 rgba(47,42,37,.13); }
+  .b-pack-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .b-pack-card { display: flex; align-items: center; gap: 7px; min-height: 62px; padding: 7px 8px; border: 1.5px solid var(--b-ink); border-radius: 8px; background: #fffaf0; }
+  .b-pack-card span { font-size: 20px; }
+  .b-pack-copy { display: block; min-width: 0; }
+  .b-pack-card b { display: block; font-size: 10px; }
+  .b-pack-card small { display: block; margin-top: 2px; color: #8d8072; font-size: 7.5px; }
+  .b-diff { display: flex; gap: 5px; margin-top: 10px; }
+  .b-diff b { flex: 1; padding: 6px 0; border: 1.5px solid var(--b-ink); border-radius: 6px; background: #fffaf0; text-align: center; font-size: 8px; }
+  .b-diff b.on { background: var(--b-yellow); }
+  .b-done { width: 100%; height: 46px; margin-top: 10px; border: 2px solid var(--b-ink); border-radius: 10px; background: var(--b-teal); color: #fff; font-size: 15px; font-weight: 900; box-shadow: 4px 4px 0 var(--b-ink); }
+
+  /* ================================================================== */
+  /* C · 街机泡泡                                                       */
+  /* ================================================================== */
+  .vC { --c-bg: #0a1024; --c-card: #141d36; --c-mint: #5cf2d6; --c-coral: #ff6b8a; --c-lemon: #ffd166; --c-lav: #b49cff; }
+  .vC .screen { background: radial-gradient(80% 45% at 50% 0%, #1d2b50, transparent 70%), linear-gradient(180deg, #0a1024, #0d1430 66%, #090e20); color: #f8fbff; font-weight: 700; }
+  .c-top { display: flex; align-items: center; justify-content: space-between; padding: 15px 15px 0; }
+  .c-logo { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 900; letter-spacing: .14em; }
+  .c-logo i { width: 8px; height: 8px; border-radius: 50%; background: var(--c-mint); box-shadow: 0 0 12px var(--c-mint); }
+  .c-gear { display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid rgba(255,255,255,.16); border-radius: 50%; background: rgba(255,255,255,.05); font-size: 12px; }
+  .c-hero { position: relative; display: grid; place-items: center; height: 244px; margin-top: 2px; }
+  .c-ring { position: absolute; width: 176px; height: 176px; border: 1px solid rgba(92,242,214,.3); border-radius: 50%; box-shadow: 0 0 42px rgba(92,242,214,.13), inset 0 0 32px rgba(180,156,255,.14); }
+  .c-ring::after { content: ""; position: absolute; inset: 14px; border: 1px dashed rgba(255,255,255,.14); border-radius: 50%; }
+  .c-hero img { position: relative; z-index: 1; width: 126px; filter: drop-shadow(0 0 28px rgba(180,156,255,.32)); }
+  .c-hero-copy { position: absolute; bottom: 6px; text-align: center; }
+  .c-hero-copy h3 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -.05em; }
+  .c-hero-copy h3 span { color: var(--c-mint); }
+  .c-hero-copy p { margin: 2px 0 0; color: #8f9bc0; font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .c-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 0 13px; }
+  .c-mode { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 63px; padding-top: 9px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: rgba(255,255,255,.045); color: #aab5d6; }
+  .c-mode span { font-size: 18px; }
+  .c-mode b { font-size: 8.5px; font-weight: 800; }
+  .c-mode.on { border-color: rgba(92,242,214,.65); background: rgba(92,242,214,.1); color: var(--c-mint); box-shadow: 0 0 18px rgba(92,242,214,.1); }
+  .c-play { display: flex; align-items: center; justify-content: space-between; width: calc(100% - 26px); height: 62px; margin: 13px 13px 0; padding: 0 19px; border: 0; border-radius: 20px; background: linear-gradient(120deg, var(--c-mint), #8ef4dd 52%, var(--c-lemon)); color: #071923; font-size: 19px; font-weight: 900; letter-spacing: -.02em; box-shadow: 0 0 26px rgba(92,242,214,.2); }
+  .c-play span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(7,25,35,.14); font-size: 13px; }
+  .c-meta { display: flex; justify-content: center; gap: 7px; padding: 13px 12px 0; }
+  .c-meta span { padding: 6px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; background: rgba(255,255,255,.04); color: #9aa6c7; font-size: 8px; font-weight: 800; letter-spacing: .06em; }
+  .c-meta b { color: var(--c-lemon); }
+
+  .c-game { background: radial-gradient(80% 50% at 50% 0%, #1a2749, transparent 66%), #090f22; }
+  .c-hud { display: flex; align-items: center; gap: 7px; margin: 12px 10px 0; padding: 8px 9px; border: 1px solid rgba(255,255,255,.1); border-radius: 17px; background: rgba(15,24,48,.92); box-shadow: 0 10px 24px rgba(0,0,0,.22); }
+  .c-score { display: flex; align-items: baseline; gap: 5px; }
+  .c-score small { color: #8b98bf; font-size: 7px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .c-score b { font-size: 22px; font-weight: 900; letter-spacing: -.05em; }
+  .c-combo { padding: 3px 6px; border-radius: 7px; background: rgba(255,209,102,.12); color: var(--c-lemon); font-size: 9px; font-weight: 900; }
+  .c-dots { display: flex; flex: 1; justify-content: center; gap: 4px; }
+  .c-dots i { width: 7px; height: 7px; border-radius: 50%; background: #263252; }
+  .c-dots i.on { background: var(--c-mint); box-shadow: 0 0 8px rgba(92,242,214,.7); }
+  .c-round { display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; background: rgba(255,255,255,.04); color: #dbe4ff; font-size: 11px; }
+  .c-field { position: relative; height: 482px; margin: 10px 8px 0; border: 1px solid rgba(255,255,255,.07); border-radius: 20px; background: radial-gradient(70% 60% at 48% 40%, rgba(180,156,255,.1), transparent 70%), #0b1228; overflow: hidden; }
+  .c-field::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(92,242,214,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(92,242,214,.035) 1px, transparent 1px); background-size: 34px 34px; }
+  .c-word { position: absolute; padding: 9px 12px; border: 1px solid var(--c); border-radius: 13px; background: color-mix(in srgb, var(--c) 9%, #0d1530); color: #f6f8ff; font-size: 14px; font-weight: 900; box-shadow: 0 0 18px color-mix(in srgb, var(--c) 18%, transparent); }
+  .c-word.w1 { left: 10%; top: 10%; --c: var(--c-lav); }
+  .c-word.w2 { right: 7%; top: 23%; --c: var(--c-mint); }
+  .c-word.w3 { left: 7%; top: 40%; --c: var(--c-coral); }
+  .c-word.w4 { right: 12%; top: 54%; --c: var(--c-lemon); }
+  .c-word.w5 { left: 25%; top: 70%; --c: var(--c-mint); font-size: 12px; }
+  .c-word.w6 { right: 7%; top: 76%; --c: var(--c-lav); font-size: 11px; }
+  .c-pet-wrap { position: absolute; left: 50%; bottom: 15px; display: grid; place-items: center; width: 110px; height: 110px; transform: translateX(-50%); border: 1px solid rgba(180,156,255,.24); border-radius: 50%; background: radial-gradient(circle, rgba(180,156,255,.16), transparent 68%); }
+  .c-pet-wrap img { width: 86px; filter: drop-shadow(0 0 16px rgba(180,156,255,.3)); }
+  .c-listen { position: absolute; right: 12px; bottom: 11px; left: 12px; display: flex; align-items: center; gap: 7px; height: 44px; padding: 0 6px 0 13px; border: 1px solid rgba(255,255,255,.12); border-radius: 22px; background: rgba(12,20,42,.92); color: #9aa6c7; font-size: 9px; font-weight: 800; }
+  .c-listen i { width: 7px; height: 7px; border-radius: 50%; background: var(--c-mint); box-shadow: 0 0 0 4px rgba(92,242,214,.12), 0 0 10px rgba(92,242,214,.6); }
+  .c-listen button { display: grid; place-items: center; width: 32px; height: 32px; margin-left: auto; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; background: rgba(255,255,255,.05); color: #dbe4ff; font-size: 12px; }
+
+  .c-packs { padding: 15px 12px; background: #090f22; }
+  .c-sheet-head { display: flex; align-items: center; justify-content: space-between; }
+  .c-sheet-head h3 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -.04em; }
+  .c-sheet-head button { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; background: rgba(255,255,255,.05); color: #dbe4ff; font-size: 11px; }
+  .c-chips { display: flex; gap: 5px; margin-top: 12px; overflow: hidden; }
+  .c-chips b { padding: 6px 9px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; color: #94a0c5; font-size: 8px; font-weight: 800; white-space: nowrap; }
+  .c-chips b.on { border-color: rgba(92,242,214,.55); background: rgba(92,242,214,.1); color: var(--c-mint); }
+  .c-cart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+  .c-cart { display: flex; align-items: center; gap: 7px; min-height: 66px; padding: 8px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.02)); }
+  .c-cart span { font-size: 20px; }
+  .c-cart-copy { display: block; min-width: 0; }
+  .c-cart b { display: block; font-size: 10px; }
+  .c-cart small { display: block; margin-top: 2px; color: #8491b7; font-size: 7.5px; }
+  .c-cart.import { border-style: dashed; color: var(--c-mint); }
+  .c-diff { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 10px; }
+  .c-diff b { padding: 7px 0; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; color: #8b98bf; text-align: center; font-size: 8px; }
+  .c-diff b.on { border-color: rgba(255,209,102,.5); background: rgba(255,209,102,.1); color: var(--c-lemon); }
+  .c-done { width: 100%; height: 46px; margin-top: 10px; border: 0; border-radius: 14px; background: linear-gradient(120deg, var(--c-mint), #8ef4dd 52%, var(--c-lemon)); color: #071923; font-size: 15px; font-weight: 900; }
+
+  @media (max-width: 800px) {
+    .lab { padding: 28px 16px 60px; }
+    .rules { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .dir-head { display: block; }
+    .swatches { margin-top: 14px; }
+    .screens { justify-content: start; }
+    .dir-notes { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main class="lab">
+  <header class="lab-head">
+    <p class="kicker">PiuPiu · Visual directions</p>
+    <h1>统一视觉，从“先玩”开始。</h1>
+    <p class="lab-intro">
+      三个方向都围绕同一个目标：首页只保留一个主操作，游戏里只显示此刻需要的信息，
+      词库和玩家资料退到第二层。下面每个方向都重做了首页、游戏 HUD 和词库页；这是静态设计稿，游戏本身尚未改动。
+    </p>
+    <nav class="lab-nav" aria-label="设计方向">
+      <a href="#a">A · 果冻游乐场</a>
+      <a href="#b">B · 贴纸故事书</a>
+      <a href="#c">C · 街机泡泡</a>
+    </nav>
+  </header>
+
+  <section class="rules" aria-label="共同设计原则">
+    <div class="rule"><b>一屏一个主按钮</b><span>首页只突出“开始”，其他入口都降为胶囊或图标。</span></div>
+    <div class="rule"><b>三层信息</b><span>标题 / 当前任务 / 次要设置，不再把规则、统计、按钮堆在同一层。</span></div>
+    <div class="rule"><b>游戏 HUD 收成一条</b><span>分数、进度、暂停和麦克风集中到顶部，输入栏默认收起。</span></div>
+    <div class="rule"><b>儿童手指优先</b><span>主要触控目标至少 48px，图标和文字都更大，减少需要读的句子。</span></div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- A -->
+  <!-- ============================================================== -->
+  <section id="a" class="direction vA">
+    <div class="dir-head">
+      <div>
+        <span class="dir-tag">方向 A · 推荐</span>
+        <h2>果冻游乐场</h2>
+        <p>暖白、软糖色、大圆角。把“开始”做成最重的一块糖果，模式变成三张大卡片；游戏里只保留一条轻量 HUD，键盘输入默认藏起来。</p>
+      </div>
+      <div class="swatches" aria-label="方向 A 配色">
+        <i style="background:#fff8f1"></i><i style="background:#ffd1e2"></i><i style="background:#78dcc9"></i><i style="background:#ffe3a1"></i><i style="background:#4a3552"></i>
+      </div>
+    </div>
+
+    <div class="screens">
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen a-home">
+            <div class="a-bar">
+              <div class="a-brand"><span>✦</span> PiuPiu</div>
+              <div class="a-actions"><button class="a-icon" aria-label="语言">🌐</button><button class="a-icon" aria-label="家长设置">⚙️</button></div>
+            </div>
+            <div class="a-mascot">
+              <span class="a-halo"></span>
+              <span class="a-spark s1">✦</span><span class="a-spark s2">✧</span><span class="a-spark s3">✦</span>
+              <img src="../assets/monsters/mochi.webp" alt="" />
+            </div>
+            <h3>今天玩什么？</h3>
+            <p class="a-sub">读出来，就会消失</p>
+            <div class="a-modes">
+              <button class="a-mode is-on"><span>🌧️</span><b>单词雨</b></button>
+              <button class="a-mode"><span>🧩</span><b>整屏消除</b></button>
+              <button class="a-mode"><span>🎨</span><b>打彩弹</b></button>
+            </div>
+            <button class="a-start"><span>▶</span> 开始</button>
+            <div class="a-meta">
+              <span>📚 综合词库</span>
+              <span>🐼 小满 <b>★120</b></span>
+            </div>
+          </div>
+        </div>
+        <span class="caption">首页 · 主操作只有一个</span>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen a-game">
+            <div class="a-hud">
+              <div class="a-score"><small>得分</small><b>120</b><em>×5</em></div>
+              <div class="a-stars"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+              <button class="a-round" aria-label="麦克风">🎤</button>
+              <button class="a-round" aria-label="暂停">❚❚</button>
+            </div>
+            <div class="a-field">
+              <span class="a-cloud c1"></span><span class="a-cloud c2"></span><span class="a-cloud c3"></span>
+              <span class="a-word w1">apple</span>
+              <span class="a-word w2">rocket</span>
+              <span class="a-word w3">happy</span>
+              <span class="a-word w4">magic</span>
+              <span class="a-word w5">puddle</span>
+              <span class="a-word w6">sunny</span>
+              <span class="a-pet-cloud"></span>
+              <img class="a-game-pet" src="../assets/monsters/mochi.webp" alt="" />
+            </div>
+            <div class="a-listen"><i></i> 正在听… <button aria-label="键盘">⌨</button></div>
+          </div>
+        </div>
+        <span class="caption">游戏 · 一条 HUD + 一片词场</span>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen a-packs">
+            <div class="a-sheet-head"><h3>选词库</h3><button aria-label="关闭">✕</button></div>
+            <div class="a-pack-hero">
+              <span class="a-pack-icon">✦</span>
+              <div><strong>综合词库</strong><small>500 个词</small></div>
+              <span class="a-check">✓</span>
+            </div>
+            <div class="a-tabs"><b class="on">主题</b><b>阅读</b><b>短语</b><b>我的</b></div>
+            <div class="a-grid">
+              <button><span>🍎</span><small>食物</small></button>
+              <button><span>🐾</span><small>动物</small></button>
+              <button><span>🏠</span><small>家庭</small></button>
+              <button><span>🌈</span><small>自然</small></button>
+              <button><span>🚀</span><small>太空</small></button>
+              <button><span>✏️</span><small>学校</small></button>
+            </div>
+            <div class="a-diff"><b class="on">全部</b><b>初级</b><b>中级</b><b>高级</b></div>
+            <button class="a-done">选好了</button>
+          </div>
+        </div>
+        <span class="caption">词库 · 分类变成大卡片</span>
+      </div>
+    </div>
+
+    <div class="dir-notes">
+      <div class="dir-note"><b>层次</b><span>Logo → 吉祥物 → 模式 → 开始 → 词库/玩家。家长设置只留一个齿轮。</span></div>
+      <div class="dir-note"><b>游戏</b><span>分数、连击、星星进度和两个圆按钮集中在顶部；底部只留“正在听”和键盘。</span></div>
+      <div class="dir-note"><b>词库</b><span>用大图标分类卡片替代下拉框；难度保留为四段糖果按钮；“我的”放自定义词库。</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- B -->
+  <!-- ============================================================== -->
+  <section id="b" class="direction vB">
+    <div class="dir-head">
+      <div>
+        <span class="dir-tag">方向 B · 最有品牌感</span>
+        <h2>贴纸故事书</h2>
+        <p>纸张、墨线、手剪贴纸。每个页面只使用一两种强调色，靠边框和留白分层，不靠渐变和发光，整体更像一本可以玩的绘本。</p>
+      </div>
+      <div class="swatches" aria-label="方向 B 配色">
+        <i style="background:#fbf6ea"></i><i style="background:#e9664f"></i><i style="background:#2f8f83"></i><i style="background:#f2c14e"></i><i style="background:#2f2a25"></i>
+      </div>
+    </div>
+
+    <div class="screens">
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen b-home">
+            <div class="b-top"><span class="b-logo">PiuPiu</span><button class="b-gear" aria-label="家长设置">⚙</button></div>
+            <div class="b-hero">
+              <span class="b-tape"></span>
+              <img src="../assets/monsters/sunny.webp" alt="" />
+              <div><small>今天读什么</small><h3>选一张<br><span>游戏卡</span></h3></div>
+            </div>
+            <div class="b-tickets">
+              <button class="b-ticket on"><span>🌧️</span><b>单词雨</b><i>读出来就爆</i></button>
+              <button class="b-ticket"><span>🧩</span><b>整屏消除</b><i>消掉一整屏</i></button>
+              <button class="b-ticket"><span>🎨</span><b>打彩弹</b><i>读对就上色</i></button>
+            </div>
+            <button class="b-start">开始游戏 <span>→</span></button>
+            <div class="b-meta"><span>📚 综合词库</span><span>🐼 小满 ★120</span></div>
+          </div>
+        </div>
+        <span class="caption">首页 · 三张游戏票</span>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen b-game">
+            <div class="b-hud">
+              <div class="b-hud-row">
+                <div class="b-stat"><small>得分</small><b>120</b></div>
+                <div class="b-stat"><small>连击</small><b>×5</b></div>
+                <div class="b-stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>☆</i><i>☆</i></div>
+                <button class="b-mini" aria-label="麦克风">🎤</button>
+                <button class="b-mini" aria-label="暂停">❚❚</button>
+              </div>
+            </div>
+            <div class="b-field">
+              <span class="b-word w1">apple</span>
+              <span class="b-word w2">rocket</span>
+              <span class="b-word w3">happy</span>
+              <span class="b-word w4">magic</span>
+              <span class="b-word w5">puddle</span>
+              <span class="b-word w6">sunny</span>
+              <img class="b-pet" src="../assets/monsters/sunny.webp" alt="" />
+            </div>
+            <div class="b-listen"><i></i> 正在听… <button aria-label="键盘">⌨</button></div>
+          </div>
+        </div>
+        <span class="caption">游戏 · 纸面 HUD 与贴纸词卡</span>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen b-packs">
+            <div class="b-sheet-head"><h3>词库抽屉</h3><button aria-label="关闭">✕</button></div>
+            <div class="b-folders">
+              <span class="b-folder">主题</span><span class="b-folder">阅读</span><span class="b-folder on">我的 <i>2</i></span>
+            </div>
+            <div class="b-panel">
+              <div class="b-pack-grid">
+                <button class="b-pack-card"><span>✦</span><span class="b-pack-copy"><b>综合词库</b><small>500 个词</small></span></button>
+                <button class="b-pack-card"><span>📄</span><span class="b-pack-copy"><b>绘本单词</b><small>12 个词</small></span></button>
+                <button class="b-pack-card"><span>📄</span><span class="b-pack-copy"><b>动物故事</b><small>18 个词</small></span></button>
+                <button class="b-pack-card"><span>＋</span><span class="b-pack-copy"><b>导入文本</b><small>新建词库</small></span></button>
+              </div>
+              <div class="b-diff"><b class="on">全部</b><b>初级</b><b>中级</b><b>高级</b></div>
+              <button class="b-done">就用这个</button>
+            </div>
+          </div>
+        </div>
+        <span class="caption">词库 · 自定义文件夹</span>
+      </div>
+    </div>
+
+    <div class="dir-notes">
+      <div class="dir-note"><b>层次</b><span>纸张底色统一，墨线负责分区；一屏只保留一个高饱和主按钮。</span></div>
+      <div class="dir-note"><b>游戏</b><span>HUD 变成一张纸质计分条，词卡像贴纸，进度用五颗手绘星。</span></div>
+      <div class="dir-note"><b>词库</b><span>文件夹标签 + 书本式分类卡；“我的”文件夹里放自定义词库和导入入口。</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- C -->
+  <!-- ============================================================== -->
+  <section id="c" class="direction vC">
+    <div class="dir-head">
+      <div>
+        <span class="dir-tag">方向 C · 最有游戏感</span>
+        <h2>街机泡泡</h2>
+        <p>深色专注场 + 高对比霓虹。保留游戏的兴奋感，但把发光、边框和文字大幅收敛；首屏只有一个巨大的 PLAY。</p>
+      </div>
+      <div class="swatches" aria-label="方向 C 配色">
+        <i style="background:#0a1024"></i><i style="background:#5cf2d6"></i><i style="background:#ff6b8a"></i><i style="background:#ffd166"></i><i style="background:#b49cff"></i>
+      </div>
+    </div>
+
+    <div class="screens">
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen c-home">
+            <div class="c-top"><span class="c-logo"><i></i> PIUPIU</span><button class="c-gear" aria-label="家长设置">⚙</button></div>
+            <div class="c-hero">
+              <span class="c-ring"></span>
+              <img src="../assets/monsters/kitty.webp" alt="" />
+              <div class="c-hero-copy"><h3>读出来，<span>消掉它</span></h3><p>READ · SPLAT · CLEAR</p></div>
+            </div>
+            <div class="c-modes">
+              <button class="c-mode on"><span>🌧️</span><b>单词雨</b></button>
+              <button class="c-mode"><span>🧩</span><b>整屏消除</b></button>
+              <button class="c-mode"><span>🎨</span><b>打彩弹</b></button>
+            </div>
+            <button class="c-play">开始游戏 <span>▶</span></button>
+            <div class="c-meta"><span>500 WORDS</span><span>★ <b>120</b></span></div>
+          </div>
+        </div>
+        <span class="caption">首页 · 一个巨大的开始</span>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen c-game">
+            <div class="c-hud">
+              <div class="c-score"><small>得分</small><b>120</b></div>
+              <span class="c-combo">×5</span>
+              <div class="c-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+              <button class="c-round" aria-label="麦克风">🎤</button>
+              <button class="c-round" aria-label="暂停">❚❚</button>
+            </div>
+            <div class="c-field">
+              <span class="c-word w1">apple</span>
+              <span class="c-word w2">rocket</span>
+              <span class="c-word w3">happy</span>
+              <span class="c-word w4">magic</span>
+              <span class="c-word w5">puddle</span>
+              <span class="c-word w6">sunny</span>
+              <div class="c-pet-wrap"><img src="../assets/monsters/kitty.webp" alt="" /></div>
+            </div>
+            <div class="c-listen"><i></i> 正在听… <button aria-label="键盘">⌨</button></div>
+          </div>
+        </div>
+        <span class="caption">游戏 · 单条 HUD，专注射击</span>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="screen c-packs">
+            <div class="c-sheet-head"><h3>选择卡带</h3><button aria-label="关闭">✕</button></div>
+            <div class="c-chips"><b class="on">主题</b><b>阅读</b><b>短语</b><b>我的</b></div>
+            <div class="c-cart-grid">
+              <button class="c-cart"><span>🍎</span><span class="c-cart-copy"><b>食物</b><small>30 WORDS</small></span></button>
+              <button class="c-cart"><span>🐾</span><span class="c-cart-copy"><b>动物</b><small>30 WORDS</small></span></button>
+              <button class="c-cart"><span>🏠</span><span class="c-cart-copy"><b>家庭</b><small>30 WORDS</small></span></button>
+              <button class="c-cart"><span>🚀</span><span class="c-cart-copy"><b>太空</b><small>30 WORDS</small></span></button>
+              <button class="c-cart"><span>✏️</span><span class="c-cart-copy"><b>学校</b><small>30 WORDS</small></span></button>
+              <button class="c-cart"><span>🌈</span><span class="c-cart-copy"><b>自然</b><small>30 WORDS</small></span></button>
+            </div>
+            <div class="c-diff"><b class="on">全部</b><b>初级</b><b>中级</b><b>高级</b></div>
+            <button class="c-done">装填完成</button>
+          </div>
+        </div>
+        <span class="caption">词库 · 卡带式选择</span>
+      </div>
+    </div>
+
+    <div class="dir-notes">
+      <div class="dir-note"><b>层次</b><span>深色场里只让主按钮和当前词发光；次要入口用低对比描边，避免满屏都在抢注意力。</span></div>
+      <div class="dir-note"><b>游戏</b><span>HUD 合并成一条胶囊，分数最大、进度最小；底部只保留语音状态。</span></div>
+      <div class="dir-note"><b>词库</b><span>分类变成“卡带”，用横向标签切换；自定义词库放在“我的”标签里。</span></div>
+    </div>
+  </section>
+
+  <section class="recommend">
+    <h2>建议怎么选</h2>
+    <div class="compare">
+      <div><b>A · 果冻游乐场</b><span>最适合低龄儿童和第一次上手的家长；层级最清楚，组件最少。</span></div>
+      <div><b>B · 贴纸故事书</b><span>最有品牌个性；适合做成“有性格的绘本 App”，需要更多插画素材。</span></div>
+      <div><b>C · 街机泡泡</b><span>最有游戏感；适合年龄稍大的孩子，深色页面需要仔细校准对比度。</span></div>
+    </div>
+    <p>
+      如果只选一个，推荐 <b>A</b>：最容易让低龄儿童理解，也最适合把玩家、词库、结果页统一成同一套大圆角组件。
+      也可以混合：<b>A 的首页 + C 的游戏 HUD + B 的词库抽屉</b>。
+    </p>
+  </section>
+</main>
+</body>
+</html>

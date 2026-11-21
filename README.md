@@ -4,6 +4,8 @@
 
 **[在线试玩 →](https://lulgabc.github.io/PiuPiu/)**
 
+**[视觉方向探索 →](https://lulgabc.github.io/PiuPiu/design-lab/)** 三个统一首页、游戏 HUD 和词库页的静态设计稿。
+
 单词从屏幕顶部随机落下。你对着麦克风正确读出单词，它就会带着不同颜色和动画效果消失；如果一直没读对，单词会落到底部并不断堆积。单词堆到屏幕顶端时，本轮结束。
 
 内置 **500 个核心英语名词与动词**、**20 个主题词库**、**3 套 K-12 阅读词表**（Dolch / Fry / Dale-Chall）、**Paul Nation 的 BNC/COCA 词族表（1k–25k）**，以及 **PHaVE 动词短语表**和 **PHRASE 短语表**。还支持 **自定义词库**：上传文本文章或词表，自动解析成可玩词库，最多保存 12 个。界面支持 **中文 / 法语 / 英语**，可在右上角随时切换。
@@ -428,6 +430,7 @@ PiuPiu/
 ├── sw.js                     # Service Worker：应用壳缓存与离线回退
 ├── icons/                    # 192 / 512 / maskable / Apple Touch 图标
 ├── pixi-demo.html            # 8 个 PixiJS 环境场景独立预览
+├── design-lab/               # 首页 / 游戏 HUD / 词库页的三个统一视觉方向静态设计稿
 ├── css/style.css             # 圆润儿童化视觉、emoji 卡片、特效动画、响应式布局
 ├── css/pixi-demo.css         # PixiJS 预览页的舞台与控制栏样式
 ├── js/i18n.js                # 中文 / 法语 / 英语界面文案与语言切换
