@@ -94,6 +94,11 @@ for (const marker of [
 }
 assert.match(css, /html\[data-theme="bubblegum"\]/, "the blueberry paper tint is required");
 assert.match(css, /html\[data-theme="cream"\]/, "the mint paper tint is required");
+assert.match(css, /--sb-accent-soft: #ffe5dc/, "the strawberry active tint is required");
+assert.match(css, /--sb-accent-soft: #ece4fa/, "the blueberry active tint is required");
+assert.match(css, /--sb-accent-soft: #dff0e6/, "the mint active tint is required");
+assert.match(css, /\.theme-choice\.is-active \{[\s\S]{0,80}background: var\(--sb-accent-soft\)/, "the active theme card should follow the paper tint");
+assert.match(css, /\.setup-section \{[\s\S]{0,80}padding: 12px 13px 13px/, "parent setting labels need paper margins");
 assert.match(css, /@media \(max-width: 560px\)/, "phones need compact storybook spacing");
 assert.match(css, /@media \(prefers-reduced-motion: reduce\)/, "reduced motion should calm the stamp animation");
 

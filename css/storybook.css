@@ -15,6 +15,7 @@
   --sb-line-soft: rgba(47, 42, 37, 0.11);
   --sb-accent: #e9664f;
   --sb-accent-ink: #fffaf0;
+  --sb-accent-soft: #ffe5dc;
   --sb-accent-2: #2f8f83;
   --sb-accent-2-ink: #fffaf0;
   --sb-highlight: #f2c14e;
@@ -32,6 +33,7 @@ html[data-theme="candy"] {
   --sb-paper-2: #fffaf0;
   --sb-paper-3: #f3ead9;
   --sb-accent: #e9664f;
+  --sb-accent-soft: #ffe5dc;
   --sb-accent-2: #2f8f83;
   --sb-highlight: #f2c14e;
 }
@@ -41,6 +43,7 @@ html[data-theme="bubblegum"] {
   --sb-paper-2: #fcf8ff;
   --sb-paper-3: #e9e0f3;
   --sb-accent: #6f5bb5;
+  --sb-accent-soft: #ece4fa;
   --sb-accent-2: #2f8f83;
   --sb-highlight: #e8c84a;
 }
@@ -50,6 +53,7 @@ html[data-theme="cream"] {
   --sb-paper-2: #fbfdf8;
   --sb-paper-3: #e5efe2;
   --sb-accent: #2f8f83;
+  --sb-accent-soft: #dff0e6;
   --sb-accent-2: #5b7db1;
   --sb-highlight: #e8c84a;
 }
@@ -1596,6 +1600,7 @@ html[data-theme] #typeInput:focus-visible {
 }
 
 html[data-theme] .setup-section {
+  padding: 12px 13px 13px;
   border: 1.5px solid var(--sb-ink);
   border-radius: 8px;
   background: #fffdf8;
@@ -1622,7 +1627,7 @@ html[data-theme] .theme-choice {
 }
 
 html[data-theme] .theme-choice.is-active {
-  background: #ffe5dc;
+  background: var(--sb-accent-soft);
   box-shadow: 2px 2px 0 var(--sb-ink);
 }
 
