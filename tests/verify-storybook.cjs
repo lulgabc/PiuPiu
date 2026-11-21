@@ -124,7 +124,7 @@ for (const key of [
 assert.equal(translations.zh["theme.candy"], "草莓纸");
 assert.equal(translations.zh["theme.bubblegum"], "蓝莓纸");
 assert.equal(translations.zh["theme.cream"], "薄荷纸");
-assert.equal(pkg.version, "2.29.0");
+assert.equal(pkg.version, "2.29.1");
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true);
 
 console.log("✓ the storybook skin loads after the base CSS and is offline-safe");

@@ -4,7 +4,7 @@
 
 **[在线试玩 →](https://lulgabc.github.io/PiuPiu/)**
 
-**[视觉方向探索 →](https://lulgabc.github.io/PiuPiu/design-lab/)** 三个统一首页、游戏 HUD 和词库页的设计稿；方向 B「贴纸故事书」已落地为 2.29.0。
+**[视觉方向探索 →](https://lulgabc.github.io/PiuPiu/design-lab/)** 三个统一首页、游戏 HUD 和词库页的设计稿；方向 B「贴纸故事书」已落地为 2.29.1。
 
 单词从屏幕顶部随机落下。你对着麦克风正确读出单词，它就会带着不同颜色和动画效果消失；如果一直没读对，单词会落到底部并不断堆积。单词堆到屏幕顶端时，本轮结束。
 
