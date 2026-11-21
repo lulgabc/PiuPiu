@@ -4872,9 +4872,9 @@
     const offset = Math.random() * Math.PI * 2;
     for (let i = 0; i < count; i += 1) {
       const angle = offset + (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.16;
-      let factor = 1 - irregular * 0.5 + Math.random() * irregular;
-      if (Math.random() < 0.18) factor += 0.1 + Math.random() * 0.22;
-      factor *= 1 + Math.cos(angle - biasAngle) * bias;
+      const factor =
+        (1 - irregular * 0.5 + Math.random() * irregular) *
+        (1 + Math.cos(angle - biasAngle) * bias);
       points.push({
         x: cx + Math.cos(angle) * rx * factor,
         y: cy + Math.sin(angle) * ry * factor,
@@ -4892,19 +4892,15 @@
     const baseY = cy + dy * innerRadius;
     const tipX = cx + dx * length;
     const tipY = cy + dy * length;
-    const bend = (Math.random() - 0.5) * width * 2.4;
-    const midX = cx + dx * length * 0.56 + dx * bend;
-    const midY = cy + dy * length * 0.56 + dy * bend;
-    const c1x = midX + nx * width * 1.35;
-    const c1y = midY + ny * width * 1.35;
-    const c2x = midX - nx * width * 1.35;
-    const c2y = midY - ny * width * 1.35;
-    return `M${(baseX + nx * width * 0.5).toFixed(2)},${(baseY + ny * width * 0.5).toFixed(2)} Q${c1x.toFixed(2)},${c1y.toFixed(2)} ${tipX.toFixed(2)},${tipY.toFixed(2)} Q${c2x.toFixed(2)},${c2y.toFixed(2)} ${(baseX - nx * width * 0.5).toFixed(2)},${(baseY - ny * width * 0.5).toFixed(2)}Z`;
+    const bend = (Math.random() - 0.5) * width * 2.6;
+    const c1x = cx + dx * length * 0.52 + nx * bend;
+    const c1y = cy + dy * length * 0.52 + ny * bend;
+    return `M${baseX.toFixed(2)},${baseY.toFixed(2)} Q${c1x.toFixed(2)},${c1y.toFixed(2)} ${tipX.toFixed(2)},${tipY.toFixed(2)}`;
   }
 
   function paintDripPath(x, y, length, width) {
-    const half = width / 2;
-    return `M${(x - half).toFixed(2)},${y.toFixed(2)} C${(x - half).toFixed(2)},${(y + length * 0.35).toFixed(2)} ${(x - width * 0.42).toFixed(2)},${(y + length * 0.78).toFixed(2)} ${x.toFixed(2)},${(y + length).toFixed(2)} C${(x + width * 0.42).toFixed(2)},${(y + length * 0.78).toFixed(2)} ${(x + half).toFixed(2)},${(y + length * 0.35).toFixed(2)} ${(x + half).toFixed(2)},${y.toFixed(2)}Z`;
+    const sway = (Math.random() - 0.5) * width * 2.2;
+    return `M${x.toFixed(2)},${y.toFixed(2)} Q${(x + sway).toFixed(2)},${(y + length * 0.55).toFixed(2)} ${(x + sway * 0.45).toFixed(2)},${(y + length).toFixed(2)}`;
   }
 
   function createPaintSplat(cx, cy, hue, cardW, cardH, travelAngle) {
@@ -4964,36 +4960,61 @@
     const dropFill = `hsl(${hue} 90% 55%)`;
 
     // Long, thin ink arms give the splat a fast, messy silhouette.
-    const tendrilCount = REDUCED_MOTION ? 1 : 3 + Math.floor(Math.random() * 4);
+    const tendrilCount = REDUCED_MOTION ? 1 : 2 + Math.floor(Math.random() * 3);
     for (let i = 0; i < tendrilCount; i += 1) {
-      const spread = i === 0 ? 0.5 : Math.PI * 1.65;
+      const spread = i === 0 ? 0.55 : Math.PI * 1.6;
       let angle = biasAngle + (Math.random() - 0.5) * spread;
       if (i > 0 && Math.random() < 0.22) angle += Math.PI;
-      const length = mainR * (i === 0 ? 1.9 + Math.random() * 1.35 : 1.1 + Math.random() * 1.25);
-      const width = mainR * (0.06 + Math.random() * 0.14);
+      const length = mainR * (i === 0 ? 1.7 + Math.random() * 1.0 : 1.15 + Math.random() * 1.0);
+      const width = mainR * (0.11 + Math.random() * 0.12);
+      const tipX = center + Math.cos(angle) * length;
+      const tipY = center + Math.sin(angle) * length;
+      const group = paintSvgNode("g", { class: "paint-tendril" });
       const tendril = paintSvgNode("path", {
-        d: paintTendrilPath(center, center, angle, mainR * 0.35, length, width),
-        fill: inkFill,
-        class: "paint-tendril",
+        d: paintTendrilPath(center, center, angle, mainR * 0.3, length, width),
+        fill: "none",
+        stroke: inkFill,
+        "stroke-width": width.toFixed(1),
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
       });
-      tendril.style.setProperty("--delay", `${(0.01 + Math.random() * 0.06).toFixed(3)}s`);
-      svg.appendChild(tendril);
+      group.appendChild(tendril);
+      if (Math.random() < 0.7) {
+        group.appendChild(paintSvgNode("circle", {
+          cx: tipX.toFixed(1),
+          cy: tipY.toFixed(1),
+          r: (width * (0.55 + Math.random() * 0.4)).toFixed(1),
+          fill: inkFill,
+        }));
+      }
+      group.style.setProperty("--delay", `${(0.01 + Math.random() * 0.06).toFixed(3)}s`);
+      svg.appendChild(group);
     }
 
     // Drips hang downward under gravity and can be much longer than the core.
-    const dripCount = REDUCED_MOTION ? 0 : 1 + Math.floor(Math.random() * 3);
+    const dripCount = REDUCED_MOTION ? 0 : 1 + Math.floor(Math.random() * 2);
     for (let i = 0; i < dripCount; i += 1) {
-      const x = center + (Math.random() - 0.5) * mainR * 1.45;
+      const x = center + (Math.random() - 0.5) * mainR * 1.5;
       const y = center + mainRy * (0.2 + Math.random() * 0.25);
-      const length = mainR * (0.5 + Math.random() * 1.35);
-      const width = mainR * (0.045 + Math.random() * 0.11);
-      const drip = paintSvgNode("path", {
+      const length = mainR * (0.5 + Math.random() * 1.1);
+      const width = mainR * (0.09 + Math.random() * 0.1);
+      const group = paintSvgNode("g", { class: "paint-drip" });
+      group.appendChild(paintSvgNode("path", {
         d: paintDripPath(x, y, length, width),
+        fill: "none",
+        stroke: inkFill,
+        "stroke-width": width.toFixed(1),
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+      }));
+      group.appendChild(paintSvgNode("circle", {
+        cx: (x + (Math.random() - 0.5) * width * 0.8).toFixed(1),
+        cy: (y + length).toFixed(1),
+        r: (width * (0.62 + Math.random() * 0.35)).toFixed(1),
         fill: inkFill,
-        class: "paint-drip",
-      });
-      drip.style.setProperty("--delay", `${(0.02 + Math.random() * 0.08).toFixed(3)}s`);
-      svg.appendChild(drip);
+      }));
+      group.style.setProperty("--delay", `${(0.02 + Math.random() * 0.08).toFixed(3)}s`);
+      svg.appendChild(group);
     }
 
     // Irregular secondary blobs land well away from the core.
@@ -5008,10 +5029,10 @@
           center + Math.sin(angle) * distance,
           lumpRadius * (0.8 + Math.random() * 0.6),
           lumpRadius * (0.65 + Math.random() * 0.6),
-          7 + Math.floor(Math.random() * 4),
-          0.48,
+          8 + Math.floor(Math.random() * 3),
+          0.42,
           angle,
-          0.18,
+          0.16,
         ),
         fill: inkFill,
         class: "paint-lump",
@@ -5031,10 +5052,10 @@
           center + Math.sin(angle) * distance,
           collarRadius * (0.8 + Math.random() * 0.5),
           collarRadius * (0.7 + Math.random() * 0.5),
-          8 + Math.floor(Math.random() * 4),
-          0.48,
+          8 + Math.floor(Math.random() * 3),
+          0.42,
           angle,
-          0.2,
+          0.18,
         ),
         fill: inkFill,
         class: "paint-lump",
@@ -5044,7 +5065,7 @@
     }
 
     const core = paintSvgNode("path", {
-      d: paintBlobPath(center, center, mainR, mainRy, 24 + Math.floor(Math.random() * 12), 0.38, biasAngle, bias),
+      d: paintBlobPath(center, center, mainR, mainRy, 15 + Math.floor(Math.random() * 7), 0.32, biasAngle, bias),
       fill: inkFill,
       stroke: `hsla(${hue}, 72%, 34%, 0.22)`,
       "stroke-width": Math.max(0.8, mainR * 0.018),
@@ -5062,7 +5083,7 @@
       let radius = Math.max(0.9, mainR * (0.018 + Math.pow(Math.random(), 2) * 0.15));
       if (Math.random() < 0.1) radius *= 2.2;
       const far = distance > mainR * 2.2;
-      const stretch = far && Math.random() < 0.6 ? 0.16 + Math.random() * 0.24 : 0.55 + Math.random() * 0.5;
+      const stretch = far && Math.random() < 0.45 ? 0.38 + Math.random() * 0.24 : 0.62 + Math.random() * 0.34;
       const x = center + Math.cos(angle) * distance;
       const y = center + Math.sin(angle) * distance;
       const group = paintSvgNode("g", {
@@ -5085,8 +5106,8 @@
     for (let i = 0; i < streakCount; i += 1) {
       const angle = biasAngle + (Math.random() - 0.5) * Math.PI * 1.7;
       const distance = mainR * (1.5 + Math.random() * 2.1);
-      const length = mainR * (0.18 + Math.random() * 0.3);
-      const width = 0.9 + Math.random() * 2.1;
+      const length = mainR * (0.12 + Math.random() * 0.2);
+      const width = 1.1 + Math.random() * 2.1;
       const x = center + Math.cos(angle) * distance;
       const y = center + Math.sin(angle) * distance;
       const group = paintSvgNode("g", {
