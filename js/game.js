@@ -71,14 +71,13 @@
   const THEME_COLORS = { candy: "#ffe9f3", bubblegum: "#1c1036", cream: "#f7f0e2" };
   const INTRO_KEY = "piupiu.introSeen";
   const MODE_KEY = "piupiu.mode";
-  const GAME_MODES = ["rain", "fill"];
+  const GAME_MODES = ["rain", "fill", "paint"];
   const MODE_PARAM = new URLSearchParams(location.search).get("mode");
-  const INITIAL_MODE =
-    MODE_PARAM === "fill" || MODE_PARAM === "rain"
-      ? MODE_PARAM
-      : readString(MODE_KEY, "rain") === "fill"
-        ? "fill"
-        : "rain";
+  const INITIAL_MODE = GAME_MODES.includes(MODE_PARAM)
+    ? MODE_PARAM
+    : GAME_MODES.includes(readString(MODE_KEY, "rain"))
+      ? readString(MODE_KEY, "rain")
+      : "rain";
   const PAD = 12;
   const DANGER_Y = 10;
   const GAME_FPS = 60;
@@ -203,6 +202,7 @@
 
   const els = {
     field: $("field"),
+    paintLayer: $("paintLayer"),
     wordLayer: $("wordLayer"),
     fxLayer: $("fxLayer"),
     petLayer: $("petLayer"),
@@ -349,6 +349,9 @@
     fillBonus: 0,
     fillFinishing: false,
     fillFxTimer: 0,
+    paintTotal: 0,
+    paintBonus: 0,
+    paintFinishing: false,
     score: 0,
     combo: 0,
     bestCombo: 0,
@@ -750,21 +753,23 @@
 
   function updateModeUI() {
     const fill = state.mode === "fill";
+    const paint = state.mode === "paint";
     document.body.classList.toggle("mode-fill", fill);
-    document.body.classList.toggle("mode-rain", !fill);
+    document.body.classList.toggle("mode-paint", paint);
+    document.body.classList.toggle("mode-rain", state.mode === "rain");
     for (const button of els.modeOptions) {
       const active = button.dataset.mode === state.mode;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     }
-    setText(els.stepIcon1, fill ? "🧩" : "🌧️");
-    setText(els.stepLabel1, tr(fill ? "mode.fillStep1" : "start.step1"));
+    setText(els.stepIcon1, paint ? "🎨" : fill ? "🧩" : "🌧️");
+    setText(els.stepLabel1, tr(paint ? "mode.paintStep1" : fill ? "mode.fillStep1" : "start.step1"));
     setText(els.stepLabel2, tr("start.step2"));
-    setText(els.stepLabel3, tr(fill ? "mode.fillStep3" : "start.step3"));
-    setText(els.correctLabel, tr(fill ? "hud.cleared" : "hud.correct"));
-    setText(els.levelLabel, tr(fill ? "hud.remaining" : "hud.level"));
-    setText(els.pileLabel, tr(fill ? "hud.progress" : "hud.pile"));
-    setText(els.gaugeLabel, tr(fill ? "gauge.progress" : "gauge.label"));
+    setText(els.stepLabel3, tr(paint ? "mode.paintStep3" : fill ? "mode.fillStep3" : "start.step3"));
+    setText(els.correctLabel, tr(paint ? "hud.hits" : fill ? "hud.cleared" : "hud.correct"));
+    setText(els.levelLabel, tr(fill || paint ? "hud.remaining" : "hud.level"));
+    setText(els.pileLabel, tr(paint ? "hud.paint" : fill ? "hud.progress" : "hud.pile"));
+    setText(els.gaugeLabel, tr(paint ? "gauge.paint" : fill ? "gauge.progress" : "gauge.label"));
   }
 
   function setMode(mode) {
@@ -1249,6 +1254,19 @@
     noiseBurst(0.32, 0.028, 0.04);
   }
 
+  function playPaintShot() {
+    whoosh(0.2, 700, 2600, 0.038);
+    tone(280, 0.14, "triangle", 0.03, 0, 760);
+    noiseBurst(0.04, 0.012);
+  }
+
+  function playPaintSplat() {
+    noiseBurst(0.2, 0.05);
+    thump(0.012, 0.045);
+    tone(620, 0.07, "square", 0.018, 0.01, 220);
+    tone(180, 0.22, "sine", 0.03, 0.02, 70);
+  }
+
   function playNamedSound(name) {
     if (name === "boing") playBoing();
     else if (name === "squeak") playSqueak();
@@ -1312,6 +1330,9 @@
     state.fillBonus = 0;
     state.fillFinishing = false;
     state.fillFxTimer = 0;
+    state.paintTotal = 0;
+    state.paintBonus = 0;
+    state.paintFinishing = false;
     syncSpeechPhrases();
     state.score = 0;
     state.roundRecorded = true;
@@ -1330,6 +1351,7 @@
     els.pileFill.style.height = "0%";
     els.wordLayer.replaceChildren();
     els.fxLayer.replaceChildren();
+    if (els.paintLayer) els.paintLayer.replaceChildren();
     els.field.classList.remove("danger", "shake");
     state.pointer = null;
     els.typeInput.value = "";
@@ -1437,6 +1459,7 @@
     window.dispatchEvent(new CustomEvent("piupiu:roundstart"));
     hideOverlay();
     if (state.mode === "fill") buildFillBoard();
+    else if (state.mode === "paint") buildPaintBoard();
     setAmbientRunning(true);
     els.pauseBtn.disabled = false;
     updatePauseButton();
@@ -1445,7 +1468,15 @@
     if (state.micEnabled) startSpeech();
     updateMicUI();
     els.typeInput.blur();
-    toast(tr(state.mode === "fill" ? "toast.fillStart" : "toast.start"));
+    toast(
+      tr(
+        state.mode === "paint"
+          ? "toast.paintStart"
+          : state.mode === "fill"
+            ? "toast.fillStart"
+            : "toast.start",
+      ),
+    );
   }
 
   function frame(timestamp) {
@@ -1773,6 +1804,184 @@
     updateHUD(true);
   }
 
+  /* ------------------------------------------------------------------ */
+  /* paintball mode: a scattered full-screen word board                  */
+  /* ------------------------------------------------------------------ */
+
+  function buildPaintBoard() {
+    if (state.mode !== "paint" || !els.field) return;
+    const fieldW = els.field.clientWidth;
+    const fieldH = els.field.clientHeight;
+    if (!fieldW || !fieldH) return;
+    destroyPhysics();
+
+    const padLeft = 12;
+    const padTop = 12;
+    const padBottom = 16;
+    const padRight = 34;
+    const availableW = fieldW - padLeft - padRight;
+    const baseFont = fieldW < 360 ? 17 : fieldW < 430 ? 18 : 20;
+    const cardH = Math.round(baseFont * 1.9) + 6;
+    const area = Math.max(1, fieldW * fieldH);
+    const target = Math.min(46, Math.max(18, Math.round(area / 7200)));
+    const candidates = drawFillWords(Math.min(62, target + 16));
+    if (!candidates.length) return;
+
+    let hueBag = shuffle(FILL_HUES.slice());
+    let hueIndex = 0;
+    const cards = [];
+    for (const word of candidates) {
+      const el = document.createElement("div");
+      el.className = "word settled fill-word paint-word";
+      el.style.height = `${cardH}px`;
+      el.style.fontSize = `${baseFont}px`;
+      el.style.minWidth = "52px";
+      const hue = (hueBag[hueIndex % hueBag.length] + Math.floor(Math.random() * 10 - 5) + 360) % 360;
+      hueIndex += 1;
+      if (hueIndex % hueBag.length === 0) hueBag = shuffle(FILL_HUES.slice());
+      const rotation = Math.random() * 10 - 5;
+      el.style.setProperty("--fill-hue", String(hue));
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", word);
+      el.tabIndex = 0;
+      const span = document.createElement("span");
+      span.className = "word-text";
+      span.textContent = word;
+      const shine = document.createElement("span");
+      shine.className = "fill-shine";
+      shine.setAttribute("aria-hidden", "true");
+      el.appendChild(span);
+      el.appendChild(shine);
+      els.wordLayer.appendChild(el);
+
+      let font = baseFont;
+      let width = el.offsetWidth;
+      while (width > availableW - 8 && font > 12) {
+        font -= 1;
+        el.style.fontSize = `${font}px`;
+        width = el.offsetWidth;
+      }
+      if (width > availableW) {
+        el.remove();
+        continue;
+      }
+      const height = el.offsetHeight || cardH;
+      const radians = Math.abs((rotation * Math.PI) / 180);
+      cards.push({
+        word,
+        el,
+        x: 0,
+        y: 0,
+        w: width,
+        h: height,
+        rot: rotation,
+        boundW: Math.ceil(width * Math.cos(radians) + height * Math.sin(radians)),
+        boundH: Math.ceil(width * Math.sin(radians) + height * Math.cos(radians)),
+        hue,
+        emoji: EMOJI[word.toLowerCase()] || "",
+        golden: false,
+      });
+    }
+    if (!cards.length) return;
+
+    // Pack the biggest cards first, then let small words settle into the
+    // leftover gaps. Positions are random rather than row-based, so the board
+    // reads as a messy collage instead of a tidy wall.
+    cards.sort((a, b) => b.w * b.h - a.w * a.h);
+    const placed = [];
+    const margins = [8, 6, 4, 2];
+    const minX = padLeft;
+    const maxX = fieldW - padRight;
+    const minY = padTop;
+    const maxY = fieldH - padBottom;
+    for (const card of cards) {
+      if (placed.length >= target) {
+        card.el.remove();
+        continue;
+      }
+      let spot = null;
+      for (const margin of margins) {
+        const spanX = Math.max(0, maxX - minX - card.boundW);
+        const spanY = Math.max(0, maxY - minY - card.boundH);
+        for (let attempt = 0; attempt < 640; attempt += 1) {
+          const bx = minX + Math.random() * spanX;
+          const by = minY + Math.random() * spanY;
+          let clear = true;
+          for (const other of placed) {
+            if (
+              bx < other.bx + other.boundW + margin &&
+              bx + card.boundW + margin > other.bx &&
+              by < other.by + other.boundH + margin &&
+              by + card.boundH + margin > other.by
+            ) {
+              clear = false;
+              break;
+            }
+          }
+          if (clear) {
+            spot = { bx, by };
+            break;
+          }
+        }
+        if (spot) break;
+      }
+      if (!spot) {
+        card.el.remove();
+        continue;
+      }
+      card.bx = spot.bx;
+      card.by = spot.by;
+      card.x = Math.round(spot.bx + (card.boundW - card.w) / 2);
+      card.y = Math.round(spot.by + (card.boundH - card.h) / 2);
+      card.el.style.transform = `translate3d(${card.x}px, ${card.y}px, 0) rotate(${card.rot.toFixed(2)}deg)`;
+      placed.push(card);
+      state.settled.push(card);
+    }
+
+    // A tiny or extremely narrow field can reject every packed card. Keep one
+    // readable target instead of starting an empty, unwinnable round.
+    if (!state.settled.length) {
+      const word = candidates[0];
+      if (!word) return;
+      const el = document.createElement("div");
+      el.className = "word settled fill-word paint-word";
+      el.style.height = "34px";
+      el.style.fontSize = "14px";
+      el.style.minWidth = "52px";
+      el.style.setProperty("--fill-hue", String(hueFor(word)));
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", word);
+      el.tabIndex = 0;
+      const span = document.createElement("span");
+      span.className = "word-text";
+      span.textContent = word;
+      el.appendChild(span);
+      els.wordLayer.appendChild(el);
+      const w = el.offsetWidth;
+      const h = el.offsetHeight || 34;
+      const x = Math.max(0, Math.round((fieldW - w) / 2));
+      const y = Math.max(0, Math.round((fieldH - h) / 2));
+      el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      state.settled.push({
+        word,
+        el,
+        x,
+        y,
+        w,
+        h,
+        hue: hueFor(word),
+        emoji: EMOJI[word.toLowerCase()] || "",
+        golden: false,
+      });
+    }
+    state.paintTotal = state.settled.length;
+    state.cleared = 0;
+    state.paintBonus = 0;
+    state.paintFinishing = false;
+    syncSpeechPhrases();
+    updateHUD(true);
+  }
+
   function fillCardCenter(card) {
     const fRect = els.field.getBoundingClientRect();
     const r = card.el.getBoundingClientRect();
@@ -1853,7 +2062,7 @@
   }
 
   function speakFillWord(card) {
-    if (state.phase !== "playing" || state.mode !== "fill" || !card) return;
+    if (state.phase !== "playing" || state.mode === "rain" || !card) return;
     focusWord(card, true);
     showHeard(tr("help.listen", { word: card.word }));
     speakHelp(card);
@@ -3004,9 +3213,13 @@
   function petGroundAt(x) {
     const fieldH = els.field.clientHeight || 480;
     let ground = fieldH - Math.max(10, Math.round(fieldH * 0.02));
-    for (const settled of state.settled) {
-      if (x >= settled.x - 4 && x <= settled.x + settled.w + 4 && settled.y < ground) {
-        ground = Math.max(64, settled.y - 5);
+    // Paint cards are a scattered collage, not a pile: the pet stays on the
+    // floor instead of climbing to the top of the screen.
+    if (state.mode !== "paint") {
+      for (const settled of state.settled) {
+        if (x >= settled.x - 4 && x <= settled.x + settled.w + 4 && settled.y < ground) {
+          ground = Math.max(64, settled.y - 5);
+        }
       }
     }
     return Math.max(64, ground);
@@ -3671,6 +3884,24 @@
     }, 720);
   }
 
+  function completePaintRound() {
+    if (state.mode !== "paint" || state.paintFinishing) return;
+    if (state.phase !== "playing" && state.phase !== "paused") return;
+    state.paintFinishing = true;
+    const par = Math.max(10, state.paintTotal * 2.6);
+    state.paintBonus = Math.max(0, Math.round((par - state.elapsed) * 8));
+    if (state.paintBonus > 0) {
+      state.score += state.paintBonus;
+      addProfilePoints(state.paintBonus);
+    }
+    updateHUD(true);
+    window.setTimeout(() => {
+      if (!state.paintFinishing) return;
+      state.paintFinishing = false;
+      if (state.phase === "playing" || state.phase === "paused") endGame();
+    }, 900);
+  }
+
   function endGame() {
     if (state.phase === "over") return;
     state.phase = "over";
@@ -3756,16 +3987,19 @@
 
   function updateHUD(force = false) {
     const fill = state.mode === "fill";
+    const paint = state.mode === "paint";
+    const board = fill || paint;
     setText(els.score, formatNumber(state.score));
     setText(els.correct, String(state.cleared));
     setText(els.combo, `×${state.combo}`);
-    setText(els.level, fill ? String(state.settled.length) : String(state.level));
+    setText(els.level, board ? String(state.settled.length) : String(state.level));
     setText(els.time, formatTime(state.elapsed));
 
     let progress = 0;
-    if (fill) {
-      progress = state.fillTotal
-        ? Math.min(100, Math.round((state.cleared / state.fillTotal) * 100))
+    if (board) {
+      const total = fill ? state.fillTotal : state.paintTotal;
+      progress = total
+        ? Math.min(100, Math.round((state.cleared / total) * 100))
         : 0;
     } else {
       const fieldH = els.field.clientHeight || 1;
@@ -3788,7 +4022,7 @@
       state.lastHud.hot = hot;
     }
 
-    const danger = !fill && progress >= 68;
+    const danger = !board && progress >= 68;
     if (force || state.lastHud.danger !== danger) {
       els.pileStat.classList.toggle("danger", danger);
       els.field.classList.toggle("danger", danger);
@@ -4255,25 +4489,53 @@
 
   function renderOverPanel() {
     const fill = state.mode === "fill";
-    setText(els.overEyebrow, tr(fill ? "fill.overEyebrow" : "over.eyebrow"));
-    setText(els.overTitle, tr(fill ? "fill.overTitle" : "over.title"));
-    setText(els.overTagline, tr(fill ? "fill.overTagline" : "over.tagline"));
+    const paint = state.mode === "paint";
+    const board = fill || paint;
+    setText(
+      els.overEyebrow,
+      tr(paint ? "paint.overEyebrow" : fill ? "fill.overEyebrow" : "over.eyebrow"),
+    );
+    setText(
+      els.overTitle,
+      tr(paint ? "paint.overTitle" : fill ? "fill.overTitle" : "over.title"),
+    );
+    setText(
+      els.overTagline,
+      tr(paint ? "paint.overTagline" : fill ? "fill.overTagline" : "over.tagline"),
+    );
     setText(els.overScoreLabel, tr("over.score"));
-    setText(els.overClearedLabel, tr(fill ? "fill.clearedLabel" : "over.cleared"));
+    setText(
+      els.overClearedLabel,
+      tr(paint ? "paint.clearedLabel" : fill ? "fill.clearedLabel" : "over.cleared"),
+    );
     setText(els.overComboLabel, tr("over.combo"));
-    setText(els.overTimeLabel, tr(fill ? "fill.timeLabel" : "over.time"));
-    if (els.restartBtn) els.restartBtn.textContent = tr(fill ? "fill.again" : "over.cta");
+    setText(
+      els.overTimeLabel,
+      tr(paint ? "paint.timeLabel" : fill ? "fill.timeLabel" : "over.time"),
+    );
+    if (els.restartBtn) {
+      els.restartBtn.textContent = tr(
+        paint ? "paint.again" : fill ? "fill.again" : "over.cta",
+      );
+    }
     setText(
       els.missedTitle,
-      tr(fill && !state.missedWords.length ? "fill.allClear" : "over.missedTitle"),
+      tr(
+        board && !state.missedWords.length
+          ? paint
+            ? "paint.allClear"
+            : "fill.allClear"
+          : "over.missedTitle",
+      ),
     );
     if (els.missedList) {
-      els.missedList.classList.toggle("is-hidden", fill && !state.missedWords.length);
+      els.missedList.classList.toggle("is-hidden", board && !state.missedWords.length);
     }
     if (els.fillBonusLine) {
-      els.fillBonusLine.classList.toggle("is-hidden", !fill);
-      els.fillBonusLine.textContent = fill
-        ? tr("fill.bonus", { score: formatNumber(state.fillBonus) })
+      els.fillBonusLine.classList.toggle("is-hidden", !board);
+      const bonus = paint ? state.paintBonus : state.fillBonus;
+      els.fillBonusLine.textContent = board
+        ? tr(paint ? "paint.bonus" : "fill.bonus", { score: formatNumber(bonus) })
         : "";
     }
     setText(els.finalScore, formatNumber(state.score));
@@ -4445,9 +4707,9 @@
     if (!tokens.length) return null;
 
     const candidates =
-      state.mode === "fill"
-        ? state.settled.slice().sort((a, b) => b.y - a.y)
-        : state.words.slice().sort((a, b) => b.y - a.y);
+      state.mode === "rain"
+        ? state.words.slice().sort((a, b) => b.y - a.y)
+        : state.settled.slice().sort((a, b) => b.y - a.y);
 
     // A whole-utterance match wins first. Hyphenated number words are spoken
     // with a space, so "twenty one" should clear twenty-one rather than twenty.
@@ -4576,6 +4838,117 @@
     node.style.left = `${cx}px`;
     node.style.top = `${cy}px`;
     addFx(node);
+  }
+
+  function createPaintSplat(cx, cy, hue, cardW, cardH) {
+    const layer = els.paintLayer || els.wordLayer;
+    if (!layer) return;
+    const size = Math.max(50, Math.min(128, Math.max(cardW * 0.92, cardH * 2.2)));
+    const splat = document.createElement("div");
+    splat.className = "paint-splat";
+    splat.style.left = `${cx}px`;
+    splat.style.top = `${cy}px`;
+    splat.style.setProperty("--hue", hue);
+    splat.style.setProperty("--splat-size", `${Math.round(size)}px`);
+    splat.style.setProperty("--splat-rot", `${(Math.random() * 70 - 35).toFixed(1)}deg`);
+    const radii = Array.from({ length: 8 }, () => `${Math.round(42 + Math.random() * 30)}%`);
+    splat.style.setProperty("--blob", `${radii.slice(0, 4).join(" ")} / ${radii.slice(4).join(" ")}`);
+
+    const lumpCount = REDUCED_MOTION ? 1 : 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < lumpCount; i += 1) {
+      const lump = document.createElement("span");
+      lump.className = "paint-lump";
+      const angle = (Math.PI * 2 * i) / lumpCount + Math.random() * 0.8;
+      const distance = size * (0.22 + Math.random() * 0.16);
+      const lumpSize = size * (0.24 + Math.random() * 0.18);
+      lump.style.setProperty("--dx", `${(Math.cos(angle) * distance).toFixed(1)}px`);
+      lump.style.setProperty("--dy", `${(Math.sin(angle) * distance * 0.7).toFixed(1)}px`);
+      lump.style.setProperty("--lump-size", `${lumpSize.toFixed(1)}px`);
+      lump.style.setProperty("--lump-rot", `${(Math.random() * 90 - 45).toFixed(1)}deg`);
+      lump.style.setProperty("--lump-delay", `${(Math.random() * 0.05).toFixed(3)}s`);
+      splat.appendChild(lump);
+    }
+
+    const dripCount = REDUCED_MOTION ? 0 : 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < dripCount; i += 1) {
+      const drip = document.createElement("span");
+      drip.className = "paint-drip";
+      drip.style.setProperty("--dx", `${(size * (0.05 + Math.random() * 0.3) * (i % 2 ? 1 : -1)).toFixed(1)}px`);
+      drip.style.setProperty("--drip-w", `${Math.max(4, size * (0.05 + Math.random() * 0.045)).toFixed(1)}px`);
+      drip.style.setProperty("--drip-h", `${(size * (0.18 + Math.random() * 0.2)).toFixed(1)}px`);
+      drip.style.setProperty("--drip-delay", `${(0.02 + Math.random() * 0.06).toFixed(3)}s`);
+      splat.appendChild(drip);
+    }
+
+    const drops = REDUCED_MOTION ? 2 : 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < drops; i += 1) {
+      const drop = document.createElement("span");
+      drop.className = "paint-drop";
+      const angle = Math.random() * Math.PI * 2;
+      const distance = size * (0.34 + Math.random() * 0.38);
+      const radius = Math.max(3, size * (0.035 + Math.random() * 0.06));
+      drop.style.setProperty("--dx", `${(Math.cos(angle) * distance).toFixed(1)}px`);
+      drop.style.setProperty("--dy", `${(Math.sin(angle) * distance * 0.72).toFixed(1)}px`);
+      drop.style.setProperty("--drop-size", `${radius.toFixed(1)}px`);
+      drop.style.setProperty("--drop-delay", `${(0.02 + Math.random() * 0.08).toFixed(3)}s`);
+      splat.appendChild(drop);
+    }
+
+    layer.appendChild(splat);
+    createFlash(cx, cy, hue);
+    spawnSparks(cx, cy, hue, REDUCED_MOTION ? 4 : 9);
+  }
+
+  function launchPaintball(rel, hue, cardW, cardH) {
+    const fieldW = els.field.clientWidth || 360;
+    const fieldH = els.field.clientHeight || 600;
+    const pet = state.pets[0];
+    const sx = Math.max(
+      16,
+      Math.min(fieldW - 16, pet ? pet.x : fieldW / 2),
+    );
+    const sy = Math.max(
+      8,
+      Math.min(
+        fieldH - 8,
+        pet ? pet.ground + pet.hopY - pet.h * 0.72 : fieldH - 10,
+      ),
+    );
+    const cx = rel.left + rel.width / 2;
+    const cy = rel.top + rel.height / 2;
+    const tx = cx - sx;
+    const ty = cy - sy;
+    const distance = Math.hypot(tx, ty);
+    const duration = REDUCED_MOTION
+      ? 0.01
+      : Math.max(0.2, Math.min(0.42, distance / 1250));
+
+    const ball = document.createElement("div");
+    ball.className = "paintball";
+    ball.setAttribute("aria-hidden", "true");
+    ball.style.left = `${sx}px`;
+    ball.style.top = `${sy}px`;
+    ball.style.setProperty("--hue", hue);
+    ball.style.setProperty("--tx", `${tx.toFixed(1)}px`);
+    ball.style.setProperty("--ty", `${ty.toFixed(1)}px`);
+    ball.style.setProperty("--mx", `${(tx * 0.55).toFixed(1)}px`);
+    ball.style.setProperty("--my", `${(ty * 0.55 - Math.min(70, distance * 0.13)).toFixed(1)}px`);
+    ball.style.setProperty("--ball-dur", `${duration.toFixed(3)}s`);
+    els.fxLayer.appendChild(ball);
+    playPaintShot();
+
+    let finished = false;
+    const impact = () => {
+      if (finished) return;
+      finished = true;
+      // A restart can clear the fx layer mid-flight; never paint the new board.
+      if (!ball.isConnected) return;
+      ball.remove();
+      createPaintSplat(cx, cy, hue, cardW, cardH);
+      playPaintSplat();
+    };
+    ball.addEventListener("animationend", impact, { once: true });
+    window.setTimeout(impact, Math.round(duration * 1000) + 140);
   }
 
   function runEffect(effect, word, rel, wordHue, effectHue) {
@@ -4901,7 +5274,10 @@
     state.combo += 1;
     state.bestCombo = Math.max(state.bestCombo, state.combo);
     const golden = Boolean(word.golden);
-    const basePoints = state.mode === "fill" ? 20 : 10 + Math.round(heightRatio * 10);
+    const basePoints =
+      state.mode === "fill" || state.mode === "paint"
+        ? 20
+        : 10 + Math.round(heightRatio * 10);
     const multiplier = 1 + Math.min(state.combo - 1, 10) * 0.1;
     const points = Math.round(basePoints * multiplier) + (golden ? 25 : 0);
     state.score += points;
@@ -4909,10 +5285,16 @@
     addProfilePoints(points);
     if (state.mode === "rain") advanceRewardProgress();
 
-    const effect = nextEffect();
+    const paint = state.mode === "paint";
+    const effect = paint ? "splat" : nextEffect();
     state.lastEffect = effect;
-    const effectHue = EFFECT_HUES[effect] || hueFor(word.word);
-    runEffect(effect, word, rel, hueFor(word.word), effectHue);
+    const effectHue = paint
+      ? typeof word.hue === "number"
+        ? word.hue
+        : hueFor(word.word)
+      : EFFECT_HUES[effect] || hueFor(word.word);
+    if (paint) launchPaintball(rel, effectHue, rel.width, rel.height);
+    else runEffect(effect, word, rel, hueFor(word.word), effectHue);
     word.el.remove();
     const sub = golden
       ? `🌟${state.combo >= 2 ? ` ×${state.combo}` : ""}`
@@ -4920,7 +5302,7 @@
         ? `×${state.combo}`
         : "";
     showFloat(`+${points}`, sub, cx, cy, golden ? "hsl(48 100% 76%)" : `hsl(${effectHue} 100% 78%)`);
-    playEffect(effect);
+    if (!paint) playEffect(effect);
     if (golden) {
       playGolden();
       spawnStars(cx, cy, 48, 18);
@@ -4941,8 +5323,10 @@
     if (state.mode === "rain") {
       if (state.cleared % 5 === 0) triggerRewardClear(rel);
       if (state.cleared % METEOR_EVERY === 0) startMeteor(cx, cy);
-    } else if (state.settled.length === 0) {
+    } else if (state.mode === "fill" && state.settled.length === 0) {
       completeFillRound();
+    } else if (paint && state.settled.length === 0) {
+      completePaintRound();
     }
   }
 
@@ -5021,7 +5405,7 @@
   /* ------------------------------------------------------------------ */
 
   function lowestFallingWord() {
-    const list = state.mode === "fill" ? state.settled : state.words;
+    const list = state.mode === "rain" ? state.words : state.settled;
     let lowest = null;
     for (const word of list) {
       if (!lowest || word.y > lowest.y) lowest = word;
@@ -5366,7 +5750,7 @@
 
     const targets = new Map();
     for (const word of state.words) targets.set(word.word, 4);
-    if (state.mode === "fill") {
+    if (state.mode !== "rain") {
       for (const word of state.settled) targets.set(word.word, 4);
     }
     // The bag's tail is what nextWord() will spawn next; bias upcoming targets
@@ -6060,7 +6444,7 @@
 
   if (els.wordLayer) {
     els.wordLayer.addEventListener("click", (event) => {
-      if (state.phase !== "playing" || state.mode !== "fill") return;
+      if (state.phase !== "playing" || state.mode === "rain") return;
       const node = event.target && event.target.closest ? event.target.closest(".fill-word") : null;
       if (!node) return;
       const card = state.settled.find((item) => item.el === node);
@@ -6071,7 +6455,7 @@
     });
     els.wordLayer.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
-      if (state.phase !== "playing" || state.mode !== "fill") return;
+      if (state.phase !== "playing" || state.mode === "rain") return;
       const node = event.target && event.target.closest ? event.target.closest(".fill-word") : null;
       if (!node) return;
       const card = state.settled.find((item) => item.el === node);
@@ -6140,7 +6524,8 @@
       const ratio = fieldH / state.lastFieldH;
       for (const s of state.settled) {
         s.y = Math.max(0, fieldH - (state.lastFieldH - s.y) * ratio);
-        s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)`;
+        const rot = typeof s.rot === "number" ? ` rotate(${s.rot.toFixed(2)}deg)` : "";
+        s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)${rot}`;
       }
     }
     if (state.lastFieldH && Math.abs(fieldH - state.lastFieldH) > 4) {
@@ -6226,6 +6611,18 @@
               cleared: state.cleared,
               bonus: state.fillBonus,
               finishing: state.fillFinishing,
+              words: state.settled.map((s) => s.word),
+            }
+          : null,
+      getPaint: () =>
+        state.mode === "paint"
+          ? {
+              total: state.paintTotal,
+              remaining: state.settled.length,
+              cleared: state.cleared,
+              bonus: state.paintBonus,
+              finishing: state.paintFinishing,
+              splats: els.paintLayer ? els.paintLayer.childElementCount : 0,
               words: state.settled.map((s) => s.word),
             }
           : null,

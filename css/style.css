@@ -588,9 +588,16 @@ button:disabled {
 }
 
 .word-layer,
-.fx-layer {
+.fx-layer,
+.paint-layer {
   position: absolute;
   inset: 0;
+}
+
+/* Paint stains live behind the words so a messy screen stays readable. */
+.paint-layer {
+  z-index: 2;
+  pointer-events: none;
 }
 
 .word-layer {
@@ -959,13 +966,210 @@ body.phase-paused .pet {
 
 body.mode-fill .reward-progress,
 body.mode-fill .danger-line,
-body.mode-fill .speed-tool {
+body.mode-fill .speed-tool,
+body.mode-paint .reward-progress,
+body.mode-paint .danger-line,
+body.mode-paint .speed-tool {
   display: none;
 }
 
-body.mode-fill .toast {
+body.mode-fill .toast,
+body.mode-paint .toast {
   top: 14px;
   bottom: auto;
+}
+
+/* Keep the pet visible without letting it cover a paint target. */
+body.mode-paint .pet-layer {
+  z-index: 2;
+}
+
+/* ---------- paintball mode ---------- */
+
+.word.paint-word {
+  transform-origin: 50% 50%;
+  border-radius: 17px;
+}
+
+.word.paint-word .word-text {
+  position: relative;
+  z-index: 1;
+}
+
+.paintball {
+  position: absolute;
+  z-index: 3;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, #fff 0 12%, transparent 30%),
+    radial-gradient(circle at 50% 50%, hsl(var(--hue, 320) 100% 78%), hsl(var(--hue, 320) 92% 56%) 62%, hsl(var(--hue, 320) 84% 40%));
+  box-shadow:
+    0 0 14px hsl(var(--hue, 320) 100% 66% / 0.9),
+    0 0 30px hsl(var(--hue, 320) 95% 58% / 0.55);
+  transform: translate(-50%, -50%);
+  animation: paintballFly var(--ball-dur, 0.3s) cubic-bezier(0.22, 0.7, 0.28, 1) forwards;
+  will-change: transform;
+}
+
+.paint-splat {
+  position: absolute;
+  width: var(--splat-size, 86px);
+  height: calc(var(--splat-size, 86px) * 0.72);
+  border-radius: var(--blob, 55% 45% 58% 42% / 48% 58% 42% 52%);
+  background:
+    radial-gradient(circle at 35% 28%, hsl(var(--hue, 320) 100% 86% / 0.95), transparent 40%),
+    radial-gradient(circle at 58% 64%, hsl(var(--hue, 320) 90% 58% / 0.97), hsl(var(--hue, 320) 88% 45% / 0.98) 72%);
+  box-shadow: inset 0 0 0 2px hsl(var(--hue, 320) 92% 78% / 0.2);
+  filter: drop-shadow(0 4px 9px hsl(var(--hue, 320) 70% 34% / 0.25));
+  opacity: 0.9;
+  transform: translate(-50%, -50%) rotate(var(--splat-rot, 0deg));
+  transform-origin: 50% 50%;
+  animation: paintSplatIn 0.4s cubic-bezier(0.18, 1.45, 0.42, 1) both;
+  will-change: transform, opacity;
+}
+
+.paint-splat::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  top: 16%;
+  width: 30%;
+  height: 20%;
+  border-radius: 50%;
+  background: hsl(var(--hue, 320) 100% 96% / 0.42);
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+
+.paint-lump {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--lump-size, 20px);
+  height: var(--lump-size, 20px);
+  border-radius: 52% 48% 45% 55% / 55% 45% 52% 48%;
+  background: radial-gradient(circle at 38% 32%, hsl(var(--hue, 320) 100% 82%), hsl(var(--hue, 320) 88% 50%));
+  transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) rotate(var(--lump-rot, 0deg)) scale(0.6);
+  opacity: 0;
+  animation: paintLumpIn 0.3s ease-out var(--lump-delay, 0s) both;
+  pointer-events: none;
+}
+
+.paint-drip {
+  position: absolute;
+  left: 50%;
+  bottom: -2%;
+  width: var(--drip-w, 6px);
+  height: var(--drip-h, 20px);
+  border-radius: 999px 999px 46% 46%;
+  background: linear-gradient(to bottom, hsl(var(--hue, 320) 90% 52%), hsl(var(--hue, 320) 88% 46%));
+  transform: translate(calc(-50% + var(--dx, 0px)), 0) scaleY(0.2);
+  transform-origin: 50% 0%;
+  opacity: 0;
+  animation: paintDripIn 0.36s ease-out var(--drip-delay, 0s) both;
+  pointer-events: none;
+}
+
+.paint-drop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--drop-size, 5px);
+  height: var(--drop-size, 5px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, hsl(var(--hue, 320) 100% 82%), hsl(var(--hue, 320) 90% 52%));
+  transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.2);
+  opacity: 0;
+  animation: paintDropIn 0.32s ease-out var(--drop-delay, 0s) both;
+  pointer-events: none;
+}
+
+@keyframes paintballFly {
+  0% {
+    transform: translate(-50%, -50%) scale(0.45);
+    opacity: 0.25;
+  }
+  10% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(calc(-50% + var(--mx, 0px)), calc(-50% + var(--my, 0px))) scale(1.1);
+  }
+  100% {
+    transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))) scale(0.92);
+  }
+}
+
+@keyframes paintSplatIn {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--splat-rot, 0deg)) scale(0.18);
+    opacity: 0.25;
+  }
+  68% {
+    transform: translate(-50%, -50%) rotate(var(--splat-rot, 0deg)) scale(1.12);
+    opacity: 0.94;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--splat-rot, 0deg)) scale(1);
+    opacity: 0.9;
+  }
+}
+
+@keyframes paintLumpIn {
+  0% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) rotate(var(--lump-rot, 0deg)) scale(0.45);
+    opacity: 0;
+  }
+  75% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) rotate(var(--lump-rot, 0deg)) scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) rotate(var(--lump-rot, 0deg)) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes paintDripIn {
+  0% {
+    transform: translate(calc(-50% + var(--dx, 0px)), 0) scaleY(0.15);
+    opacity: 0;
+  }
+  70% {
+    transform: translate(calc(-50% + var(--dx, 0px)), 0) scaleY(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), 0) scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes paintDropIn {
+  0% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.2);
+    opacity: 0;
+  }
+  70% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(1.16);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paintball,
+  .paint-splat,
+  .paint-lump,
+  .paint-drip,
+  .paint-drop {
+    animation-duration: 0.01ms !important;
+  }
 }
 
 .fill-bonus {
@@ -2809,7 +3013,7 @@ html.is-touch .mic-btn.listening .mic-dot {
 
 .mode-switch {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
   margin: 12px 0 10px;
   padding: 4px;

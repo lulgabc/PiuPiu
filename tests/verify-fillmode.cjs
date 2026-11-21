@@ -20,14 +20,16 @@ assert.match(html, /id="overClearedLabel"/, "the result labels should be mode-aw
 
 // ---------- mode state and flow ----------
 assert.match(game, /const MODE_KEY = "piupiu\.mode"/, "the chosen mode should be remembered");
-assert.match(game, /const GAME_MODES = \["rain", "fill"\]/, "there should be exactly two game modes");
+assert.match(game, /const GAME_MODES = \["rain", "fill", "paint"\]/, "there should be exactly three game modes");
 assert.match(game, /const INITIAL_MODE =/, "the mode should be resolved at startup");
 assert.match(game, /mode: INITIAL_MODE/, "state should carry the selected mode");
 assert.match(game, /function updateModeUI\(/, "mode changes need a UI sync");
 assert.match(game, /function setMode\(mode\)/, "the mode picker needs a setter");
 assert.match(game, /localStorage\.setItem\(MODE_KEY, mode\)/, "mode choice should persist");
 assert.match(game, /state\.mode === "fill"\) buildFillBoard\(\)/, "starting a fill round should build the wall");
-assert.match(game, /toast\(tr\(state\.mode === "fill" \? "toast\.fillStart" : "toast\.start"\)\)/, "each mode should have its own start hint");
+assert.match(game, /"toast\.paintStart"/, "paint mode should have its own start hint");
+assert.match(game, /"toast\.fillStart"/, "fill mode should have its own start hint");
+assert.match(game, /"toast\.start"/, "rain mode should have its own start hint");
 
 // ---------- the wall ----------
 assert.match(game, /function buildFillBoard\(/, "fill mode needs a board builder");
@@ -84,12 +86,12 @@ for (const name of ["fillPulse", "fillBounce", "fillWobble", "fillFlash", "fillG
 // ---------- mode-aware gameplay ----------
 assert.match(game, /if \(state\.mode === "rain"\) \{[\s\S]{0,600}spawnWord\(\)/, "falling words should only spawn in rain mode");
 assert.match(game, /state\.mode === "rain" && checkPileDanger\(\)/, "fill mode must not end from pile height");
-assert.match(game, /state\.mode === "fill"\s*\? state\.settled\.slice\(\)\.sort/, "matching should read the wall in fill mode");
-assert.match(game, /state\.mode === "fill" \? state\.settled : state\.words/, "help should focus the lowest wall word");
-assert.match(game, /if \(state\.mode === "fill"\) \{\s*for \(const word of state\.settled\) targets\.set/, "speech bias should include wall words");
+assert.match(game, /state\.mode === "rain"\s*\? state\.words\.slice\(\)\.sort/, "matching should read the board in fill and paint modes");
+assert.match(game, /state\.mode === "rain" \? state\.words : state\.settled/, "help should focus the lowest board word");
+assert.match(game, /if \(state\.mode !== "rain"\) \{\s*for \(const word of state\.settled\) targets\.set/, "speech bias should include board words");
 assert.match(game, /const settledIndex = activeIndex === -1 \? state\.settled\.indexOf\(word\) : -1/, "explosions should accept wall bodies");
 assert.match(game, /removeSettledBody\(word\);[\s\S]{0,120}wakePhysicsPile\(\)/, "clearing a wall body should wake the remaining pile");
-assert.match(game, /else if \(state\.settled\.length === 0\) \{\s*completeFillRound\(\)/, "the round should finish when the wall is empty");
+assert.match(game, /else if \(state\.mode === "fill" && state\.settled\.length === 0\) \{\s*completeFillRound\(\)/, "the fill round should finish when the wall is empty");
 assert.match(game, /state\.mode === "rain"\) advanceRewardProgress\(\)/, "fill mode should not trigger the sweeping reward");
 assert.match(game, /if \(state\.mode === "rain"\) \{[\s\S]{0,160}startMeteor\(/, "fill mode should not spawn the meteor");
 
@@ -103,12 +105,12 @@ assert.match(game, /fill\.bonus/, "the result panel should explain the speed bon
 
 // ---------- HUD and result copy ----------
 assert.match(game, /const fill = state\.mode === "fill"/, "HUD values should branch by mode");
-assert.match(game, /fill \? String\(state\.settled\.length\) : String\(state\.level\)/, "fill mode should show remaining words instead of a level");
-assert.match(game, /state\.cleared \/ state\.fillTotal/, "fill progress should be based on cleared words");
-assert.match(game, /setText\(els\.stepIcon1, fill \? "🧩" : "🌧️"\)/, "the first step icon should follow the mode");
-assert.match(game, /setText\(els\.correctLabel, tr\(fill \? "hud\.cleared" : "hud\.correct"\)\)/, "the correct stat should read cleared in fill mode");
-assert.match(game, /setText\(els\.levelLabel, tr\(fill \? "hud\.remaining" : "hud\.level"\)\)/, "the level label should become remaining in fill mode");
-assert.match(game, /setText\(els\.overTitle, tr\(fill \? "fill\.overTitle" : "over\.title"\)\)/, "the result title should match the mode");
+assert.match(game, /board \? String\(state\.settled\.length\) : String\(state\.level\)/, "board modes should show remaining words instead of a level");
+assert.match(game, /const total = fill \? state\.fillTotal : state\.paintTotal/, "board progress should use the active mode total");
+assert.match(game, /setText\(els\.stepIcon1, paint \? "🎨" : fill \? "🧩" : "🌧️"\)/, "the first step icon should follow the mode");
+assert.match(game, /setText\(els\.correctLabel, tr\(paint \? "hud\.hits" : fill \? "hud\.cleared" : "hud\.correct"\)\)/, "the correct stat should read hits or cleared in board modes");
+assert.match(game, /setText\(els\.levelLabel, tr\(fill \|\| paint \? "hud\.remaining" : "hud\.level"\)\)/, "the level label should become remaining in board modes");
+assert.match(game, /tr\(paint \? "paint\.overTitle" : fill \? "fill\.overTitle" : "over\.title"\)/, "the result title should match the mode");
 assert.match(game, /fill \? "fill\.again" : "over\.cta"/, "the replay button should match the mode");
 
 // ---------- styles ----------
