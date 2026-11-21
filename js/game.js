@@ -4840,61 +4840,299 @@
     addFx(node);
   }
 
-  function createPaintSplat(cx, cy, hue, cardW, cardH) {
+  const PAINT_SVG_NS = "http://www.w3.org/2000/svg";
+  let paintSplatSerial = 0;
+
+  function paintSvgNode(tag, attrs = {}) {
+    const node = document.createElementNS(PAINT_SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+    return node;
+  }
+
+  function paintSmoothClosedPath(points) {
+    const count = points.length;
+    if (!count) return "";
+    let path = `M${points[0].x.toFixed(2)},${points[0].y.toFixed(2)}`;
+    for (let i = 0; i < count; i += 1) {
+      const p0 = points[(i - 1 + count) % count];
+      const p1 = points[i];
+      const p2 = points[(i + 1) % count];
+      const p3 = points[(i + 2) % count];
+      const c1x = p1.x + (p2.x - p0.x) / 6;
+      const c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6;
+      const c2y = p2.y - (p3.y - p1.y) / 6;
+      path += `C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+    }
+    return `${path}Z`;
+  }
+
+  function paintBlobPath(cx, cy, rx, ry, count, irregular, biasAngle = 0, bias = 0) {
+    const points = [];
+    const offset = Math.random() * Math.PI * 2;
+    for (let i = 0; i < count; i += 1) {
+      const angle = offset + (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.16;
+      let factor = 1 - irregular * 0.5 + Math.random() * irregular;
+      if (Math.random() < 0.18) factor += 0.1 + Math.random() * 0.22;
+      factor *= 1 + Math.cos(angle - biasAngle) * bias;
+      points.push({
+        x: cx + Math.cos(angle) * rx * factor,
+        y: cy + Math.sin(angle) * ry * factor,
+      });
+    }
+    return paintSmoothClosedPath(points);
+  }
+
+  function paintTendrilPath(cx, cy, angle, innerRadius, length, width) {
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const nx = -dy;
+    const ny = dx;
+    const baseX = cx + dx * innerRadius;
+    const baseY = cy + dy * innerRadius;
+    const tipX = cx + dx * length;
+    const tipY = cy + dy * length;
+    const bend = (Math.random() - 0.5) * width * 2.4;
+    const midX = cx + dx * length * 0.56 + dx * bend;
+    const midY = cy + dy * length * 0.56 + dy * bend;
+    const c1x = midX + nx * width * 1.35;
+    const c1y = midY + ny * width * 1.35;
+    const c2x = midX - nx * width * 1.35;
+    const c2y = midY - ny * width * 1.35;
+    return `M${(baseX + nx * width * 0.5).toFixed(2)},${(baseY + ny * width * 0.5).toFixed(2)} Q${c1x.toFixed(2)},${c1y.toFixed(2)} ${tipX.toFixed(2)},${tipY.toFixed(2)} Q${c2x.toFixed(2)},${c2y.toFixed(2)} ${(baseX - nx * width * 0.5).toFixed(2)},${(baseY - ny * width * 0.5).toFixed(2)}Z`;
+  }
+
+  function paintDripPath(x, y, length, width) {
+    const half = width / 2;
+    return `M${(x - half).toFixed(2)},${y.toFixed(2)} C${(x - half).toFixed(2)},${(y + length * 0.35).toFixed(2)} ${(x - width * 0.42).toFixed(2)},${(y + length * 0.78).toFixed(2)} ${x.toFixed(2)},${(y + length).toFixed(2)} C${(x + width * 0.42).toFixed(2)},${(y + length * 0.78).toFixed(2)} ${(x + half).toFixed(2)},${(y + length * 0.35).toFixed(2)} ${(x + half).toFixed(2)},${y.toFixed(2)}Z`;
+  }
+
+  function createPaintSplat(cx, cy, hue, cardW, cardH, travelAngle) {
     const layer = els.paintLayer || els.wordLayer;
     if (!layer) return;
-    const size = Math.max(50, Math.min(128, Math.max(cardW * 0.92, cardH * 2.2)));
-    const splat = document.createElement("div");
-    splat.className = "paint-splat";
-    splat.style.left = `${cx}px`;
-    splat.style.top = `${cy}px`;
-    splat.style.setProperty("--hue", hue);
-    splat.style.setProperty("--splat-size", `${Math.round(size)}px`);
-    splat.style.setProperty("--splat-rot", `${(Math.random() * 70 - 35).toFixed(1)}deg`);
-    const radii = Array.from({ length: 8 }, () => `${Math.round(42 + Math.random() * 30)}%`);
-    splat.style.setProperty("--blob", `${radii.slice(0, 4).join(" ")} / ${radii.slice(4).join(" ")}`);
 
-    const lumpCount = REDUCED_MOTION ? 1 : 2 + Math.floor(Math.random() * 2);
-    for (let i = 0; i < lumpCount; i += 1) {
-      const lump = document.createElement("span");
-      lump.className = "paint-lump";
-      const angle = (Math.PI * 2 * i) / lumpCount + Math.random() * 0.8;
-      const distance = size * (0.22 + Math.random() * 0.16);
-      const lumpSize = size * (0.24 + Math.random() * 0.18);
-      lump.style.setProperty("--dx", `${(Math.cos(angle) * distance).toFixed(1)}px`);
-      lump.style.setProperty("--dy", `${(Math.sin(angle) * distance * 0.7).toFixed(1)}px`);
-      lump.style.setProperty("--lump-size", `${lumpSize.toFixed(1)}px`);
-      lump.style.setProperty("--lump-rot", `${(Math.random() * 90 - 45).toFixed(1)}deg`);
-      lump.style.setProperty("--lump-delay", `${(Math.random() * 0.05).toFixed(3)}s`);
-      splat.appendChild(lump);
+    // Splats are deliberately uneven: some are tiny flicks, some are huge
+    // gushers. The card size only sets a rough starting point.
+    const base = Math.max(cardW * 0.8, cardH * 2.05);
+    let scale = 0.55 + Math.random() * 0.85;
+    const roll = Math.random();
+    if (roll > 0.84) scale *= 1.55;
+    else if (roll < 0.16) scale *= 0.55;
+    const mainR = Math.max(18, Math.min(88, base * 0.5 * scale));
+    const mainRy = mainR * (0.62 + Math.random() * 0.46);
+    const extent = Math.max(160, Math.min(380, mainR * (3.8 + Math.random() * 1.3)));
+    const size = Math.round(extent * 2);
+    const center = extent;
+    const biasAngle = Number.isFinite(travelAngle)
+      ? travelAngle
+      : Math.random() * Math.PI * 2;
+    const bias = 0.1 + Math.random() * 0.14;
+
+    const svg = paintSvgNode("svg", {
+      class: "paint-splat",
+      viewBox: `0 0 ${size} ${size}`,
+      width: size,
+      height: size,
+      "aria-hidden": "true",
+    });
+    svg.style.left = `${cx}px`;
+    svg.style.top = `${cy}px`;
+    svg.style.setProperty("--splat-rot", `${(Math.random() * 70 - 35).toFixed(1)}deg`);
+    svg.style.overflow = "visible";
+
+    const gradientId = `paintInk${++paintSplatSerial}`;
+    const defs = paintSvgNode("defs");
+    const gradient = paintSvgNode("linearGradient", {
+      id: gradientId,
+      gradientUnits: "userSpaceOnUse",
+      x1: (center - mainR * 1.2).toFixed(1),
+      y1: (center - mainRy * 1.2).toFixed(1),
+      x2: (center + mainR * 1.2).toFixed(1),
+      y2: (center + mainRy * 1.2).toFixed(1),
+    });
+    const stops = [
+      [0, `hsl(${hue} 96% 66%)`],
+      [52, `hsl(${hue} 90% 56%)`],
+      [100, `hsl(${hue} 86% 43%)`],
+    ];
+    for (const [offset, color] of stops) {
+      gradient.appendChild(paintSvgNode("stop", { offset: `${offset}%`, "stop-color": color }));
+    }
+    defs.appendChild(gradient);
+    svg.appendChild(defs);
+    const inkFill = `url(#${gradientId})`;
+    const dropFill = `hsl(${hue} 90% 55%)`;
+
+    // Long, thin ink arms give the splat a fast, messy silhouette.
+    const tendrilCount = REDUCED_MOTION ? 1 : 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < tendrilCount; i += 1) {
+      const spread = i === 0 ? 0.5 : Math.PI * 1.65;
+      let angle = biasAngle + (Math.random() - 0.5) * spread;
+      if (i > 0 && Math.random() < 0.22) angle += Math.PI;
+      const length = mainR * (i === 0 ? 1.9 + Math.random() * 1.35 : 1.1 + Math.random() * 1.25);
+      const width = mainR * (0.06 + Math.random() * 0.14);
+      const tendril = paintSvgNode("path", {
+        d: paintTendrilPath(center, center, angle, mainR * 0.35, length, width),
+        fill: inkFill,
+        class: "paint-tendril",
+      });
+      tendril.style.setProperty("--delay", `${(0.01 + Math.random() * 0.06).toFixed(3)}s`);
+      svg.appendChild(tendril);
     }
 
-    const dripCount = REDUCED_MOTION ? 0 : 1 + Math.floor(Math.random() * 2);
+    // Drips hang downward under gravity and can be much longer than the core.
+    const dripCount = REDUCED_MOTION ? 0 : 1 + Math.floor(Math.random() * 3);
     for (let i = 0; i < dripCount; i += 1) {
-      const drip = document.createElement("span");
-      drip.className = "paint-drip";
-      drip.style.setProperty("--dx", `${(size * (0.05 + Math.random() * 0.3) * (i % 2 ? 1 : -1)).toFixed(1)}px`);
-      drip.style.setProperty("--drip-w", `${Math.max(4, size * (0.05 + Math.random() * 0.045)).toFixed(1)}px`);
-      drip.style.setProperty("--drip-h", `${(size * (0.18 + Math.random() * 0.2)).toFixed(1)}px`);
-      drip.style.setProperty("--drip-delay", `${(0.02 + Math.random() * 0.06).toFixed(3)}s`);
-      splat.appendChild(drip);
+      const x = center + (Math.random() - 0.5) * mainR * 1.45;
+      const y = center + mainRy * (0.2 + Math.random() * 0.25);
+      const length = mainR * (0.5 + Math.random() * 1.35);
+      const width = mainR * (0.045 + Math.random() * 0.11);
+      const drip = paintSvgNode("path", {
+        d: paintDripPath(x, y, length, width),
+        fill: inkFill,
+        class: "paint-drip",
+      });
+      drip.style.setProperty("--delay", `${(0.02 + Math.random() * 0.08).toFixed(3)}s`);
+      svg.appendChild(drip);
     }
 
-    const drops = REDUCED_MOTION ? 2 : 3 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < drops; i += 1) {
-      const drop = document.createElement("span");
-      drop.className = "paint-drop";
+    // Irregular secondary blobs land well away from the core.
+    const lumpCount = REDUCED_MOTION ? 1 : 1 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < lumpCount; i += 1) {
+      const angle = biasAngle + (Math.random() - 0.5) * Math.PI * 2;
+      const distance = mainR * (1.0 + Math.random() * 1.5);
+      const lumpRadius = mainR * (0.07 + Math.random() * 0.2);
+      const lump = paintSvgNode("path", {
+        d: paintBlobPath(
+          center + Math.cos(angle) * distance,
+          center + Math.sin(angle) * distance,
+          lumpRadius * (0.8 + Math.random() * 0.6),
+          lumpRadius * (0.65 + Math.random() * 0.6),
+          7 + Math.floor(Math.random() * 4),
+          0.48,
+          angle,
+          0.18,
+        ),
+        fill: inkFill,
+        class: "paint-lump",
+      });
+      lump.style.setProperty("--delay", `${(0.01 + Math.random() * 0.07).toFixed(3)}s`);
+      svg.appendChild(lump);
+    }
+
+    const collarCount = REDUCED_MOTION ? 1 : 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < collarCount; i += 1) {
+      const angle = biasAngle + (Math.random() - 0.5) * Math.PI * 2;
+      const distance = mainR * (0.35 + Math.random() * 0.55);
+      const collarRadius = mainR * (0.22 + Math.random() * 0.25);
+      const collar = paintSvgNode("path", {
+        d: paintBlobPath(
+          center + Math.cos(angle) * distance,
+          center + Math.sin(angle) * distance,
+          collarRadius * (0.8 + Math.random() * 0.5),
+          collarRadius * (0.7 + Math.random() * 0.5),
+          8 + Math.floor(Math.random() * 4),
+          0.48,
+          angle,
+          0.2,
+        ),
+        fill: inkFill,
+        class: "paint-lump",
+      });
+      collar.style.setProperty("--delay", `${(Math.random() * 0.04).toFixed(3)}s`);
+      svg.appendChild(collar);
+    }
+
+    const core = paintSvgNode("path", {
+      d: paintBlobPath(center, center, mainR, mainRy, 24 + Math.floor(Math.random() * 12), 0.38, biasAngle, bias),
+      fill: inkFill,
+      stroke: `hsla(${hue}, 72%, 34%, 0.22)`,
+      "stroke-width": Math.max(0.8, mainR * 0.018),
+      "stroke-linejoin": "round",
+      class: "paint-core",
+    });
+    svg.appendChild(core);
+
+    // Wide spray: many small droplets, a few far flyers, and a fine mist.
+    const dropCount = REDUCED_MOTION ? 6 : 14 + Math.floor(Math.random() * 16);
+    for (let i = 0; i < dropCount; i += 1) {
+      let angle = biasAngle + (Math.random() - 0.5) * Math.PI * 2.4;
+      if (Math.random() < 0.2) angle = Math.random() * Math.PI * 2;
+      const distance = mainR * (1.15 + Math.pow(Math.random(), 1.5) * 3.2);
+      let radius = Math.max(0.9, mainR * (0.018 + Math.pow(Math.random(), 2) * 0.15));
+      if (Math.random() < 0.1) radius *= 2.2;
+      const far = distance > mainR * 2.2;
+      const stretch = far && Math.random() < 0.6 ? 0.16 + Math.random() * 0.24 : 0.55 + Math.random() * 0.5;
+      const x = center + Math.cos(angle) * distance;
+      const y = center + Math.sin(angle) * distance;
+      const group = paintSvgNode("g", {
+        transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${((angle * 180) / Math.PI).toFixed(1)})`,
+      });
+      const drop = paintSvgNode("ellipse", {
+        cx: 0,
+        cy: 0,
+        rx: radius.toFixed(1),
+        ry: (radius * stretch).toFixed(1),
+        fill: dropFill,
+        class: "paint-drop",
+      });
+      drop.style.setProperty("--delay", `${(0.01 + Math.random() * 0.12).toFixed(3)}s`);
+      group.appendChild(drop);
+      svg.appendChild(group);
+    }
+
+    const streakCount = REDUCED_MOTION ? 0 : 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < streakCount; i += 1) {
+      const angle = biasAngle + (Math.random() - 0.5) * Math.PI * 1.7;
+      const distance = mainR * (1.5 + Math.random() * 2.1);
+      const length = mainR * (0.18 + Math.random() * 0.3);
+      const width = 0.9 + Math.random() * 2.1;
+      const x = center + Math.cos(angle) * distance;
+      const y = center + Math.sin(angle) * distance;
+      const group = paintSvgNode("g", {
+        transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${((angle * 180) / Math.PI).toFixed(1)})`,
+      });
+      const streak = paintSvgNode("ellipse", {
+        cx: 0,
+        cy: 0,
+        rx: length.toFixed(1),
+        ry: width.toFixed(1),
+        fill: dropFill,
+        class: "paint-drop",
+      });
+      streak.style.setProperty("--delay", `${(0.02 + Math.random() * 0.1).toFixed(3)}s`);
+      group.appendChild(streak);
+      svg.appendChild(group);
+    }
+
+    const speckCount = REDUCED_MOTION ? 4 : 10 + Math.floor(Math.random() * 14);
+    for (let i = 0; i < speckCount; i += 1) {
       const angle = Math.random() * Math.PI * 2;
-      const distance = size * (0.34 + Math.random() * 0.38);
-      const radius = Math.max(3, size * (0.035 + Math.random() * 0.06));
-      drop.style.setProperty("--dx", `${(Math.cos(angle) * distance).toFixed(1)}px`);
-      drop.style.setProperty("--dy", `${(Math.sin(angle) * distance * 0.72).toFixed(1)}px`);
-      drop.style.setProperty("--drop-size", `${radius.toFixed(1)}px`);
-      drop.style.setProperty("--drop-delay", `${(0.02 + Math.random() * 0.08).toFixed(3)}s`);
-      splat.appendChild(drop);
+      const distance = mainR * (1.5 + Math.random() * 2.7);
+      const radius = 0.6 + Math.random() * 1.9;
+      const speck = paintSvgNode("circle", {
+        cx: (center + Math.cos(angle) * distance).toFixed(1),
+        cy: (center + Math.sin(angle) * distance).toFixed(1),
+        r: radius.toFixed(1),
+        fill: `hsl(${hue} 92% 56%)`,
+        class: "paint-drop",
+      });
+      speck.style.setProperty("--delay", `${(0.01 + Math.random() * 0.14).toFixed(3)}s`);
+      svg.appendChild(speck);
     }
 
-    layer.appendChild(splat);
+    // A small wet highlight keeps the ink from looking like flat paper.
+    const gloss = paintSvgNode("ellipse", {
+      cx: (center - mainR * 0.28).toFixed(1),
+      cy: (center - mainRy * 0.34).toFixed(1),
+      rx: (mainR * 0.16).toFixed(1),
+      ry: (mainRy * 0.08).toFixed(1),
+      fill: `hsla(${hue}, 100%, 96%, 0.18)`,
+      transform: `rotate(-18 ${center.toFixed(1)} ${center.toFixed(1)})`,
+    });
+    svg.appendChild(gloss);
+
+    layer.appendChild(svg);
     createFlash(cx, cy, hue);
     spawnSparks(cx, cy, hue, REDUCED_MOTION ? 4 : 9);
   }
@@ -4944,7 +5182,7 @@
       // A restart can clear the fx layer mid-flight; never paint the new board.
       if (!ball.isConnected) return;
       ball.remove();
-      createPaintSplat(cx, cy, hue, cardW, cardH);
+      createPaintSplat(cx, cy, hue, cardW, cardH, Math.atan2(ty, tx));
       playPaintSplat();
     };
     ball.addEventListener("animationend", impact, { once: true });
