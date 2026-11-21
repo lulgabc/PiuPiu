@@ -21,6 +21,9 @@ assert.match(game, /phrases-not-supported/, "unsupported contextual biasing shou
 assert.match(game, /recognition\.processLocally !== true/, "bias should be gated to on-device recognition");
 assert.match(game, /recognition\.phrases = \[\]/, "unsupported bias phrases must be cleared");
 assert.match(game, /recognition\.phrases\s*=/, "bias phrases should be assigned when supported");
+assert.match(game, /if \(state\.listening && !force\)/, "live recognition should not be stalled by phrase reassignment");
+assert.match(game, /state\.speechPhraseDirty = true/, "dirty phrase lists should wait for the next session");
+assert.match(game, /syncSpeechPhrases\(true\)/, "a new recognition session should force a fresh phrase list");
 
 // ---------- phrase-aware matching ----------
 assert.match(game, /PHRASE_REDUCTIONS/, "common reductions should be supported");
@@ -41,13 +44,14 @@ assert.match(game, /p95/);
 assert.match(game, /state\.speechNoSpeech \? 260 : 90/, "recognition should restart quickly after a normal end");
 assert.match(game, /}, delay\);/, "recognition restart delay should be applied");
 const helpBody = game.slice(game.indexOf("function speakHelp(word)"), game.indexOf("function triggerHelp()"));
-assert.match(helpBody, /const releaseMic = IS_IOS && state\.micEnabled/, "iOS should release the microphone for audible TTS");
-assert.match(helpBody, /if \(releaseMic\) \{\s*stopSpeech\(\)/, "iOS should stop recognition before the hint");
-assert.match(helpBody, /else if \(state\.micEnabled && !state\.listening && !state\.speechStarting\) \{/, "other platforms should keep the mic hot");
-assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\) \+ 200/, "help echo guard should be short");
+assert.match(helpBody, /const releaseMic = IS_IOS && state\.micEnabled/, "iOS keeps its audio-route handling");
+assert.match(helpBody, /if \(state\.micEnabled\) stopSpeech\(\)/, "all platforms should mute the mic while the hint speaks");
+assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\) \+ 4500/, "the hint should hold a safety guard while speaking");
+assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\) \+ 350/, "delayed TTS finals should be ignored for a short window");
 assert.match(helpBody, /const delay = IS_IOS \? \(releaseMic \? 150 : wasSpeaking \? 60 : 0\) : 0/, "iOS should wait for the audio route/cancel to settle");
 assert.match(helpBody, /window\.setTimeout\(startSpeak, delay\)/, "the delayed iOS utterance should still start");
-assert.match(game, /if \(state\.helpSpeaking\) return;/, "TTS results should be ignored while help speaks");
+assert.match(game, /if \(state\.helpSpeaking \|\| now < state\.helpGuardUntil\) return;/, "TTS results and their tail should be ignored");
+assert.match(game, /const formCache = new Map\(\)/, "word forms should be cached between interim results");
 assert.match(game, /}, 4000\);/, "a stuck TTS should release after a bounded fallback");
 assert.match(game, /speechNoSpeech/, "no-speech restarts should back off");
 assert.match(game, /InvalidStateError/, "start races should be retried");
@@ -57,5 +61,5 @@ console.log("✓ five alternatives and confidence ranking are enabled");
 console.log("✓ on-screen targets are used for on-device contextual biasing when available");
 console.log("✓ phrase reductions, compact forms, optional articles and fragments match");
 console.log("✓ speech latency and first-result timing are measured");
-console.log("✓ help speech keeps the mic hot, except iOS releases it for audible TTS");
+console.log("✓ help speech mutes the mic and guards its delayed echo on every platform");
 console.log("✓ restart gaps are reduced, with no-speech and start-race safeguards");

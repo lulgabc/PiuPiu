@@ -374,6 +374,7 @@
     speechError: false,
     speechNetworkErrors: 0,
     speechPhraseKey: "",
+    speechPhraseDirty: false,
     speechPhrasesSupported: null,
     speechPhraseError: "",
     speechNoSpeech: false,
@@ -4396,8 +4397,12 @@
       .join(" ");
   }
 
+  const formCache = new Map();
+
   function formsFor(word) {
     const base = word.toLowerCase();
+    const cached = formCache.get(base);
+    if (cached) return cached;
     const forms = new Set([base]);
     const add = (value) => {
       if (value) forms.add(value);
@@ -4427,6 +4432,7 @@
       const trimmed = parts.filter((part) => !OPTIONAL_ARTICLES.has(part));
       if (trimmed.length >= 2 && trimmed.length < parts.length) add(trimmed.join(" "));
     }
+    formCache.set(base, forms);
     return forms;
   }
 
@@ -5237,23 +5243,22 @@
     const token = ++state.helpSpeakToken;
     state.helpSpeaking = true;
     state.helpWord = word.word;
-    state.helpGuardUntil = 0;
+    // Cover the whole utterance plus the recognizer's delayed final result.
+    state.helpGuardUntil = performance.now() + 4500;
 
     // iOS routes web audio through a quieter record/playback session while
     // SpeechRecognition owns the microphone. Release the mic for the hint so
     // the system voice comes back through the speaker at normal volume.
+    // Desktop recognizers also hear the synthetic voice; stopping the mic here
+    // prevents that hint from being mistaken for a child's answer.
     const releaseMic = IS_IOS && state.micEnabled;
     const wasSpeaking = Boolean(synth.speaking || synth.pending);
     try {
       synth.cancel();
     } catch {}
 
+    if (state.micEnabled) stopSpeech();
     updateMicUI();
-    if (releaseMic) {
-      stopSpeech();
-    } else if (state.micEnabled && !state.listening && !state.speechStarting) {
-      startSpeech();
-    }
 
     applyVoiceChoice();
     const utterance = new Utterance(word.word);
@@ -5269,7 +5274,7 @@
       finished = true;
       if (token !== state.helpSpeakToken) return;
       state.helpSpeaking = false;
-      state.helpGuardUntil = performance.now() + 200;
+      state.helpGuardUntil = performance.now() + 350;
       updateMicUI();
       if (state.phase === "playing" && state.micEnabled && !state.listening && !state.speechStarting) {
         startSpeech();
@@ -5327,7 +5332,7 @@
   /* speech recognition                                                  */
   /* ------------------------------------------------------------------ */
 
-  function syncSpeechPhrases() {
+  function syncSpeechPhrases(force = false) {
     const recognition = state.speech;
     if (!recognition) return;
     if (state.speechPhrasesSupported === false) return;
@@ -5346,6 +5351,12 @@
       state.speechPhrasesSupported = false;
       return;
     }
+    // Reassigning the phrase list while a session is live can stall the
+    // recognizer. Keep the current list and resync on the next onstart.
+    if (state.listening && !force) {
+      state.speechPhraseDirty = true;
+      return;
+    }
 
     const targets = new Map();
     for (const word of state.words) targets.set(word.word, 4);
@@ -5362,6 +5373,7 @@
     const key = [...targets.keys()].join("\u0001");
     if (key === state.speechPhraseKey) return;
     state.speechPhraseKey = key;
+    state.speechPhraseDirty = false;
 
     try {
       const phrases = [...targets].map(([target, boost]) => new Phrase(target, boost));
@@ -5405,7 +5417,7 @@
         state.speechNoSpeech = false;
         state.speechStartRetries = 0;
         state.speechMetrics.sessions += 1;
-        syncSpeechPhrases();
+        syncSpeechPhrases(true);
         updateMicUI();
       };
 
@@ -5426,10 +5438,9 @@
 
       recognition.onresult = (event) => {
         if (state.phase !== "playing") return;
-        if (state.helpSpeaking) return;
         const now = performance.now();
-        const guardHelpEcho = state.helpGuardUntil > now;
-        const helpKey = guardHelpEcho ? normalizeSpeech(state.helpWord) : "";
+        // The hint voice and its delayed final result must never clear a word.
+        if (state.helpSpeaking || now < state.helpGuardUntil) return;
         const metrics = state.speechMetrics;
         state.speechNoSpeech = false;
         metrics.results += 1;
@@ -5452,7 +5463,6 @@
             if (!alt) continue;
             const transcript = (alt.transcript || "").trim();
             if (!transcript) continue;
-            if (guardHelpEcho && normalizeSpeech(transcript) === helpKey) continue;
             const confidence = Number.isFinite(alt.confidence) ? alt.confidence : 0;
             if (confidence > latestConfidence) {
               latest = transcript;
@@ -5546,7 +5556,7 @@
     if (!state.speech || !state.micEnabled) return;
     if (state.listening || state.speechStarting) return;
     setAudioSession("play-and-record");
-    syncSpeechPhrases();
+    syncSpeechPhrases(true);
     state.speechStarting = true;
     try {
       state.speech.start();

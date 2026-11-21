@@ -1,6 +1,6 @@
 {
   "name": "piupiu",
-  "version": "2.26.0",
+  "version": "2.26.1",
   "private": true,
   "description": "PiuPiu — a child-friendly English pronunciation game with two modes (falling word rain and a physics-driven fill-the-screen clear) and emoji faces, playful effects, spoken hints with selectable natural and child voices, star-beam rewards, eight PixiJS ambience scenes, number words 1–100, local player profiles with editable avatars and a points leaderboard, three candy sticker skins, a randomly chosen soft-jelly monster companion from a 35-pet catalog each round, a Matter.js gravity pile, a ten-clear meteor sweep, and three falling speeds, PHaVE and PHRASE lists, themed packs, K-12 reading lists, BNC/COCA word families, Chinese/French/English UI, and PWA installation with an offline app shell.",
   "scripts": {
