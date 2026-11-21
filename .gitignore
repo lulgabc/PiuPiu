@@ -1,6 +1,2 @@
 .DS_Store
 node_modules/
-
-# Private full poetry library extracted from the local copyrighted PDF
-data/poetry.local.json
-PiuPiu-poetry-library.json

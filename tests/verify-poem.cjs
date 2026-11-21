@@ -14,37 +14,46 @@ const pkg = JSON.parse(read("package.json"));
 const { translations } = require(path.join(root, "js/i18n.js"));
 const gitignore = read(".gitignore");
 
-// ---------- demo library ----------
+// ---------- complete authorized library ----------
 const sandbox = { window: {} };
 vm.runInNewContext(read("js/poetry.js"), sandbox);
 const library = sandbox.window.PiuPoetry;
-assert.ok(library && Array.isArray(library.categories) && Array.isArray(library.poems), "demo poetry library is missing");
-assert.equal(library.categories.length, 8, "the demo library needs all eight categories");
-assert.ok(library.poems.length >= 8, "the demo needs at least one poem per category");
-assert.equal(library.demo, true, "the shipped library should be the demo");
+assert.ok(library && Array.isArray(library.categories) && Array.isArray(library.poems), "poetry library is missing");
+assert.equal(library.categories.length, 8, "the library needs all eight categories");
+assert.equal(library.poems.length, 153, "the complete library should contain 153 poems");
+assert.equal(library.demo, false, "the complete library should not be marked as a demo");
+assert.equal(library.authorized, true, "the complete library should record its authorization");
+assert.match(library.source, /A World Full of Poems/, "the book source should be recorded");
+assert.match(library.rights, /permission/i, "the permission note should be recorded");
+const expectedCounts = { family: 20, feelings: 19, animals: 19, cities: 18, fun: 19, science: 20, body: 20, learning: 18 };
+for (const [category, expected] of Object.entries(expectedCounts)) {
+  const actual = library.poems.filter((poem) => poem.category === category).length;
+  assert.equal(actual, expected, `${category} should contain ${expected} poems`);
+}
+const poemIds = new Set();
+let lineCount = 0;
 for (const poem of library.poems) {
-  assert.ok(poem.id && poem.title && poem.author, "demo poems need id, title and author");
+  assert.ok(poem.id && poem.title && poem.author, "poems need id, title and author");
+  assert.equal(poemIds.has(poem.id), false, `duplicate poem id: ${poem.id}`);
+  poemIds.add(poem.id);
   assert.ok(Array.isArray(poem.lines) && poem.lines.length >= 3, `${poem.title} needs lines`);
   assert.ok(poem.lines.every((line) => typeof line === "string" && line.trim()), `${poem.title} has an empty line`);
   assert.ok(Array.isArray(poem.stanzaStarts) && poem.stanzaStarts[0] === 0, `${poem.title} needs stanza starts`);
   assert.ok(library.categories.some((category) => category.id === poem.category), `${poem.title} has an unknown category`);
+  lineCount += poem.lines.length;
 }
-const publicDomainPoets = new Set(["Emily Dickinson", "Lewis Carroll", "Anonymous"]);
-const originalPoets = new Set(["PiuPiu"]);
-for (const poem of library.poems) {
-  assert.ok(
-    publicDomainPoets.has(poem.author) || originalPoets.has(poem.author),
-    `${poem.title} should be public domain or an original demo poem`,
-  );
-}
+assert.equal(lineCount, 2034, "the library should contain 2034 poetry lines");
+assert.equal(library.poems.find((poem) => poem.title === "New Baby").lines.length, 13, "New Baby should be complete");
+assert.equal(library.poems.find((poem) => poem.title === "The Crocodile").author, "Lewis Carroll", "The Crocodile should be present");
+assert.equal(library.poems.find((poem) => poem.title === "Greetings").lines.length, 16, "Greetings should be complete");
 
-// ---------- private full library ----------
-assert.ok(gitignore.includes("data/poetry.local.json"), "the full extracted library must stay gitignored");
-assert.ok(gitignore.includes("PiuPiu-poetry-library.json"), "the portable import file must stay gitignored");
-assert.equal(sw.includes("poetry.local.json"), false, "the private full library must not be precached");
+// ---------- public data path and extractor ----------
 assert.ok(fs.existsSync(path.join(root, "tools/extract-poems.py")), "the extraction tool should be present");
 assert.match(read("tools/extract-poems.py"), /PyMuPDF|import fitz/, "the extractor should use PyMuPDF");
 assert.match(read("tools/extract-poems.py"), /CATEGORY_META/, "the extractor should classify poems by the book categories");
+assert.match(read("tools/extract-poems.py"), /JS_OUT|js\/poetry\.js/, "the extractor should write the public data file");
+assert.equal(game.includes("data/poetry.local.json"), false, "the game should not depend on a private local JSON file");
+assert.match(sw, /"\.\/js\/poetry\.js\?v=/ , "the full library should be precached for offline use");
 
 // ---------- entry points and markup ----------
 assert.match(html, /data-mode="poem"/, "home needs the poetry mode card");
@@ -142,12 +151,12 @@ for (const key of [
   }
 }
 
-assert.equal(pkg.version, "2.31.0");
+assert.equal(pkg.version, "2.32.0");
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true);
 assert.ok(sw.includes("./css/poetry.css") && sw.includes("./js/poetry.js"), "poetry assets should be offline-safe");
 
-console.log("✓ the private full library stays local; the shipped demo is public-domain/original");
+console.log("✓ all 153 authorized poems are bundled with eight categories and 2034 lines");
 console.log("✓ home has a fourth poetry mode, library sheet and poem stage");
 console.log("✓ every line is matched, marked and counted; completion opens the poem result");
 console.log("✓ the poetry layer follows the category colour and stays readable on phones");
-console.log("✓ library import, progress storage and translations are wired");
+console.log("✓ library import, progress storage, authorization credit and translations are wired");

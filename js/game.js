@@ -806,6 +806,7 @@
     return {
       version: 1,
       demo: Boolean(raw.demo),
+      authorized: Boolean(raw.authorized),
       source: String(raw.source || "Poetry"),
       rights: String(raw.rights || ""),
       categories,
@@ -870,15 +871,15 @@
   }
 
   function loadPoetryLibrary() {
-    const demo = normalizePoetryLibrary(window.PiuPoetry) || {
+    const base = normalizePoetryLibrary(window.PiuPoetry) || {
       version: 1,
       demo: true,
-      source: "PiuPiu demo",
+      source: "PiuPiu",
       rights: "",
       categories: POETRY_CATEGORY_FALLBACK.map((category) => ({ ...category })),
       poems: [],
     };
-    state.poetry.library = demo;
+    state.poetry.library = base;
     loadPoetryCompleted();
     const imported = readImportedPoetry();
     if (imported) {
@@ -895,29 +896,6 @@
       : (state.poetry.library.categories[0] || POETRY_CATEGORY_FALLBACK[0]).id;
     state.poetry.loaded = true;
     renderPoetrySummary();
-  }
-
-  async function hydrateLocalPoetry() {
-    if (state.poetry.imported) return;
-    const local =
-      ["localhost", "127.0.0.1", "::1"].includes(location.hostname) ||
-      new URLSearchParams(location.search).has("local");
-    if (!local) return;
-    try {
-      const response = await fetch("data/poetry.local.json", { cache: "no-store" });
-      if (!response.ok) return;
-      const library = normalizePoetryLibrary(await response.json());
-      if (!library || state.poetry.imported) return;
-      state.poetry.library = library;
-      state.poetry.demo = false;
-      const selected = poetryPoemById(state.poetry.selectedId) || library.poems[0];
-      state.poetry.selectedId = selected ? selected.id : "";
-      state.poetry.categoryId = selected ? selected.category : library.categories[0].id;
-      renderPoetrySummary();
-      if (els.poetrySheet && !els.poetrySheet.classList.contains("is-hidden")) {
-        renderPoetryLibrary();
-      }
-    } catch {}
   }
 
   function poetryStatus(message, kind = "") {
@@ -8685,7 +8663,6 @@
     if (!THEMES.includes(state.theme)) state.theme = "candy";
     if (!GAME_MODES.includes(state.mode)) state.mode = "rain";
     loadPoetryLibrary();
-    hydrateLocalPoetry();
     applyTheme(state.theme);
     updateModeUI();
     scatterPlaySteps();

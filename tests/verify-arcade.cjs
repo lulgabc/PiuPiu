@@ -139,7 +139,7 @@ assert.equal(translations.zh["start.heroTitle"], "读出来，消掉它");
 assert.equal(translations.zh["theme.candy"], "薄荷街机");
 assert.equal(translations.zh["theme.bubblegum"], "紫罗兰街机");
 assert.equal(translations.zh["theme.cream"], "柠檬街机");
-assert.equal(pkg.version, "2.31.0");
+assert.equal(pkg.version, "2.32.0");
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true);
 
 console.log("✓ the arcade skin loads after the base CSS and is offline-safe");
