@@ -1854,7 +1854,7 @@
 
   function speakFillWord(card) {
     if (state.phase !== "playing" || state.mode !== "fill" || !card) return;
-    focusWord(card);
+    focusWord(card, true);
     showHeard(tr("help.listen", { word: card.word }));
     speakHelp(card);
   }
@@ -5041,12 +5041,14 @@
     els.wordLayer.classList.remove("has-focus");
   }
 
-  function focusWord(word) {
+  function focusWord(word, hold = false) {
     clearFocus();
     state.focusedWord = word;
     word.el.classList.add("focused");
     els.wordLayer.classList.add("has-focus");
-    state.focusTimer = window.setTimeout(clearFocus, 3000);
+    // Help speech clears its own highlight the moment the utterance ends;
+    // the timer is only a safety net if onend never arrives.
+    state.focusTimer = window.setTimeout(clearFocus, hold ? 8000 : 3000);
   }
 
   function voiceValue(voice) {
@@ -5236,6 +5238,7 @@
     const synth = window.speechSynthesis;
     const Utterance = window.SpeechSynthesisUtterance;
     if (!synth || !Utterance) {
+      clearFocus();
       toast(tr("help.unsupported"), "warn");
       return;
     }
@@ -5275,6 +5278,9 @@
       if (token !== state.helpSpeakToken) return;
       state.helpSpeaking = false;
       state.helpGuardUntil = performance.now();
+      // Drop the yellow border and speaker badge together with the voice,
+      // so the hint state never lingers after the word has been spoken.
+      if (state.focusedWord && state.focusedWord.word === state.helpWord) clearFocus();
       updateMicUI();
       if (state.phase === "playing" && state.micEnabled && !state.listening && !state.speechStarting) {
         startSpeech();
@@ -5312,7 +5318,7 @@
       toast(tr("help.empty"), "warn");
       return;
     }
-    focusWord(word);
+    focusWord(word, true);
     showHeard(tr("help.listen", { word: word.word }));
     speakHelp(word);
   }

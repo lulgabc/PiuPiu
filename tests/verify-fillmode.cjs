@@ -55,7 +55,7 @@ assert.match(css, /html\[data-theme="cream"\] \.word\.fill-word/, "the cream the
 assert.match(game, /function speakFillWord\(card\)/, "clicking a word should have a dedicated hint action");
 assert.match(game, /els\.wordLayer\.addEventListener\("click"/, "the wall should listen for word taps");
 assert.match(game, /event\.target\.closest\("\.fill-word"\)/, "taps should resolve to a fill word");
-assert.match(game, /focusWord\(card\);\s*showHeard\(tr\("help\.listen"/, "a tap should highlight the word and show the listening hint");
+assert.match(game, /focusWord\(card, true\);\s*showHeard\(tr\("help\.listen"/, "a tap should highlight the word and show the listening hint");
 assert.match(game, /speakHelp\(card\)/, "a tap should speak the word with the help voice");
 assert.match(game, /el\.setAttribute\("role", "button"\)/, "fill cards should be announced as buttons");
 assert.match(game, /el\.tabIndex = 0/, "fill cards should be reachable from the keyboard");

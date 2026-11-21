@@ -50,6 +50,10 @@ assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\) \+ 4500/, "
 assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\);/, "recognition should open immediately when the hint ends");
 assert.match(helpBody, /const delay = IS_IOS \? \(releaseMic \? 150 : wasSpeaking \? 60 : 0\) : 0/, "iOS should wait for the audio route/cancel to settle");
 assert.match(helpBody, /window\.setTimeout\(startSpeak, delay\)/, "the delayed iOS utterance should still start");
+assert.match(helpBody, /focusedWord\.word === state\.helpWord\) clearFocus\(\)/, "the hint highlight should clear when TTS ends");
+assert.match(game, /function focusWord\(word, hold = false\)/, "focus should support a held help state");
+assert.match(game, /focusWord\(word, true\)/, "help speech should hold focus until the utterance ends");
+assert.match(game, /focusWord\(card, true\)/, "tap-to-speak cards should hold focus until the utterance ends");
 assert.match(game, /if \(state\.helpSpeaking \|\| now < state\.helpGuardUntil\) return;/, "TTS results and their tail should be ignored");
 assert.match(game, /const formCache = new Map\(\)/, "word forms should be cached between interim results");
 assert.match(game, /}, 4000\);/, "a stuck TTS should release after a bounded fallback");
@@ -61,5 +65,5 @@ console.log("✓ five alternatives and confidence ranking are enabled");
 console.log("✓ on-screen targets are used for on-device contextual biasing when available");
 console.log("✓ phrase reductions, compact forms, optional articles and fragments match");
 console.log("✓ speech latency and first-result timing are measured");
-console.log("✓ help speech mutes the mic and reopens recognition immediately when the hint ends");
+console.log("✓ help speech mutes the mic, reopens recognition and clears the hint as soon as TTS ends");
 console.log("✓ restart gaps are reduced, with no-speech and start-race safeguards");
