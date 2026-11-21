@@ -70,7 +70,7 @@
   const VOICE_KEY = "piupiu.voice";
   const THEME_KEY = "piupiu.theme";
   const THEMES = ["candy", "bubblegum", "cream"];
-  const THEME_COLORS = { candy: "#fbf6ea", bubblegum: "#f4effa", cream: "#f2f8f1" };
+  const THEME_COLORS = { candy: "#0a1024", bubblegum: "#120a24", cream: "#0c1414" };
   const INTRO_KEY = "piupiu.introSeen";
   const MODE_KEY = "piupiu.mode";
   const GAME_MODES = ["rain", "fill", "paint"];

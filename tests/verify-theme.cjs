@@ -5,7 +5,7 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
-const storybook = fs.readFileSync(path.join(root, "css/storybook.css"), "utf8");
+const arcade = fs.readFileSync(path.join(root, "css/arcade.css"), "utf8");
 const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
 const { translations } = require(path.join(root, "js/i18n.js"));
 
@@ -29,14 +29,22 @@ assert.match(css, /html\[data-theme\] \.panel \{/, "skins should restyle dialogs
 assert.match(css, /html\[data-theme\] \.setup-card/, "skins should restyle the parent sheet");
 for (const theme of ["candy", "bubblegum", "cream"]) {
   assert.match(
-    storybook,
-    new RegExp(`html\\[data-theme="${theme}"\\] \\{[\\s\\S]{0,220}--sb-paper:`),
-    `${theme} needs a paper tint`,
+    arcade,
+    new RegExp(`html\\[data-theme="${theme}"\\] \\{[\\s\\S]{0,260}--arc-bg:`),
+    `${theme} needs a dark arcade field`,
+  );
+  assert.match(
+    arcade,
+    new RegExp(`html\\[data-theme="${theme}"\\] \\{[\\s\\S]{0,260}--arc-accent:`),
+    `${theme} needs its neon accent`,
   );
 }
-assert.equal(translations.zh["theme.candy"], "草莓纸");
-assert.equal(translations.zh["theme.bubblegum"], "蓝莓纸");
-assert.equal(translations.zh["theme.cream"], "薄荷纸");
+assert.match(arcade, /--arc-bg: #0a1024/, "mint arcade should use the deep navy field");
+assert.match(arcade, /--arc-bg: #120a24/, "violet arcade should use the violet field");
+assert.match(arcade, /--arc-bg: #0c1414/, "lemon arcade should use the green-black field");
+assert.equal(translations.zh["theme.candy"], "薄荷街机");
+assert.equal(translations.zh["theme.bubblegum"], "紫罗兰街机");
+assert.equal(translations.zh["theme.cream"], "柠檬街机");
 assert.match(css, /html\[data-theme\]\.is-touch \.word:not\(\.settled\)/, "touch word cards should keep the themed surface");
 
 assert.match(game, /const THEME_KEY = "piupiu\.theme"/, "the skin choice should persist");
@@ -53,7 +61,7 @@ for (const key of ["theme.title", "theme.candy", "theme.bubblegum", "theme.cream
   }
 }
 
-console.log("✓ three paper tints share one storybook component layer");
+console.log("✓ three dark arcade tints share one neon component layer");
 console.log("✓ the parent panel can switch skins live and remembers the choice");
-console.log("✓ home, HUD, field, words and dialogs all respond to the paper tint");
+console.log("✓ home, HUD, field, words and dialogs all respond to the arcade tint");
 console.log("✓ skin labels are translated in zh / fr / en");

@@ -5,20 +5,21 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
-const storybook = fs.readFileSync(path.join(root, "css/storybook.css"), "utf8");
+const arcade = fs.readFileSync(path.join(root, "css/arcade.css"), "utf8");
 const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "js/i18n.js"), "utf8");
 
 // ---------- child-first home ----------
 assert.match(html, /id="startPanel" class="panel start-panel"/);
 assert.match(html, /class="start-mascot"/, "the home screen should have a mascot");
-assert.match(html, /class="story-hero"/, "the home should group the mascot and question into a paper hero");
+assert.match(html, /class="story-hero"/, "the home should group the mascot and question into an arcade hero");
+assert.match(html, /class="home-pet"[^>]*assets\/monsters\/kitty\.webp/, "the hero should show a monster mascot");
 assert.match(html, /id="gameTitle" data-i18n="start\.heroTitle"/, "the hero should ask what to play");
-assert.match(html, /class="mode-option-copy"/, "each mode ticket should carry a short hint");
+assert.match(html, /class="mode-option-copy"/, "each mode should carry a short hint");
 for (const mode of ["rain", "fill", "paint"]) {
   assert.match(html, new RegExp(`data-i18n="mode\\.${mode}Hint"`), `${mode} needs a short hint`);
 }
-assert.match(storybook, /\.play-steps \{\s*display: none;/, "the old step strip should be visually retired");
+assert.match(arcade, /\.play-steps \{\s*display: none;/, "the old step strip should be visually retired");
 assert.match(html, /id="packBtn" class="pack-pill"/, "the word pack should be a compact pill");
 assert.match(html, /id="packSummary"/, "the pack pill should summarise the current selection");
 assert.match(html, /id="setupBtn"[^>]*class="[^"]*home-settings/, "parents should have a compact settings entry");
@@ -41,10 +42,10 @@ assert.doesNotMatch(html, /id="voicePopover"/, "the old voice popover should be 
 assert.match(game, /function syncPhaseClass\(/, "the page should track game phase");
 assert.match(game, /function openSetup\(/, "settings should open from the home shortcuts");
 assert.match(game, /function closeSetup\(/, "settings should close cleanly");
-assert.match(storybook, /\.mode-switch \{[\s\S]{0,100}grid-template-columns: 1fr/, "modes should be stacked as paper tickets");
-assert.match(storybook, /\.mode-option\.is-active::after \{[\s\S]{0,100}content: "★"/, "the selected mode should get a star stamp");
-assert.match(storybook, /\.story-hero \{/, "the paper hero needs its own layout");
-assert.match(storybook, /\.story-pills \{/, "pack and player should share a quiet paper row");
+assert.match(arcade, /\.mode-switch \{[\s\S]{0,140}grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "modes should share one arcade row");
+assert.match(arcade, /\.mode-option\.is-active \{[\s\S]{0,180}box-shadow: 0 0 18px/, "the selected mode should glow");
+assert.match(arcade, /\.story-hero \{/, "the arcade hero needs its own layout");
+assert.match(arcade, /\.story-pills \{/, "pack and player should share a quiet meta row");
 assert.match(game, /renderVoiceOptions\(\);/, "voice labels should refresh with the language");
 
 // ---------- quiet menu ----------
@@ -63,11 +64,11 @@ assert.match(css, /\.speed-tool \{/, "the speed control should be styled");
 assert.ok(!html.includes('class="key-hint"'), "home buttons should not carry decorative arrows");
 assert.ok(!html.includes('pack-pill-chevron'), "the pack button should not carry an arrow");
 assert.ok(!html.includes('player-pill-chevron'), "the player button should not carry an arrow");
-assert.match(storybook, /\.correct-stat,[\s\S]{0,80}\.pile-stat,[\s\S]{0,80}\.time-stat \{\s*display: none;/, "the HUD should drop duplicate stats");
-assert.match(storybook, /\.stat-label \{[\s\S]{0,100}font-size: 7px/, "the HUD should use quiet paper labels");
-assert.match(storybook, /\.stat strong \{[\s\S]{0,100}font-size: 17px/, "the HUD values should stand out");
-assert.match(storybook, /@media \(max-width: 390px\)[\s\S]{0,100}\.stat-label \{\s*display: none;/, "phones should keep the HUD on one line");
-assert.match(storybook, /@media \(max-width: 560px\)[\s\S]{0,700}body\.phase-playing \.lang-select/, "language should leave the play HUD on phones");
+assert.match(arcade, /\.correct-stat,[\s\S]{0,80}\.pile-stat,[\s\S]{0,80}\.time-stat \{\s*display: none;/, "the HUD should drop duplicate stats");
+assert.match(arcade, /\.stat-label \{[\s\S]{0,120}font-size: 7px/, "the HUD should use quiet uppercase labels");
+assert.match(arcade, /\.score-stat strong \{[\s\S]{0,100}font-size: 22px/, "the score should dominate the HUD");
+assert.match(arcade, /@media \(max-width: 360px\)[\s\S]{0,700}\.stat-label \{\s*display: none;/, "phones should keep the HUD on one line");
+assert.match(arcade, /body\.phase-playing \.lang-select \{\s*display: none;/, "language should leave the play HUD");
 assert.match(css, /\.setup-sheet \{/, "the parent drawer should be styled");
 assert.match(css, /\.pack-sheet \{/, "the word picker should be styled");
 assert.match(css, /\.pack-preview \{/, "the chosen pack should have a visual preview");
@@ -82,6 +83,6 @@ for (const key of ["setup.title", "setup.done", "setup.parent", "setup.parentBut
   assert.equal(matches.length, 3, `${key} should be translated in zh / fr / en`);
 }
 
-console.log("✓ home screen leads with a paper hero, three mode tickets and one primary CTA");
+console.log("✓ home screen leads with an arcade hero, three modes and one giant play button");
 console.log("✓ word packs, voice, install and parent notes are progressively disclosed");
-console.log("✓ menu mode hides the HUD, paper stars and input footer");
+console.log("✓ menu mode hides the HUD, neon dots and input footer");
