@@ -3393,3 +3393,211 @@ html[data-theme] .reward-progress {
   padding: 0;
   border: 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* SVG icon system                                                    */
+/* ------------------------------------------------------------------ */
+
+.ui-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  vertical-align: -0.12em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+html[data-theme] .brand-mark {
+  width: 14px;
+  height: 14px;
+  background: transparent;
+  color: var(--arc-accent);
+  box-shadow: none;
+}
+
+html[data-theme] .brand-mark .ui-icon {
+  width: 14px;
+  height: 14px;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--arc-accent) 65%, transparent));
+}
+
+html[data-theme] .icon-btn .ui-icon,
+html[data-theme] .pack-close .ui-icon,
+html[data-theme] .setup-close .ui-icon,
+html[data-theme] .player-close .ui-icon,
+html[data-theme] .board-close .ui-icon,
+html[data-theme] .install-close .ui-icon {
+  width: 14px;
+  height: 14px;
+}
+
+html[data-theme] .speed-tool .ui-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--arc-lemon);
+}
+
+html[data-theme] .mode-option-icon .ui-icon {
+  width: 22px;
+  height: 22px;
+}
+
+html[data-theme] .mode-option.is-active .mode-option-icon {
+  color: var(--arc-accent);
+}
+
+html[data-theme] .play-icon .ui-icon {
+  width: 18px;
+  height: 18px;
+}
+
+html[data-theme] .pack-category-icon .ui-icon {
+  width: 19px;
+  height: 19px;
+  color: var(--arc-accent);
+}
+
+html[data-theme] .pack-preview-icon .ui-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--arc-accent);
+}
+
+html[data-theme] .player-pill-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+html[data-theme] .player-pill-total .ui-icon,
+html[data-theme] .player-option-total .ui-icon,
+html[data-theme] .board-row-total .ui-icon {
+  width: 10px;
+  height: 10px;
+  color: var(--arc-lemon);
+}
+
+html[data-theme] .home-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+html[data-theme] .home-best .ui-icon {
+  width: 11px;
+  height: 11px;
+  color: var(--arc-lemon);
+}
+
+html[data-theme] .eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+html[data-theme] .eyebrow .ui-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--arc-accent);
+}
+
+html[data-theme] .over-board-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+html[data-theme] .over-board-link .ui-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--arc-lemon);
+}
+
+html[data-theme] .board-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+html[data-theme] .board-head h2 .ui-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--arc-lemon);
+}
+
+html[data-theme] .install-badge {
+  display: grid;
+  place-items: center;
+}
+
+html[data-theme] .install-badge .ui-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--arc-accent);
+}
+
+html[data-theme] .setup-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+html[data-theme] .setup-hint .ui-icon {
+  width: 11px;
+  height: 11px;
+  margin-top: 1px;
+  color: var(--arc-accent);
+}
+
+html[data-theme] .board-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html[data-theme] .board-rank .ui-icon {
+  width: 17px;
+  height: 17px;
+}
+
+html[data-theme] .board-rank.rank-1 { color: var(--arc-lemon); }
+html[data-theme] .board-rank.rank-2 { color: #c9d2e8; }
+html[data-theme] .board-rank.rank-3 { color: #e6a86a; }
+
+html[data-theme] .player-option-edit .ui-icon,
+html[data-theme] .player-option-delete .ui-icon,
+html[data-theme] .custom-pack-delete .ui-icon {
+  width: 12px;
+  height: 12px;
+}
+
+html[data-theme] .record {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+html[data-theme] .record .ui-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--arc-lemon);
+}
+
+html[data-theme] .heard .ui-icon {
+  width: 11px;
+  height: 11px;
+  margin-right: 5px;
+  color: var(--arc-accent);
+}
+
+html[data-theme] .heard:empty {
+  display: none;
+}

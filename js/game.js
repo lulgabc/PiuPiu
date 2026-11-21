@@ -294,6 +294,7 @@
     praise: $("praise"),
     toast: $("toast"),
     bestLine: $("bestLine"),
+    bestLineValue: $("bestLineValue"),
     playerBtn: $("playerBtn"),
     playerAvatar: $("playerAvatar"),
     playerName: $("playerName"),
@@ -326,6 +327,7 @@
     finalCombo: $("finalCombo"),
     finalTime: $("finalTime"),
     overEyebrow: $("overEyebrow"),
+    overEyebrowIcon: $("overEyebrowIcon"),
     overTitle: $("overTitle"),
     overTagline: $("overTagline"),
     overScoreLabel: $("overScoreLabel"),
@@ -482,6 +484,38 @@
     if (el.textContent !== text) el.textContent = text;
   }
 
+  const UI_ICON_NS = "http://www.w3.org/2000/svg";
+
+  function iconSvg(name, className = "ui-icon") {
+    const svg = document.createElementNS(UI_ICON_NS, "svg");
+    svg.setAttribute("class", className);
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    const use = document.createElementNS(UI_ICON_NS, "use");
+    use.setAttribute("href", `#ui-${name}`);
+    svg.appendChild(use);
+    return svg;
+  }
+
+  function setIcon(el, name, className = "ui-icon") {
+    if (!el) return;
+    el.replaceChildren(iconSvg(name, className));
+  }
+
+  function setUseIcon(svg, name) {
+    if (!svg) return;
+    const use = svg.querySelector("use");
+    if (use) use.setAttribute("href", `#ui-${name}`);
+  }
+
+  function setStarValue(el, value) {
+    if (!el) return;
+    el.replaceChildren(
+      iconSvg("star", "ui-icon ui-icon-star"),
+      document.createTextNode(formatNumber(value)),
+    );
+  }
+
   function formatTime(totalSeconds) {
     const s = Math.max(0, Math.floor(totalSeconds));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -585,6 +619,43 @@
     return categories;
   }
 
+  const CATEGORY_ICON_IDS = {
+    core: "spark",
+    numbers: "numbers",
+    food: "food",
+    fruits: "apple",
+    vegetables: "carrot",
+    drinks: "cup",
+    animals: "paw",
+    body: "person",
+    family: "users",
+    clothes: "shirt",
+    home: "house",
+    school: "gradcap",
+    jobs: "briefcase",
+    sports: "ball",
+    music: "music",
+    travel: "plane",
+    transport: "bus",
+    nature: "leaf",
+    weather: "sun",
+    technology: "laptop",
+    emotions: "heart",
+    places: "pin",
+    dolch: "backpack",
+    fry: "alphabet",
+    dale: "book",
+    bnc: "puzzle",
+    phave: "link",
+    phrase: "speech",
+  };
+
+  function categoryIcon(category) {
+    if (!category) return "spark";
+    if (category.custom || category.packId) return "file";
+    return CATEGORY_ICON_IDS[category.id] || "spark";
+  }
+
   function categoryName(category) {
     if (!category) return "";
     return category.name || tr(category.nameKey || "");
@@ -663,7 +734,7 @@
       const icon = document.createElement("span");
       icon.className = "pack-category-icon";
       icon.setAttribute("aria-hidden", "true");
-      icon.textContent = category.icon || "✦";
+      icon.appendChild(iconSvg(categoryIcon(category)));
       const copy = document.createElement("span");
       copy.className = "pack-category-copy";
       const name = document.createElement("b");
@@ -861,7 +932,7 @@
     }
 
     if (category) {
-      setText(els.packPreviewIcon, category.icon || "✦");
+      setIcon(els.packPreviewIcon, categoryIcon(category));
       setText(els.packPreviewName, categoryName(category));
       setText(els.packPreviewMeta, tr(modeKey));
       setText(els.packSummary, `${categoryName(category)} · ${tr(modeKey)}`);
@@ -944,7 +1015,7 @@
       remove.type = "button";
       remove.className = "custom-pack-delete";
       remove.dataset.customDelete = pack.id;
-      remove.textContent = "✕";
+      remove.replaceChildren(iconSvg("close"));
       remove.title = tr("custom.delete");
       remove.setAttribute("aria-label", tr("custom.deleteAria", { name: pack.name }));
       item.appendChild(pick);
@@ -1279,7 +1350,7 @@
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     }
-    setText(els.stepIcon1, paint ? "🎨" : fill ? "🧩" : "🌧️");
+    setIcon(els.stepIcon1, paint ? "palette" : fill ? "grid" : "rain");
     setText(els.stepLabel1, tr(paint ? "mode.paintStep1" : fill ? "mode.fillStep1" : "start.step1"));
     setText(els.stepLabel2, tr("start.step2"));
     setText(els.stepLabel3, tr(paint ? "mode.paintStep3" : fill ? "mode.fillStep3" : "start.step3"));
@@ -2573,7 +2644,7 @@
   function speakFillWord(card) {
     if (state.phase !== "playing" || state.mode === "rain" || !card) return;
     focusWord(card, true);
-    showHeard(tr("help.listen", { word: card.word }));
+    showHeard(tr("help.listen", { word: card.word }), "volume");
     speakHelp(card);
   }
 
@@ -4816,7 +4887,7 @@
 
       const total = document.createElement("span");
       total.className = "player-option-total";
-      total.textContent = `⭐ ${formatNumber(profile.total)}`;
+      setStarValue(total, profile.total);
 
       main.append(avatar, text, total);
       if (profile.id === state.userId) {
@@ -4832,7 +4903,7 @@
       edit.type = "button";
       edit.className = "player-option-edit";
       edit.dataset.editPlayer = profile.id;
-      edit.textContent = "✎";
+      edit.replaceChildren(iconSvg("pencil"));
       edit.setAttribute("aria-label", tr("player.editAvatar") + " " + profile.name);
       edit.title = tr("player.editAvatar");
       row.appendChild(edit);
@@ -4841,7 +4912,7 @@
       remove.type = "button";
       remove.className = "player-option-delete";
       remove.dataset.deletePlayer = profile.id;
-      remove.textContent = "✕";
+      remove.replaceChildren(iconSvg("close"));
       remove.setAttribute("aria-label", tr("player.delete") + " " + profile.name);
       remove.title = tr("player.delete");
       row.appendChild(remove);
@@ -4856,14 +4927,18 @@
     els.boardList.replaceChildren();
     if (els.boardEmpty) els.boardEmpty.classList.toggle("is-hidden", ranked.length > 0);
 
-    const medals = ["🥇", "🥈", "🥉"];
     ranked.forEach((profile, index) => {
       const row = document.createElement("li");
       row.className = profile.id === state.userId ? "board-row is-current" : "board-row";
 
       const rank = document.createElement("span");
       rank.className = "board-rank";
-      rank.textContent = medals[index] || String(index + 1);
+      if (index < 3) {
+        rank.classList.add("board-rank-icon", `rank-${index + 1}`);
+        rank.replaceChildren(iconSvg("medal"));
+      } else {
+        rank.textContent = String(index + 1);
+      }
 
       const avatar = document.createElement("span");
       avatar.className = "board-row-avatar";
@@ -4888,7 +4963,7 @@
 
       const total = document.createElement("span");
       total.className = "board-row-total";
-      total.textContent = `⭐ ${formatNumber(profile.total)}`;
+      setStarValue(total, profile.total);
 
       row.setAttribute(
         "aria-label",
@@ -4905,7 +4980,7 @@
     const profile = currentProfile();
     setText(els.playerAvatar, profile ? profile.avatar : "＋");
     setText(els.playerName, profile ? profile.name : tr("player.none"));
-    setText(els.playerTotal, profile ? `⭐ ${formatNumber(profile.total)}` : "");
+    setText(els.playerTotal, profile ? formatNumber(profile.total) : "");
     const label = profile
       ? tr("player.openAria", { name: profile.name, score: formatNumber(profile.total) })
       : tr("player.none");
@@ -4927,7 +5002,7 @@
 
   function updatePlayerTotals() {
     const profile = currentProfile();
-    setText(els.playerTotal, `⭐ ${formatNumber(profile ? profile.total : 0)}`);
+    setText(els.playerTotal, formatNumber(profile ? profile.total : 0));
     if (els.boardSheet && !els.boardSheet.classList.contains("is-hidden")) renderBoard();
     if (state.phase === "over") updateSessionTotal();
   }
@@ -5176,7 +5251,7 @@
   function renderBestLine() {
     const score = formatNumber(state.highScore);
     const label = tr("start.bestLabel", { score });
-    setText(els.bestLine, tr("start.best", { score }));
+    setText(els.bestLineValue, score);
     els.bestLine.setAttribute("aria-label", label);
     els.bestLine.setAttribute("title", label);
   }
@@ -5205,6 +5280,10 @@
     setText(
       els.overEyebrow,
       tr(paint ? "paint.overEyebrow" : fill ? "fill.overEyebrow" : "over.eyebrow"),
+    );
+    setUseIcon(
+      els.overEyebrowIcon,
+      paint ? "palette" : fill ? "grid" : state.newRecord ? "trophy" : "burst",
     );
     setText(
       els.overTitle,
@@ -5255,15 +5334,21 @@
     setText(els.finalTime, formatTime(state.elapsed));
     renderMissedList();
     els.recordLine.classList.toggle("new", state.newRecord);
-    els.recordLine.textContent = state.newRecord
-      ? tr("over.record")
-      : tr("over.best", { score: formatNumber(state.highScore) });
+    els.recordLine.replaceChildren();
+    if (state.newRecord) els.recordLine.appendChild(iconSvg("trophy"));
+    els.recordLine.appendChild(
+      document.createTextNode(
+        state.newRecord
+          ? tr("over.record")
+          : tr("over.best", { score: formatNumber(state.highScore) }),
+      ),
+    );
     updateSessionTotal();
   }
 
   function updatePauseButton() {
     const paused = state.phase === "paused";
-    els.pauseBtn.textContent = paused ? "▶" : "❚❚";
+    setIcon(els.pauseBtn, paused ? "play" : "pause");
     els.pauseBtn.title = paused ? tr("pause.resumeTitle") : tr("pause.pauseTitle");
     els.pauseBtn.setAttribute("aria-label", paused ? tr("pause.resume") : tr("pause.pause"));
   }
@@ -5318,7 +5403,7 @@
   }
 
   function updateMuteUI() {
-    els.muteBtn.textContent = state.muted ? "🔇" : "🔊";
+    setIcon(els.muteBtn, state.muted ? "volume-off" : "volume");
     els.muteBtn.setAttribute("aria-pressed", String(state.muted));
     els.muteBtn.title = tr("mute.title");
     els.muteBtn.setAttribute("aria-label", state.muted ? tr("mute.on") : tr("mute.off"));
@@ -6292,7 +6377,7 @@
     pulseCombo();
     updateHUD(true);
     petCheer();
-    showHeard(tr("heard.correct", { word: word.word }));
+    showHeard(tr("heard.correct", { word: word.word }), "check");
     if (!golden) showPraise();
     if (state.mode === "rain") {
       if (state.cleared % 5 === 0) triggerRewardClear(rel);
@@ -6677,7 +6762,7 @@
       return;
     }
     focusWord(word, true);
-    showHeard(tr("help.listen", { word: word.word }));
+    showHeard(tr("help.listen", { word: word.word }), "volume");
     speakHelp(word);
   }
 
@@ -6860,7 +6945,7 @@
 
         if (latest) {
           if (metrics.lastSpeechStart) metrics.lastResultLatency = Math.round(now - metrics.lastSpeechStart);
-          showHeard(tr("heard.prefix", { text: latest }));
+          showHeard(tr("heard.prefix", { text: latest }), "mic");
         }
       };
 
@@ -7056,8 +7141,11 @@
     setText(els.toast, "");
   }
 
-  function showHeard(message) {
-    setText(els.heard, message);
+  function showHeard(message, iconName) {
+    if (!els.heard) return;
+    els.heard.replaceChildren();
+    if (iconName) els.heard.appendChild(iconSvg(iconName));
+    els.heard.appendChild(document.createTextNode(message));
     els.heard.classList.add("show");
     clearTimeout(state.heardTimer);
     state.heardTimer = window.setTimeout(() => {
@@ -7068,7 +7156,7 @@
   function hideHeard() {
     clearTimeout(state.heardTimer);
     els.heard.classList.remove("show");
-    setText(els.heard, "");
+    els.heard.replaceChildren();
   }
 
   function showPraise(keyOverride) {

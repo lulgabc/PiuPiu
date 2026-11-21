@@ -77,7 +77,7 @@ assert.match(css, /\.pack-preview \{/, "the chosen pack should have a visual pre
 assert.equal(i18n.match(/"start\.step1": "落下来"/g)?.length, 1);
 assert.equal(i18n.match(/"start\.step2": "大声读"/g)?.length, 1);
 assert.equal(i18n.match(/"start\.step3": "爆炸"/g)?.length, 1);
-assert.match(i18n, /"start\.best": "🏆 \{score\}"/);
+assert.match(i18n, /"start\.best": "\{score\}"/);
 for (const key of ["setup.title", "setup.done", "setup.parent", "setup.parentButton", "install.short"]) {
   const matches = i18n.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || [];
   assert.equal(matches.length, 3, `${key} should be translated in zh / fr / en`);

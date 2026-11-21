@@ -108,7 +108,7 @@ assert.match(game, /fill\.bonus/, "the result panel should explain the speed bon
 assert.match(game, /const fill = state\.mode === "fill"/, "HUD values should branch by mode");
 assert.match(game, /board \? String\(state\.settled\.length\) : String\(state\.level\)/, "board modes should show remaining words instead of a level");
 assert.match(game, /const total = fill \? state\.fillTotal : state\.paintTotal/, "board progress should use the active mode total");
-assert.match(game, /setText\(els\.stepIcon1, paint \? "🎨" : fill \? "🧩" : "🌧️"\)/, "the first step icon should follow the mode");
+assert.match(game, /setIcon\(els\.stepIcon1, paint \? "palette" : fill \? "grid" : "rain"\)/, "the first step icon should follow the mode");
 assert.match(game, /setText\(els\.correctLabel, tr\(paint \? "hud\.hits" : fill \? "hud\.cleared" : "hud\.correct"\)\)/, "the correct stat should read hits or cleared in board modes");
 assert.match(game, /setText\(els\.levelLabel, tr\(fill \|\| paint \? "hud\.remaining" : "hud\.level"\)\)/, "the level label should become remaining in board modes");
 assert.match(game, /tr\(paint \? "paint\.overTitle" : fill \? "fill\.overTitle" : "over\.title"\)/, "the result title should match the mode");
