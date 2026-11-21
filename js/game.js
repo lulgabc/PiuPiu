@@ -13,6 +13,8 @@
       : {};
   const Profiles = window.PiuProfiles && typeof window.PiuProfiles === "object" ? window.PiuProfiles : null;
   const Pets = window.PiuPets && typeof window.PiuPets === "object" ? window.PiuPets : null;
+  const CustomPacks =
+    window.PiuCustomPacks && typeof window.PiuCustomPacks === "object" ? window.PiuCustomPacks : null;
   const Physics = window.Matter && window.Matter.Engine ? window.Matter : null;
   const EMOJI =
     window.PIU_EMOJI && typeof window.PIU_EMOJI === "object" ? window.PIU_EMOJI : {};
@@ -227,6 +229,16 @@
     packSheet: $("packSheet"),
     packClose: $("packClose"),
     packDone: $("packDone"),
+    customPackSection: $("customPackSection"),
+    customPackQuota: $("customPackQuota"),
+    customPackName: $("customPackName"),
+    customPackFile: $("customPackFile"),
+    customPackChoose: $("customPackChoose"),
+    customPackCreate: $("customPackCreate"),
+    customPackFileInfo: $("customPackFileInfo"),
+    customPackStatus: $("customPackStatus"),
+    customPackList: $("customPackList"),
+    customPackEmpty: $("customPackEmpty"),
     packPreviewIcon: $("packPreviewIcon"),
     packPreviewName: $("packPreviewName"),
     packPreviewMeta: $("packPreviewMeta"),
@@ -332,6 +344,10 @@
     bag: [],
     pool: [],
     categories: [],
+    customPacks: [],
+    customPackFile: null,
+    customPackReading: false,
+    customNotice: null,
     categoryId: "core",
     difficulty: 0,
     band: "all",
@@ -543,7 +559,31 @@
       if (!category || !category.id || !Array.isArray(category.bands)) continue;
       categories.push({ ...category, education: true, group: category.group || "phrases" });
     }
+
+    for (const pack of Array.isArray(state.customPacks) ? state.customPacks : []) {
+      if (!pack || !pack.id || !Array.isArray(pack.words) || !pack.words.length) continue;
+      const levels = { 1: [], 2: [], 3: [] };
+      for (const word of pack.words) {
+        const bucket = word.length <= 4 ? 1 : word.length <= 6 ? 2 : 3;
+        levels[bucket].push(word);
+      }
+      categories.push({
+        id: `custom:${pack.id}`,
+        icon: "📄",
+        name: pack.name,
+        custom: true,
+        packId: pack.id,
+        group: "custom",
+        levels,
+        countKey: "custom.wordCount",
+      });
+    }
     return categories;
+  }
+
+  function categoryName(category) {
+    if (!category) return "";
+    return category.name || tr(category.nameKey || "");
   }
 
   function getSelectedCategory() {
@@ -574,7 +614,9 @@
     if (!pool.length) {
       const fallback = Array.isArray(category.bands)
         ? category.bands.flatMap((band) => band.words || [])
-        : [];
+        : category.levels
+          ? [1, 2, 3].flatMap((level) => category.levels[level] || [])
+          : [];
       pool = uniqueWords(fallback.length ? fallback : WORD_BANK);
     }
     return pool;
@@ -586,6 +628,7 @@
     select.replaceChildren();
 
     const groups = [
+      { key: "custom", labelKey: "group.custom" },
       { key: "education", labelKey: "group.education" },
       { key: "families", labelKey: "group.families" },
       { key: "phrases", labelKey: "group.phrases" },
@@ -604,7 +647,7 @@
       for (const category of categories) {
         const option = document.createElement("option");
         option.value = category.id;
-        option.textContent = `${category.icon} ${tr(category.nameKey)}`;
+        option.textContent = `${category.icon} ${categoryName(category)}`;
         optgroup.appendChild(option);
       }
       select.appendChild(optgroup);
@@ -655,6 +698,19 @@
 
     els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
       const level = Number(button.dataset.level);
+      const available = level === 0 || !category || !category.levels || (category.levels[level] || []).length > 0;
+      button.disabled = !available;
+    });
+    if (
+      category &&
+      category.levels &&
+      state.difficulty > 0 &&
+      !(category.levels[state.difficulty] || []).length
+    ) {
+      state.difficulty = 0;
+    }
+    els.diffGroup.querySelectorAll("[data-level]").forEach((button) => {
+      const level = Number(button.dataset.level);
       const active = level === state.difficulty;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
@@ -674,10 +730,318 @@
 
     if (category) {
       setText(els.packPreviewIcon, category.icon || "✦");
-      setText(els.packPreviewName, tr(category.nameKey));
+      setText(els.packPreviewName, categoryName(category));
       setText(els.packPreviewMeta, tr(modeKey));
-      setText(els.packSummary, `${tr(category.nameKey)} · ${tr(modeKey)}`);
+      setText(els.packSummary, `${categoryName(category)} · ${tr(modeKey)}`);
     }
+  }
+
+  function formatFileSize(bytes) {
+    const kb = Math.max(1, Math.round(Number(bytes) / 1024));
+    if (kb < 1024) return `${kb} KB`;
+    return `${(kb / 1024).toFixed(1)} MB`;
+  }
+
+  function isSupportedCustomFile(file) {
+    if (!file) return false;
+    const name = String(file.name || "").toLowerCase();
+    if (/\.(txt|text|md|csv)$/.test(name)) return true;
+    return /^text\//.test(String(file.type || "").toLowerCase());
+  }
+
+  function fileBaseName(name) {
+    const base = String(name || "")
+      .replace(/\.[^.]+$/, "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return CustomPacks ? CustomPacks.sanitizeName(base) : base.slice(0, 30);
+  }
+
+  function renderCustomNotice() {
+    if (!els.customPackStatus) return;
+    const notice = state.customNotice;
+    if (!notice) {
+      setText(els.customPackStatus, "");
+      els.customPackStatus.className = "custom-pack-status";
+      return;
+    }
+    setText(els.customPackStatus, tr(notice.key, notice.vars));
+    els.customPackStatus.className = `custom-pack-status is-${notice.type || "info"}`;
+  }
+
+  function setCustomNotice(key, vars = {}, type = "info") {
+    state.customNotice = key ? { key, vars, type } : null;
+    renderCustomNotice();
+  }
+
+  function renderCustomPackList() {
+    if (!els.customPackList) return;
+    const packs = Array.isArray(state.customPacks) ? state.customPacks : [];
+    const current = getSelectedCategory();
+    const currentPackId = current && current.custom ? current.packId : "";
+    els.customPackList.replaceChildren();
+    for (const pack of packs) {
+      const item = document.createElement("li");
+      item.className = "custom-pack-item";
+      item.dataset.customPackId = pack.id;
+
+      const text = document.createElement("div");
+      text.className = "custom-pack-item-text";
+      const name = document.createElement("strong");
+      name.textContent = pack.name;
+      const meta = document.createElement("span");
+      meta.textContent = tr("custom.wordCount", { count: formatNumber(pack.words.length) });
+      text.appendChild(name);
+      text.appendChild(meta);
+      if (pack.id === currentPackId) {
+        const badge = document.createElement("em");
+        badge.className = "custom-pack-current";
+        badge.textContent = tr("custom.current");
+        text.appendChild(badge);
+      }
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "custom-pack-delete";
+      remove.dataset.customDelete = pack.id;
+      remove.textContent = "✕";
+      remove.title = tr("custom.delete");
+      remove.setAttribute("aria-label", tr("custom.deleteAria", { name: pack.name }));
+      item.appendChild(text);
+      item.appendChild(remove);
+      els.customPackList.appendChild(item);
+    }
+    els.customPackList.classList.toggle("is-hidden", packs.length === 0);
+    if (els.customPackEmpty) {
+      els.customPackEmpty.classList.toggle("is-hidden", packs.length > 0);
+    }
+  }
+
+  function updateCustomPackUI() {
+    if (!els.customPackSection) return;
+    const packs = Array.isArray(state.customPacks) ? state.customPacks : [];
+    const maxPacks = CustomPacks ? CustomPacks.MAX_PACKS : 12;
+    if (els.customPackQuota) {
+      setText(els.customPackQuota, tr("custom.quota", { count: packs.length, max: maxPacks }));
+    }
+    if (els.customPackFileInfo) {
+      const file = state.customPackFile;
+      setText(
+        els.customPackFileInfo,
+        file ? tr("custom.fileChosen", { name: file.name, size: formatFileSize(file.size) }) : "",
+      );
+    }
+    if (els.customPackChoose) {
+      els.customPackChoose.disabled = state.customPackReading || !CustomPacks;
+    }
+    if (els.customPackCreate) {
+      const fileTooLarge =
+        state.customPackFile &&
+        CustomPacks &&
+        state.customPackFile.size > CustomPacks.MAX_FILE_BYTES;
+      const fileUnsupported =
+        state.customPackFile && !isSupportedCustomFile(state.customPackFile);
+      els.customPackCreate.disabled =
+        state.customPackReading ||
+        !CustomPacks ||
+        !state.customPackFile ||
+        fileTooLarge ||
+        fileUnsupported ||
+        packs.length >= maxPacks;
+    }
+    renderCustomNotice();
+  }
+
+  function refreshCustomPackCategories(preferredId) {
+    if (!CustomPacks) return;
+    state.customPacks = CustomPacks.load();
+    state.categories = buildCategories();
+    const preferred = preferredId && state.categories.some((category) => category.id === preferredId)
+      ? preferredId
+      : null;
+    const current = state.categories.some((category) => category.id === state.categoryId)
+      ? state.categoryId
+      : "core";
+    state.categoryId = preferred || current;
+    const category = getSelectedCategory();
+    if (category && Array.isArray(category.bands)) {
+      const validBand =
+        state.band === "all" || category.bands.some((band) => band.id === state.band);
+      if (!validBand) state.band = "all";
+    } else {
+      state.band = "all";
+    }
+    if (
+      category &&
+      category.levels &&
+      state.difficulty > 0 &&
+      !(category.levels[state.difficulty] || []).length
+    ) {
+      state.difficulty = 0;
+    }
+    state.pool = getSelectedPool();
+    savePackSelection();
+    renderCategoryOptions();
+    updatePackUI();
+    renderCustomPackList();
+    updateCustomPackUI();
+  }
+
+  function onCustomFileChange() {
+    if (!els.customPackFile) return;
+    state.customPackFile =
+      els.customPackFile.files && els.customPackFile.files[0]
+        ? els.customPackFile.files[0]
+        : null;
+    if (
+      state.customPackFile &&
+      isSupportedCustomFile(state.customPackFile) &&
+      els.customPackName &&
+      !els.customPackName.value.trim()
+    ) {
+      els.customPackName.value = fileBaseName(state.customPackFile.name);
+    }
+    if (state.customPackFile && !isSupportedCustomFile(state.customPackFile)) {
+      setCustomNotice("custom.fileType", {}, "error");
+    } else if (
+      state.customPackFile &&
+      CustomPacks &&
+      state.customPackFile.size > CustomPacks.MAX_FILE_BYTES
+    ) {
+      setCustomNotice(
+        "custom.fileTooLarge",
+        { mb: Math.round(CustomPacks.MAX_FILE_BYTES / (1024 * 1024)) },
+        "error",
+      );
+    } else {
+      setCustomNotice(null);
+    }
+    updateCustomPackUI();
+  }
+
+  function createCustomPackFromFile() {
+    if (!CustomPacks) {
+      setCustomNotice("custom.unsupported", {}, "error");
+      return;
+    }
+    const file = state.customPackFile;
+    if (!file) {
+      setCustomNotice("custom.selectFirst", {}, "warn");
+      return;
+    }
+    if (!isSupportedCustomFile(file)) {
+      setCustomNotice("custom.fileType", {}, "error");
+      return;
+    }
+    if (state.customPackReading) return;
+    if (file.size > CustomPacks.MAX_FILE_BYTES) {
+      setCustomNotice(
+        "custom.fileTooLarge",
+        { mb: Math.round(CustomPacks.MAX_FILE_BYTES / (1024 * 1024)) },
+        "error",
+      );
+      return;
+    }
+    if (typeof window.FileReader !== "function") {
+      setCustomNotice("custom.unsupported", {}, "error");
+      return;
+    }
+
+    state.customPackReading = true;
+    setCustomNotice("custom.reading", {}, "info");
+    updateCustomPackUI();
+
+    const finishError = (key, vars = {}) => {
+      state.customPackReading = false;
+      setCustomNotice(key, vars, "error");
+      updateCustomPackUI();
+    };
+
+    const reader = new window.FileReader();
+    reader.onerror = () => finishError("custom.readError");
+    reader.onload = () => {
+      try {
+        const parsed = CustomPacks.parseText(
+          typeof reader.result === "string" ? reader.result : "",
+        );
+        if (!parsed.words.length) {
+          finishError("custom.noWords");
+          return;
+        }
+        if (parsed.words.length < CustomPacks.MIN_WORDS) {
+          finishError("custom.tooFew", { min: CustomPacks.MIN_WORDS });
+          return;
+        }
+        const typed = els.customPackName ? els.customPackName.value.trim() : "";
+        const name =
+          CustomPacks.sanitizeName(typed) ||
+          fileBaseName(file.name) ||
+          tr("custom.defaultName");
+        const result = CustomPacks.create(name, parsed.words);
+        if (result.error) {
+          if (result.error === "too-many") {
+            finishError("custom.tooMany", { max: CustomPacks.MAX_PACKS });
+          } else if (result.error === "too-few") {
+            finishError("custom.tooFew", { min: CustomPacks.MIN_WORDS });
+          } else if (result.error === "storage") {
+            finishError("custom.storage");
+          } else {
+            finishError("custom.noWords");
+          }
+          return;
+        }
+
+        state.customPackReading = false;
+        state.difficulty = 0;
+        state.band = "all";
+        refreshCustomPackCategories(`custom:${result.pack.id}`);
+        setCustomNotice(
+          parsed.truncated ? "custom.successTruncated" : "custom.success",
+          {
+            name: result.pack.name,
+            count: formatNumber(result.pack.words.length),
+          },
+          "success",
+        );
+        if (els.customPackName) els.customPackName.value = "";
+        state.customPackFile = null;
+        if (els.customPackFile) els.customPackFile.value = "";
+        updateCustomPackUI();
+      } catch {
+        finishError("custom.readError");
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  function onCustomPackListClick(event) {
+    if (!CustomPacks) return;
+    const target = event.target;
+    const button =
+      target && typeof target.closest === "function"
+        ? target.closest("[data-custom-delete]")
+        : null;
+    if (!button) return;
+    const id = button.dataset.customDelete;
+    const pack = (state.customPacks || []).find((item) => item.id === id);
+    if (!pack) return;
+    const confirmed =
+      typeof window.confirm !== "function" ||
+      window.confirm(tr("custom.deleteConfirm", { name: pack.name }));
+    if (!confirmed) return;
+    if (!CustomPacks.remove(id)) {
+      setCustomNotice("custom.storage", {}, "error");
+      return;
+    }
+    const current = getSelectedCategory();
+    if (current && current.custom && current.packId === id) {
+      state.categoryId = "core";
+      state.difficulty = 0;
+      state.band = "all";
+    }
+    refreshCustomPackCategories();
+    setCustomNotice("custom.deleted", { name: pack.name }, "success");
   }
 
   function applyTheme(key) {
@@ -819,6 +1183,7 @@
   }
 
   function loadPackSelection() {
+    state.customPacks = CustomPacks ? CustomPacks.load() : [];
     state.categories = buildCategories();
 
     const savedCategory = readString(PACK_KEY, "core");
@@ -837,6 +1202,14 @@
         state.band === "all" || category.bands.some((band) => band.id === state.band);
       if (!validBand) state.band = "all";
     }
+    if (
+      category &&
+      category.levels &&
+      state.difficulty > 0 &&
+      !(category.levels[state.difficulty] || []).length
+    ) {
+      state.difficulty = 0;
+    }
 
     state.pool = getSelectedPool();
   }
@@ -851,11 +1224,21 @@
       const validBand =
         state.band === "all" || category.bands.some((band) => band.id === state.band);
       if (!validBand) state.band = "all";
+    } else {
+      state.band = "all";
+    }
+    if (
+      category.levels &&
+      state.difficulty > 0 &&
+      !(category.levels[state.difficulty] || []).length
+    ) {
+      state.difficulty = 0;
     }
 
     state.pool = getSelectedPool();
     savePackSelection();
     updatePackUI();
+    renderCustomPackList();
   }
 
   function onLevelChange() {
@@ -870,6 +1253,7 @@
   }
 
   function onDifficultyClick(button) {
+    if (button.disabled) return;
     const level = Number(button.dataset.level);
     if (!Number.isInteger(level) || level < 0 || level > 3) return;
     state.difficulty = level;
@@ -1399,8 +1783,13 @@
   function openPack() {
     if (!els.packSheet) return;
     packOpener = els.packBtn;
-    renderCategoryOptions();
-    updatePackUI();
+    state.customNotice = null;
+    if (CustomPacks) {
+      refreshCustomPackCategories();
+    } else {
+      renderCategoryOptions();
+      updatePackUI();
+    }
     els.packSheet.classList.remove("is-hidden");
     els.packSheet.setAttribute("aria-hidden", "false");
     window.setTimeout(() => {
@@ -4812,6 +5201,8 @@
     syncPlayerFormMode();
     renderCategoryOptions();
     updatePackUI();
+    renderCustomPackList();
+    updateCustomPackUI();
     updateSpeedUI();
     updateThemeUI();
     renderVoiceOptions();
@@ -6747,6 +7138,25 @@
   if (els.packBtn) els.packBtn.addEventListener("click", openPack);
   if (els.packClose) els.packClose.addEventListener("click", closePack);
   if (els.packDone) els.packDone.addEventListener("click", closePack);
+  if (els.customPackChoose) {
+    els.customPackChoose.addEventListener("click", () => {
+      if (els.customPackFile) els.customPackFile.click();
+    });
+  }
+  if (els.customPackFile) els.customPackFile.addEventListener("change", onCustomFileChange);
+  if (els.customPackName) {
+    els.customPackName.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      createCustomPackFromFile();
+    });
+  }
+  if (els.customPackCreate) {
+    els.customPackCreate.addEventListener("click", createCustomPackFromFile);
+  }
+  if (els.customPackList) {
+    els.customPackList.addEventListener("click", onCustomPackListClick);
+  }
   if (els.packSheet) {
     els.packSheet.addEventListener("click", (event) => {
       if (event.target === els.packSheet) closePack();
@@ -6998,6 +7408,12 @@
     scatterPlaySteps();
     renderCategoryOptions();
     updatePackUI();
+    if (CustomPacks) {
+      renderCustomPackList();
+      updateCustomPackUI();
+    } else if (els.customPackSection) {
+      els.customPackSection.classList.add("is-hidden");
+    }
     updateSpeedUI();
     renderBestLine();
     loadPlayerState();
