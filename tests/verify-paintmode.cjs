@@ -20,7 +20,7 @@ const explode = game.slice(
 assert.match(html, /data-mode="paint"[^>]*aria-pressed="false"/, "the paintball mode should be selectable");
 assert.match(html, /data-mode="paint"[\s\S]{0,2000}data-i18n="mode\.paint"/, "the paintball mode needs a label");
 assert.match(html, /id="paintLayer"[^>]*aria-hidden="true"/, "paint stains need their own background layer");
-assert.match(game, /const GAME_MODES = \["rain", "fill", "paint"\]/, "there should be three game modes");
+assert.match(game, /const GAME_MODES = \["rain", "fill", "paint", "poem"\]/, "there should be four game modes");
 assert.match(game, /GAME_MODES\.includes\(MODE_PARAM\)/, "the url mode should resolve through the shared list");
 assert.match(game, /state\.mode === "paint"\) buildPaintBoard\(\)/, "starting a paint round should build the board");
 assert.match(game, /"toast\.paintStart"/, "paint mode should have a start hint");

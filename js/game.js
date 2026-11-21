@@ -73,8 +73,12 @@
   const THEME_COLORS = { candy: "#0a1024", bubblegum: "#120a24", cream: "#0c1414" };
   const INTRO_KEY = "piupiu.introSeen";
   const MODE_KEY = "piupiu.mode";
-  const GAME_MODES = ["rain", "fill", "paint"];
+  const GAME_MODES = ["rain", "fill", "paint", "poem"];
   const MODE_PARAM = new URLSearchParams(location.search).get("mode");
+  const POETRY_KEY = "piupiu.poetry.selected";
+  const POETRY_DONE_KEY = "piupiu.poetry.done";
+  const POETRY_IMPORT_KEY = "piupiu.poetry.library.v1";
+  const POETRY_MAX_BYTES = 4 * 1024 * 1024;
   const INITIAL_MODE = GAME_MODES.includes(MODE_PARAM)
     ? MODE_PARAM
     : GAME_MODES.includes(readString(MODE_KEY, "rain"))
@@ -245,6 +249,40 @@
     packPreviewIcon: $("packPreviewIcon"),
     packPreviewName: $("packPreviewName"),
     packPreviewMeta: $("packPreviewMeta"),
+    poetryBtn: $("poetryBtn"),
+    poetrySummary: $("poetrySummary"),
+    poetrySheet: $("poetrySheet"),
+    poetryClose: $("poetryClose"),
+    poetryPreviewIcon: $("poetryPreviewIcon"),
+    poetryPreviewTitle: $("poetryPreviewTitle"),
+    poetryPreviewMeta: $("poetryPreviewMeta"),
+    poetryPreviewCount: $("poetryPreviewCount"),
+    poetrySearch: $("poetrySearch"),
+    poetryShuffle: $("poetryShuffle"),
+    poetryTabs: $("poetryTabs"),
+    poetryList: $("poetryList"),
+    poetryEmpty: $("poetryEmpty"),
+    poetryImport: $("poetryImport"),
+    poetryFile: $("poetryFile"),
+    poetryStatus: $("poetryStatus"),
+    poetryNote: $("poetryNote"),
+    poetryDone: $("poetryDone"),
+    poemStage: $("poemStage"),
+    poemMotif: $("poemMotif"),
+    poemCategoryIcon: $("poemCategoryIcon"),
+    poemCategoryName: $("poemCategoryName"),
+    poemProgress: $("poemProgress"),
+    poemListen: $("poemListen"),
+    poemTitle: $("poemTitle"),
+    poemAuthor: $("poemAuthor"),
+    poemLines: $("poemLines"),
+    poemSpineFill: $("poemSpineFill"),
+    poemCombo: $("poemCombo"),
+    poemResult: $("poemResult"),
+    poemResultCategory: $("poemResultCategory"),
+    poemResultTitle: $("poemResultTitle"),
+    poemResultAuthor: $("poemResultAuthor"),
+    overPoetryBtn: $("overPoetryBtn"),
     setupBtn: $("setupBtn"),
     setupSheet: $("setupSheet"),
     setupClose: $("setupClose"),
@@ -374,6 +412,17 @@
     paintTotal: 0,
     paintBonus: 0,
     paintFinishing: false,
+    poem: null,
+    poetry: {
+      library: null,
+      loaded: false,
+      imported: false,
+      categoryId: "family",
+      selectedId: "",
+      completed: new Set(),
+      status: "",
+      statusKind: "",
+    },
     score: 0,
     combo: 0,
     bestCombo: 0,
@@ -660,6 +709,486 @@
     if (!category) return "";
     return category.name || tr(category.nameKey || "");
   }
+
+  /* ------------------------------------------------------------------ */
+  /* Poetry library                                                     */
+  /* ------------------------------------------------------------------ */
+
+  const POETRY_CATEGORY_FALLBACK = [
+    { id: "family", name: "Family and Friends", hue: 12, icon: "users" },
+    { id: "feelings", name: "Feelings", hue: 300, icon: "heart" },
+    { id: "animals", name: "Animals and Nature", hue: 140, icon: "paw" },
+    { id: "cities", name: "Cities and Travel", hue: 205, icon: "bus" },
+    { id: "fun", name: "Fun and Games", hue: 45, icon: "ball" },
+    { id: "science", name: "Science and Art", hue: 185, icon: "palette" },
+    { id: "body", name: "Body and Health", hue: 340, icon: "person" },
+    { id: "learning", name: "A World of Learning", hue: 265, icon: "book" },
+  ];
+
+  const POETRY_ICON_NAMES = new Set([
+    "users", "heart", "paw", "bus", "ball", "palette", "person", "book",
+    "spark", "star", "leaf", "sun", "music", "plane", "house", "puzzle",
+  ]);
+
+  function poetrySlug(text) {
+    return String(text || "")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48);
+  }
+
+  function poetryHue(value) {
+    const hue = Number(value);
+    return Number.isFinite(hue) ? Math.round(((hue % 360) + 360) % 360) : 45;
+  }
+
+  function poetryIconName(value) {
+    return POETRY_ICON_NAMES.has(value) ? value : "book";
+  }
+
+  function normalizePoetryLibrary(raw) {
+    if (!raw || typeof raw !== "object" || !Array.isArray(raw.poems)) return null;
+    const seenCategories = new Set();
+    const categories = [];
+    for (const category of Array.isArray(raw.categories) ? raw.categories : []) {
+      if (!category || !category.id) continue;
+      const id = String(category.id).trim();
+      if (!id || seenCategories.has(id)) continue;
+      seenCategories.add(id);
+      categories.push({
+        id,
+        name: String(category.name || id),
+        hue: poetryHue(category.hue),
+        icon: poetryIconName(category.icon),
+      });
+    }
+    const fallbackById = new Map(POETRY_CATEGORY_FALLBACK.map((category) => [category.id, category]));
+    const seenPoems = new Set();
+    const poems = [];
+    const rawPoems = raw.poems.slice(0, 3000);
+    for (const poem of rawPoems) {
+      if (!poem || typeof poem !== "object") continue;
+      const lines = Array.isArray(poem.lines)
+        ? poem.lines.map((line) => String(line).replace(/\s+/g, " ").trim()).filter(Boolean)
+        : [];
+      if (!lines.length || !poem.title) continue;
+      let categoryId = String(poem.category || "family").trim() || "family";
+      if (!seenCategories.has(categoryId)) {
+        const fallback = fallbackById.get(categoryId) || {
+          id: categoryId,
+          name: categoryId,
+          hue: 45,
+          icon: "book",
+        };
+        seenCategories.add(categoryId);
+        categories.push({ ...fallback });
+      }
+      let id = String(poem.id || "").trim() || `${poetrySlug(poem.title)}-${poems.length + 1}`;
+      if (seenPoems.has(id)) id = `${id}-${poems.length + 1}`;
+      seenPoems.add(id);
+      const stanzaStarts = (Array.isArray(poem.stanzaStarts) ? poem.stanzaStarts : [0])
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0 && value < lines.length);
+      if (!stanzaStarts.includes(0)) stanzaStarts.unshift(0);
+      poems.push({
+        id,
+        category: categoryId,
+        title: String(poem.title).trim(),
+        author: String(poem.author || "Anonymous").trim() || "Anonymous",
+        lines,
+        stanzaStarts: [...new Set(stanzaStarts)].sort((a, b) => a - b),
+        page: Number(poem.page) || 0,
+      });
+    }
+    if (!poems.length) return null;
+    return {
+      version: 1,
+      demo: Boolean(raw.demo),
+      source: String(raw.source || "Poetry"),
+      rights: String(raw.rights || ""),
+      categories,
+      poems,
+    };
+  }
+
+  function poetryCategoryMeta(id) {
+    const library = state.poetry.library;
+    const found = library && library.categories.find((category) => category.id === id);
+    if (found) return found;
+    return POETRY_CATEGORY_FALLBACK.find((category) => category.id === id) || POETRY_CATEGORY_FALLBACK[0];
+  }
+
+  function poetryCategoryName(id) {
+    const key = `poem.category.${id}`;
+    const translated = tr(key);
+    return translated === key ? poetryCategoryMeta(id).name : translated;
+  }
+
+  function poetryPoemById(id) {
+    return state.poetry.library
+      ? state.poetry.library.poems.find((poem) => poem.id === id) || null
+      : null;
+  }
+
+  function selectedPoetryPoem() {
+    const library = state.poetry.library;
+    if (!library || !library.poems.length) return null;
+    return poetryPoemById(state.poetry.selectedId) || library.poems[0];
+  }
+
+  function savePoetrySelection() {
+    try {
+      localStorage.setItem(POETRY_KEY, state.poetry.selectedId);
+    } catch {}
+  }
+
+  function loadPoetryCompleted() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(POETRY_DONE_KEY) || "[]");
+      state.poetry.completed = new Set(Array.isArray(raw) ? raw.map(String) : []);
+    } catch {
+      state.poetry.completed = new Set();
+    }
+  }
+
+  function savePoetryCompleted() {
+    try {
+      localStorage.setItem(POETRY_DONE_KEY, JSON.stringify([...state.poetry.completed]));
+    } catch {}
+  }
+
+  function readImportedPoetry() {
+    try {
+      const raw = localStorage.getItem(POETRY_IMPORT_KEY);
+      if (!raw) return null;
+      return normalizePoetryLibrary(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  }
+
+  function loadPoetryLibrary() {
+    const demo = normalizePoetryLibrary(window.PiuPoetry) || {
+      version: 1,
+      demo: true,
+      source: "PiuPiu demo",
+      rights: "",
+      categories: POETRY_CATEGORY_FALLBACK.map((category) => ({ ...category })),
+      poems: [],
+    };
+    state.poetry.library = demo;
+    loadPoetryCompleted();
+    const imported = readImportedPoetry();
+    if (imported) {
+      state.poetry.library = imported;
+      state.poetry.imported = true;
+    }
+    const savedId = readString(POETRY_KEY, "");
+    const saved = poetryPoemById(savedId);
+    const first = state.poetry.library.poems[0] || null;
+    const selected = saved || first;
+    state.poetry.selectedId = selected ? selected.id : "";
+    state.poetry.categoryId = selected
+      ? selected.category
+      : (state.poetry.library.categories[0] || POETRY_CATEGORY_FALLBACK[0]).id;
+    state.poetry.loaded = true;
+    renderPoetrySummary();
+  }
+
+  async function hydrateLocalPoetry() {
+    if (state.poetry.imported) return;
+    const local =
+      ["localhost", "127.0.0.1", "::1"].includes(location.hostname) ||
+      new URLSearchParams(location.search).has("local");
+    if (!local) return;
+    try {
+      const response = await fetch("data/poetry.local.json", { cache: "no-store" });
+      if (!response.ok) return;
+      const library = normalizePoetryLibrary(await response.json());
+      if (!library || state.poetry.imported) return;
+      state.poetry.library = library;
+      state.poetry.demo = false;
+      const selected = poetryPoemById(state.poetry.selectedId) || library.poems[0];
+      state.poetry.selectedId = selected ? selected.id : "";
+      state.poetry.categoryId = selected ? selected.category : library.categories[0].id;
+      renderPoetrySummary();
+      if (els.poetrySheet && !els.poetrySheet.classList.contains("is-hidden")) {
+        renderPoetryLibrary();
+      }
+    } catch {}
+  }
+
+  function poetryStatus(message, kind = "") {
+    state.poetry.status = message;
+    state.poetry.statusKind = kind;
+    if (!els.poetryStatus) return;
+    els.poetryStatus.textContent = message;
+    els.poetryStatus.classList.toggle("is-ok", kind === "ok");
+    els.poetryStatus.classList.toggle("is-error", kind === "error");
+  }
+
+  function renderPoetrySummary() {
+    const poem = selectedPoetryPoem();
+    if (els.poetrySummary) {
+      setText(els.poetrySummary, poem ? poem.title : tr("poem.select"));
+    }
+    if (els.poetryBtn) {
+      const label = poem
+        ? `${tr("poem.libraryOpen")}: ${poem.title}`
+        : tr("poem.libraryOpen");
+      els.poetryBtn.setAttribute("aria-label", label);
+      els.poetryBtn.setAttribute("title", label);
+      els.poetryBtn.classList.toggle("is-hidden", state.mode !== "poem");
+    }
+  }
+
+  function renderPoetryTabs() {
+    if (!els.poetryTabs) return;
+    const library = state.poetry.library;
+    if (!library) return;
+    if (!library.categories.some((category) => category.id === state.poetry.categoryId)) {
+      state.poetry.categoryId = library.categories[0].id;
+    }
+    els.poetryTabs.replaceChildren();
+    for (const category of library.categories) {
+      const count = library.poems.filter((poem) => poem.category === category.id).length;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = category.id === state.poetry.categoryId ? "poetry-tab is-active" : "poetry-tab";
+      button.dataset.poetryCategory = category.id;
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-selected", String(category.id === state.poetry.categoryId));
+      button.style.setProperty("--poem-tab-color", `hsl(${category.hue} 88% 68%)`);
+      button.textContent = `${poetryCategoryName(category.id)} · ${count}`;
+      els.poetryTabs.appendChild(button);
+    }
+  }
+
+  function renderPoetryPreview() {
+    const poem = selectedPoetryPoem();
+    if (!poem) {
+      setText(els.poetryPreviewTitle, tr("poem.select"));
+      setText(els.poetryPreviewMeta, tr("poem.libraryTitle"));
+      setText(els.poetryPreviewCount, "");
+      return;
+    }
+    const category = poetryCategoryMeta(poem.category);
+    setIcon(els.poetryPreviewIcon, category.icon);
+    setText(els.poetryPreviewTitle, poem.title);
+    setText(els.poetryPreviewMeta, `${poetryCategoryName(poem.category)} · ${poem.author}`);
+    setText(els.poetryPreviewCount, tr("poem.count", { count: formatNumber(poem.lines.length) }));
+  }
+
+  function renderPoetryList() {
+    if (!els.poetryList) return;
+    const library = state.poetry.library;
+    if (!library) return;
+    const query = (els.poetrySearch ? els.poetrySearch.value : "").trim().toLowerCase();
+    const poems = library.poems.filter((poem) => {
+      if (!query && poem.category !== state.poetry.categoryId) return false;
+      if (!query) return true;
+      return (
+        poem.title.toLowerCase().includes(query) ||
+        poem.author.toLowerCase().includes(query)
+      );
+    });
+    els.poetryList.replaceChildren();
+    for (const poem of poems) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "poetry-item";
+      button.dataset.poemId = poem.id;
+      button.setAttribute("role", "option");
+      button.setAttribute("aria-selected", String(poem.id === state.poetry.selectedId));
+      if (poem.id === state.poetry.selectedId) button.classList.add("is-active");
+      if (state.poetry.completed.has(poem.id)) button.classList.add("is-done");
+
+      const copy = document.createElement("span");
+      copy.className = "poetry-item-copy";
+      const title = document.createElement("span");
+      title.className = "poetry-item-title";
+      title.textContent = poem.title;
+      const author = document.createElement("span");
+      author.className = "poetry-item-author";
+      author.textContent = poem.author;
+      copy.append(title, author);
+
+      const meta = document.createElement("span");
+      meta.className = "poetry-item-meta";
+      const count = document.createElement("span");
+      count.textContent = tr("poem.count", { count: formatNumber(poem.lines.length) });
+      meta.appendChild(count);
+      if (state.poetry.completed.has(poem.id)) {
+        const done = document.createElement("span");
+        done.className = "poetry-item-done";
+        done.appendChild(iconSvg("check"));
+        done.appendChild(document.createTextNode(tr("poem.done")));
+        meta.appendChild(done);
+      }
+
+      button.append(copy, meta);
+      els.poetryList.appendChild(button);
+    }
+    const empty = poems.length === 0;
+    if (els.poetryEmpty) els.poetryEmpty.classList.toggle("is-hidden", !empty);
+    if (els.poetryList) els.poetryList.classList.toggle("is-hidden", empty);
+  }
+
+  function renderPoetryLibrary() {
+    if (!state.poetry.loaded) loadPoetryLibrary();
+    renderPoetryTabs();
+    renderPoetryPreview();
+    renderPoetryList();
+    const count = state.poetry.library ? state.poetry.library.poems.length : 0;
+    if (state.poetry.status) {
+      poetryStatus(state.poetry.status, state.poetry.statusKind);
+    } else {
+      const done = state.poetry.completed.size;
+      if (done) {
+        poetryStatus(tr("poem.completedCount", { count: formatNumber(done) }), "ok");
+      } else {
+        poetryStatus("", "");
+      }
+    }
+    if (els.poetryNote) {
+      setText(
+        els.poetryNote,
+        tr(state.poetry.library && state.poetry.library.demo ? "poem.libraryNote" : "poem.fullNote"),
+      );
+    }
+    if (els.poetryStatus) {
+      els.poetryStatus.title = state.poetry.library ? state.poetry.library.source : "";
+    }
+    if (els.poetryPreviewCount && !state.poetry.library) {
+      setText(els.poetryPreviewCount, "");
+    }
+    if (count === 0) {
+      if (els.poetryEmpty) els.poetryEmpty.classList.remove("is-hidden");
+    }
+  }
+
+  function setPoetryCategory(id) {
+    if (!state.poetry.library) return;
+    if (!state.poetry.library.categories.some((category) => category.id === id)) return;
+    state.poetry.categoryId = id;
+    const first = state.poetry.library.poems.find((poem) => poem.category === id);
+    if (first && (!selectedPoetryPoem() || selectedPoetryPoem().category !== id)) {
+      state.poetry.selectedId = first.id;
+      savePoetrySelection();
+      renderPoetrySummary();
+    }
+    renderPoetryTabs();
+    renderPoetryPreview();
+    renderPoetryList();
+  }
+
+  function selectPoetryPoem(id, options = {}) {
+    const poem = poetryPoemById(id);
+    if (!poem) return null;
+    state.poetry.selectedId = poem.id;
+    state.poetry.categoryId = poem.category;
+    savePoetrySelection();
+    renderPoetrySummary();
+    renderPoetryPreview();
+    renderPoetryList();
+    if (options.scroll !== false) {
+      const active = els.poetryList
+        ? els.poetryList.querySelector(`[data-poem-id="${poem.id}"]`)
+        : null;
+      if (active) active.scrollIntoView({ block: "nearest" });
+    }
+    return poem;
+  }
+
+  function markPoetryCompleted(id) {
+    if (!id || state.poetry.completed.has(id)) return;
+    state.poetry.completed.add(id);
+    savePoetryCompleted();
+    if (els.poetrySheet && !els.poetrySheet.classList.contains("is-hidden")) {
+      renderPoetryList();
+    }
+  }
+
+  function shufflePoetryPoem() {
+    const library = state.poetry.library;
+    if (!library || !library.poems.length) return;
+    const pool = library.poems.filter((poem) => poem.category === state.poetry.categoryId);
+    const source = pool.length ? pool : library.poems;
+    const current = state.poetry.selectedId;
+    const choices = source.filter((poem) => poem.id !== current);
+    const poem = (choices.length ? choices : source)[Math.floor(Math.random() * (choices.length ? choices.length : source.length))];
+    if (poem) selectPoetryPoem(poem.id);
+  }
+
+  async function importPoetryFile(file) {
+    if (!file) return;
+    if (file.size > POETRY_MAX_BYTES) {
+      poetryStatus(tr("poem.importLarge"), "error");
+      return;
+    }
+    try {
+      const library = normalizePoetryLibrary(JSON.parse(await file.text()));
+      if (!library) throw new Error("invalid");
+      const payload = JSON.stringify({
+        version: 1,
+        demo: false,
+        source: library.source,
+        rights: library.rights,
+        categories: library.categories,
+        poems: library.poems,
+      });
+      localStorage.setItem(POETRY_IMPORT_KEY, payload);
+      state.poetry.library = library;
+      state.poetry.imported = true;
+      state.poetry.completed = new Set(
+        [...state.poetry.completed].filter((id) => library.poems.some((poem) => poem.id === id)),
+      );
+      savePoetryCompleted();
+      const selected = poetryPoemById(state.poetry.selectedId) || library.poems[0];
+      state.poetry.selectedId = selected ? selected.id : "";
+      state.poetry.categoryId = selected ? selected.category : library.categories[0].id;
+      renderPoetrySummary();
+      renderPoetryLibrary();
+      poetryStatus(tr("poem.importSuccess", { count: formatNumber(library.poems.length) }), "ok");
+    } catch {
+      poetryStatus(tr("poem.importError"), "error");
+    } finally {
+      if (els.poetryFile) els.poetryFile.value = "";
+    }
+  }
+
+  let poetryOpener = null;
+
+  function openPoetrySheet() {
+    if (!els.poetrySheet) return;
+    poetryOpener = document.activeElement;
+    if (!state.poetry.loaded) loadPoetryLibrary();
+    state.poetry.status = "";
+    state.poetry.statusKind = "";
+    if (els.poetrySearch) els.poetrySearch.value = "";
+    renderPoetryLibrary();
+    els.poetrySheet.classList.remove("is-hidden");
+    els.poetrySheet.setAttribute("aria-hidden", "false");
+    const card = els.poetrySheet.querySelector(".poetry-card");
+    if (card) card.scrollTop = 0;
+    window.setTimeout(() => {
+      if (els.poetryClose && !els.poetrySheet.classList.contains("is-hidden")) {
+        els.poetryClose.focus({ preventScroll: true });
+      }
+    }, 0);
+  }
+
+  function closePoetrySheet() {
+    if (!els.poetrySheet || els.poetrySheet.classList.contains("is-hidden")) return;
+    els.poetrySheet.classList.add("is-hidden");
+    els.poetrySheet.setAttribute("aria-hidden", "true");
+    if (poetryOpener && document.contains(poetryOpener) && !poetryOpener.classList.contains("is-hidden")) {
+      poetryOpener.focus({ preventScroll: true });
+    }
+  }
+
 
   const PACK_GROUPS = [
     { id: "themes", labelKey: "pack.groupThemes" },
@@ -1099,6 +1628,10 @@
     updatePackUI();
     renderPackTabs();
     renderPackCategoryGrid();
+    renderPoetrySummary();
+    if (els.poetrySheet && !els.poetrySheet.classList.contains("is-hidden")) {
+      renderPoetryLibrary();
+    }
     renderCustomPackList();
     updateCustomPackUI();
   }
@@ -1342,22 +1875,45 @@
   function updateModeUI() {
     const fill = state.mode === "fill";
     const paint = state.mode === "paint";
+    const poem = state.mode === "poem";
     document.body.classList.toggle("mode-fill", fill);
     document.body.classList.toggle("mode-paint", paint);
+    document.body.classList.toggle("mode-poem", poem);
     document.body.classList.toggle("mode-rain", state.mode === "rain");
     for (const button of els.modeOptions) {
       const active = button.dataset.mode === state.mode;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     }
-    setIcon(els.stepIcon1, paint ? "palette" : fill ? "grid" : "rain");
-    setText(els.stepLabel1, tr(paint ? "mode.paintStep1" : fill ? "mode.fillStep1" : "start.step1"));
+    setIcon(els.stepIcon1, poem ? "book" : paint ? "palette" : fill ? "grid" : "rain");
+    setText(
+      els.stepLabel1,
+      tr(poem ? "mode.poemStep1" : paint ? "mode.paintStep1" : fill ? "mode.fillStep1" : "start.step1"),
+    );
     setText(els.stepLabel2, tr("start.step2"));
-    setText(els.stepLabel3, tr(paint ? "mode.paintStep3" : fill ? "mode.fillStep3" : "start.step3"));
-    setText(els.correctLabel, tr(paint ? "hud.hits" : fill ? "hud.cleared" : "hud.correct"));
-    setText(els.levelLabel, tr(fill || paint ? "hud.remaining" : "hud.level"));
-    setText(els.pileLabel, tr(paint ? "hud.paint" : fill ? "hud.progress" : "hud.pile"));
-    setText(els.gaugeLabel, tr(paint ? "gauge.paint" : fill ? "gauge.progress" : "gauge.label"));
+    setText(
+      els.stepLabel3,
+      tr(poem ? "mode.poemStep3" : paint ? "mode.paintStep3" : fill ? "mode.fillStep3" : "start.step3"),
+    );
+    setText(
+      els.correctLabel,
+      tr(poem ? "poem.overLine" : paint ? "hud.hits" : fill ? "hud.cleared" : "hud.correct"),
+    );
+    setText(els.levelLabel, tr(poem ? "hud.lines" : fill || paint ? "hud.remaining" : "hud.level"));
+    setText(
+      els.pileLabel,
+      tr(poem ? "hud.lines" : paint ? "hud.paint" : fill ? "hud.progress" : "hud.pile"),
+    );
+    setText(
+      els.gaugeLabel,
+      tr(poem ? "hud.lines" : paint ? "gauge.paint" : fill ? "gauge.progress" : "gauge.label"),
+    );
+    if (els.typeInput) {
+      const placeholder = tr(poem ? "poem.inputPlaceholder" : "footer.placeholder");
+      els.typeInput.placeholder = placeholder;
+      els.typeInput.setAttribute("aria-label", placeholder);
+    }
+    renderPoetrySummary();
   }
 
   function setMode(mode) {
@@ -1648,6 +2204,17 @@
     tone(294, 0.22, "triangle", 0.04, 0.16);
     tone(196, 0.42, "sine", 0.05, 0.34, 140);
     noiseBurst(0.3, 0.015, 0.02);
+  }
+
+  function playPoemLine() {
+    tone(660, 0.16, "sine", 0.03);
+    tone(990, 0.2, "triangle", 0.02, 0.05);
+    sparkleNotes(0.09, 0.011);
+  }
+
+  function playPoemFinish() {
+    sequence([523.25, 659.25, 783.99, 1046.5], "triangle", 0.035, 0.12);
+    sparkleNotes(0.24, 0.02);
   }
 
   function sequence(freqs, type = "triangle", volume = 0.03, step = 0.08, delay = 0) {
@@ -1943,6 +2510,7 @@
     els.typeInput.classList.remove("wrong");
     els.correctStat.classList.remove("reward");
     resetRewardProgress();
+    resetPoemRound();
     clearPets();
     updateHUD(true);
   }
@@ -2034,6 +2602,225 @@
     }
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Poem round                                                         */
+  /* ------------------------------------------------------------------ */
+
+  function currentPoemLine() {
+    const poem = state.poem;
+    if (!poem || poem.current < 0) return null;
+    return poem.lines[poem.current] || null;
+  }
+
+  function resetPoemRound() {
+    if (state.poem) {
+      window.clearTimeout(state.poem.finishTimer);
+      window.clearTimeout(state.poem.focusTimer);
+    }
+    state.poem = null;
+    if (els.poemStage) els.poemStage.classList.add("is-hidden");
+    if (els.poemLines) els.poemLines.replaceChildren();
+    if (els.poemSpineFill) els.poemSpineFill.style.height = "0%";
+    setText(els.poemProgress, "");
+    setText(els.poemCombo, "");
+  }
+
+  function buildPoemRound() {
+    const poem = selectedPoetryPoem();
+    if (!poem) {
+      toast(tr("poem.empty"), "warn");
+      goHome();
+      return;
+    }
+    const category = poetryCategoryMeta(poem.category);
+    state.poem = {
+      poem,
+      category,
+      lines: [],
+      current: 0,
+      read: 0,
+      total: poem.lines.length,
+      finishing: false,
+      focusTimer: 0,
+      finishTimer: 0,
+    };
+    if (els.poemStage) {
+      els.poemStage.classList.remove("is-hidden");
+      els.poemStage.style.setProperty("--poem-hue", String(category.hue));
+    }
+    setUseIcon(els.poemCategoryIcon, category.icon);
+    setUseIcon(els.poemMotif, category.icon);
+    setText(els.poemCategoryName, poetryCategoryName(poem.category));
+    setText(els.poemTitle, poem.title);
+    setText(els.poemAuthor, poem.author || tr("poem.anonymous"));
+    setText(els.poemProgress, `0 / ${poem.lines.length}`);
+    els.poemProgress.setAttribute(
+      "aria-label",
+      tr("poem.progressAria", { read: 0, total: poem.lines.length }),
+    );
+    els.poemProgress.setAttribute("aria-live", "polite");
+    setText(els.poemCombo, "");
+    if (els.poemSpineFill) els.poemSpineFill.style.height = "0%";
+    if (els.poemLines) {
+      els.poemLines.replaceChildren();
+      els.poemLines.scrollTop = 0;
+    }
+    const stanzaStarts = new Set(poem.stanzaStarts);
+    poem.lines.forEach((text, index) => {
+      const line = {
+        index,
+        text,
+        tokens: normalizeSpeech(text).split(" ").filter(Boolean),
+        read: false,
+        el: null,
+      };
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "poem-line";
+      if (stanzaStarts.has(index) && index > 0) button.classList.add("stanza-start");
+      button.dataset.lineIndex = String(index);
+      button.setAttribute("aria-label", tr("poem.lineAria", { n: index + 1, text }));
+      const number = document.createElement("span");
+      number.className = "poem-line-index";
+      number.textContent = String(index + 1).padStart(2, "0");
+      const copy = document.createElement("span");
+      copy.className = "poem-line-text";
+      copy.textContent = text;
+      const mark = document.createElement("span");
+      mark.className = "poem-line-mark";
+      mark.appendChild(iconSvg("check"));
+      button.append(number, copy, mark);
+      if (els.poemLines) els.poemLines.appendChild(button);
+      line.el = button;
+      state.poem.lines.push(line);
+    });
+    advancePoemCurrent(false);
+    updateHUD(true);
+    syncSpeechPhrases(true);
+  }
+
+  function poemScrollToCurrent() {
+    const poem = state.poem;
+    if (!poem || !els.poemLines) return;
+    const line = poem.lines[poem.current];
+    if (!line || !line.el) return;
+    const box = els.poemLines.getBoundingClientRect();
+    const rect = line.el.getBoundingClientRect();
+    if (rect.top < box.top + 12 || rect.bottom > box.bottom - 12) {
+      const target =
+        els.poemLines.scrollTop +
+        (rect.top - box.top) -
+        box.height / 2 +
+        rect.height / 2;
+      els.poemLines.scrollTo({
+        top: Math.max(0, target),
+        behavior: REDUCED_MOTION ? "auto" : "smooth",
+      });
+    }
+  }
+
+  function advancePoemCurrent(scroll = true) {
+    const poem = state.poem;
+    if (!poem) return;
+    let next = poem.lines.findIndex((line, index) => index >= poem.current && !line.read);
+    if (next < 0) next = poem.lines.findIndex((line) => !line.read);
+    poem.current = next;
+    for (const line of poem.lines) {
+      line.el.classList.toggle("is-current", line.index === next);
+      if (line.index === next) line.el.setAttribute("aria-current", "true");
+      else line.el.removeAttribute("aria-current");
+    }
+    if (next >= 0 && scroll) poemScrollToCurrent();
+  }
+
+  function updatePoemProgress() {
+    const poem = state.poem;
+    if (!poem) return;
+    setText(els.poemProgress, `${poem.read} / ${poem.total}`);
+    els.poemProgress.setAttribute(
+      "aria-label",
+      tr("poem.progressAria", { read: poem.read, total: poem.total }),
+    );
+    if (els.poemSpineFill) {
+      els.poemSpineFill.style.height = `${poem.total ? (poem.read / poem.total) * 100 : 0}%`;
+    }
+    setText(els.poemCombo, state.combo >= 2 ? `×${state.combo}` : "");
+    updateHUD();
+  }
+
+  function focusPoemLine(index, speak = true) {
+    const poem = state.poem;
+    if (!poem) return;
+    const line = poem.lines[index];
+    if (!line) return;
+    window.clearTimeout(poem.focusTimer);
+    for (const item of poem.lines) item.el.classList.remove("is-focus");
+    line.el.classList.add("is-focus");
+    if (!line.read) {
+      poem.current = index;
+      for (const item of poem.lines) {
+        item.el.classList.toggle("is-current", item.index === index);
+      }
+      poemScrollToCurrent();
+    }
+    poem.focusTimer = window.setTimeout(() => {
+      if (line.el) line.el.classList.remove("is-focus");
+    }, 1800);
+    if (speak) {
+      showHeard(tr("help.listen", { word: line.text }), "volume");
+      speakHelp(line.text);
+    }
+  }
+
+  function spawnPoemSparkle(line) {
+    if (!line || !line.el || !els.field) return;
+    const fieldRect = els.field.getBoundingClientRect();
+    const rect = line.el.getBoundingClientRect();
+    const cx = rect.left - fieldRect.left + Math.min(rect.width * 0.72, 220);
+    const cy = rect.top - fieldRect.top + rect.height / 2;
+    const hue = state.poem ? state.poem.category.hue : 45;
+    spawnSparks(cx, cy, hue, 14);
+    spawnStars(cx, cy, hue, 4);
+  }
+
+  function markPoemLine(line) {
+    const poem = state.poem;
+    if (!poem || poem.finishing || !line || line.read) return;
+    line.read = true;
+    poem.read += 1;
+    state.cleared += 1;
+    state.combo += 1;
+    state.bestCombo = Math.max(state.bestCombo, state.combo);
+    state.score += 10 + Math.min(10, Math.max(0, state.combo - 1));
+    line.el.classList.remove("is-current", "is-focus");
+    line.el.classList.add("is-read", "is-burst");
+    line.el.setAttribute("aria-label", tr("poem.readAria", { text: line.text }));
+    window.setTimeout(() => {
+      if (line.el) line.el.classList.remove("is-burst");
+    }, 460);
+    playPoemLine();
+    spawnPoemSparkle(line);
+    if (poem.read % 2 === 0) petCheer();
+    else petNuzzle();
+    if (state.combo >= 3 && state.combo % 3 === 0) showPraise();
+    updatePoemProgress();
+    syncSpeechPhrases();
+    if (poem.read >= poem.total) {
+      poem.finishing = true;
+      markPoetryCompleted(poem.poem.id);
+      advancePoemCurrent(false);
+      playPoemFinish();
+      petCheer();
+      showHeard(tr("poem.toast.complete"), "check");
+      poem.finishTimer = window.setTimeout(() => {
+        if (state.phase !== "menu" && state.phase !== "over") endGame();
+      }, 900);
+      return;
+    }
+    advancePoemCurrent(true);
+  }
+
+
   function startGame() {
     if (Profiles && !currentProfile()) {
       toast(tr("player.need"), "warn");
@@ -2053,6 +2840,7 @@
     hideOverlay();
     if (state.mode === "fill") buildFillBoard();
     else if (state.mode === "paint") buildPaintBoard();
+    else if (state.mode === "poem") buildPoemRound();
     setAmbientRunning(true);
     els.pauseBtn.disabled = false;
     updatePauseButton();
@@ -2067,7 +2855,9 @@
           ? "toast.paintStart"
           : state.mode === "fill"
             ? "toast.fillStart"
-            : "toast.start",
+            : state.mode === "poem"
+              ? "toast.poemStart"
+              : "toast.start",
       ),
     );
   }
@@ -4772,15 +5562,29 @@
   function updateHUD(force = false) {
     const fill = state.mode === "fill";
     const paint = state.mode === "paint";
+    const poem = state.mode === "poem";
     const board = fill || paint;
     setText(els.score, formatNumber(state.score));
     setText(els.correct, String(state.cleared));
     setText(els.combo, `×${state.combo}`);
-    setText(els.level, board ? String(state.settled.length) : String(state.level));
+    setText(
+      els.level,
+      poem
+        ? state.poem
+          ? `${state.poem.read}/${state.poem.total}`
+          : "0/0"
+        : board
+          ? String(state.settled.length)
+          : String(state.level),
+    );
     setText(els.time, formatTime(state.elapsed));
 
     let progress = 0;
-    if (board) {
+    if (poem) {
+      progress = state.poem && state.poem.total
+        ? Math.round((state.poem.read / state.poem.total) * 100)
+        : 0;
+    } else if (board) {
       const total = fill ? state.fillTotal : state.paintTotal;
       progress = total
         ? Math.min(100, Math.round((state.cleared / total) * 100))
@@ -5278,37 +6082,51 @@
   function renderOverPanel() {
     const fill = state.mode === "fill";
     const paint = state.mode === "paint";
+    const poem = state.mode === "poem" && state.poem;
     const board = fill || paint;
     setText(
       els.overEyebrow,
-      tr(paint ? "paint.overEyebrow" : fill ? "fill.overEyebrow" : "over.eyebrow"),
+      poem
+        ? tr("poem.overEyebrow")
+        : tr(paint ? "paint.overEyebrow" : fill ? "fill.overEyebrow" : "over.eyebrow"),
     );
     setUseIcon(
       els.overEyebrowIcon,
-      paint ? "palette" : fill ? "grid" : state.newRecord ? "trophy" : "burst",
+      poem ? "book" : paint ? "palette" : fill ? "grid" : state.newRecord ? "trophy" : "burst",
     );
     setText(
       els.overTitle,
-      tr(paint ? "paint.overTitle" : fill ? "fill.overTitle" : "over.title"),
+      poem ? tr("poem.overTitle") : tr(paint ? "paint.overTitle" : fill ? "fill.overTitle" : "over.title"),
     );
     setText(
       els.overTagline,
-      tr(paint ? "paint.overTagline" : fill ? "fill.overTagline" : "over.tagline"),
+      poem ? tr("poem.overTagline") : tr(paint ? "paint.overTagline" : fill ? "fill.overTagline" : "over.tagline"),
     );
     setText(els.overScoreLabel, tr("over.score"));
     setText(
       els.overClearedLabel,
-      tr(paint ? "paint.clearedLabel" : fill ? "fill.clearedLabel" : "over.cleared"),
+      poem ? tr("poem.overLine") : tr(paint ? "paint.clearedLabel" : fill ? "fill.clearedLabel" : "over.cleared"),
     );
-    setText(els.overComboLabel, tr("over.combo"));
+    setText(els.overComboLabel, poem ? tr("poem.overCombo") : tr("over.combo"));
     setText(
       els.overTimeLabel,
-      tr(paint ? "paint.timeLabel" : fill ? "fill.timeLabel" : "over.time"),
+      poem ? tr("poem.overTime") : tr(paint ? "paint.timeLabel" : fill ? "fill.timeLabel" : "over.time"),
     );
     if (els.restartBtn) {
       els.restartBtn.textContent = tr(
-        paint ? "paint.again" : fill ? "fill.again" : "over.cta",
+        poem ? "poem.again" : paint ? "paint.again" : fill ? "fill.again" : "over.cta",
       );
+    }
+    if (els.poemResult) {
+      els.poemResult.classList.toggle("is-hidden", !poem);
+      if (poem) {
+        setText(els.poemResultCategory, poetryCategoryName(poem.category.id));
+        setText(els.poemResultTitle, poem.poem.title);
+        setText(els.poemResultAuthor, poem.poem.author);
+      }
+    }
+    if (els.overPoetryBtn) {
+      els.overPoetryBtn.classList.toggle("is-hidden", !poem);
     }
     setText(
       els.missedTitle,
@@ -5324,9 +6142,9 @@
       els.missedList.classList.toggle("is-hidden", board && !state.missedWords.length);
     }
     if (els.fillBonusLine) {
-      els.fillBonusLine.classList.toggle("is-hidden", !board);
+      els.fillBonusLine.classList.toggle("is-hidden", !board || Boolean(poem));
       const bonus = paint ? state.paintBonus : state.fillBonus;
-      els.fillBonusLine.textContent = board
+      els.fillBonusLine.textContent = board && !poem
         ? tr(paint ? "paint.bonus" : "fill.bonus", { score: formatNumber(bonus) })
         : "";
     }
@@ -5439,6 +6257,12 @@
     updateThemeUI();
     renderVoiceOptions();
     updateSpeechNote();
+    state.poetry.status = "";
+    state.poetry.statusKind = "";
+    renderPoetrySummary();
+    if (els.poetrySheet && !els.poetrySheet.classList.contains("is-hidden")) {
+      renderPoetryLibrary();
+    }
     if (state.phase === "over") renderOverPanel();
     hideHeard();
     hidePraise();
@@ -5508,6 +6332,8 @@
     const tokens = normalized.split(" ").filter(Boolean);
     if (!tokens.length) return null;
 
+    if (state.mode === "poem") return findPoemMatch(normalized, tokens);
+
     const candidates =
       state.mode === "rain"
         ? state.words.slice().sort((a, b) => b.y - a.y)
@@ -5560,6 +6386,114 @@
       }
     }
     return null;
+  }
+
+  const POEM_STOP_WORDS = new Set([
+    "a", "an", "the", "and", "or", "of", "to", "in", "on", "at", "for",
+    "my", "your", "his", "her", "its", "our", "their", "is", "are", "was",
+    "were", "be", "it", "i", "you", "we", "they", "he", "she", "me", "us",
+    "them", "as", "with", "by", "from", "that", "this", "there", "here",
+  ]);
+
+  function poemStem(token) {
+    return token
+      .replace(/'s$/, "")
+      .replace(/'/g, "")
+      .replace(/ies$/, "y")
+      .replace(/es$/, "")
+      .replace(/s$/, "");
+  }
+
+  function poemTokenEqual(a, b) {
+    if (a === b) return true;
+    if (a.length > 2 && b.length > 2 && poemStem(a) === poemStem(b)) return true;
+    return false;
+  }
+
+  function poemOrderedMatches(needles, haystack) {
+    let lineIndex = 0;
+    let spokenIndex = 0;
+    let matched = 0;
+    while (lineIndex < needles.length && spokenIndex < haystack.length) {
+      if (poemTokenEqual(needles[lineIndex], haystack[spokenIndex])) {
+        matched += 1;
+        lineIndex += 1;
+        spokenIndex += 1;
+        continue;
+      }
+      // Children often drop an article or repeat a word. Look a little ahead
+      // for the current line word before deciding it was omitted.
+      let skip = -1;
+      const limit = Math.min(4, haystack.length - spokenIndex);
+      for (let offset = 1; offset < limit; offset += 1) {
+        if (poemTokenEqual(needles[lineIndex], haystack[spokenIndex + offset])) {
+          skip = offset;
+          break;
+        }
+      }
+      if (skip > 0) spokenIndex += skip;
+      else lineIndex += 1;
+    }
+    return matched;
+  }
+
+  function poemMatchScore(lineTokens, spokenTokens) {
+    if (!lineTokens.length || !spokenTokens.length) return { ok: false, value: 0 };
+    const phrase = lineTokens.join(" ");
+    const spokenPhrase = spokenTokens.join(" ");
+    if (spokenPhrase === phrase || spokenPhrase.includes(phrase)) {
+      return { ok: true, value: 2.2 };
+    }
+    if (lineTokens.length <= 3) {
+      const all = lineTokens.every((token) => spokenTokens.some((spoken) => poemTokenEqual(spoken, token)));
+      if (all && spokenTokens.length <= lineTokens.length + 1) {
+        return { ok: true, value: 1.5 };
+      }
+      return { ok: false, value: 0 };
+    }
+    const matched = poemOrderedMatches(lineTokens, spokenTokens);
+    const content = lineTokens.filter((token) => !POEM_STOP_WORDS.has(token));
+    const contentMatched = content.length
+      ? poemOrderedMatches(content, spokenTokens)
+      : matched;
+    const lineCoverage = matched / lineTokens.length;
+    const spokenCoverage = matched / spokenTokens.length;
+    const contentCoverage = content.length ? contentMatched / content.length : lineCoverage;
+    const ok =
+      lineCoverage >= 0.6 &&
+      contentCoverage >= 0.65 &&
+      (spokenCoverage >= 0.5 || spokenTokens.length <= lineTokens.length + 2);
+    return {
+      ok,
+      value: lineCoverage * 0.6 + contentCoverage * 0.4 + (spokenCoverage >= 0.7 ? 0.2 : 0),
+    };
+  }
+
+  function findPoemMatch(normalized, spokenTokens) {
+    const poem = state.poem;
+    if (!poem || !poem.lines.length) return null;
+    let best = null;
+    let bestValue = 0;
+    for (const line of poem.lines) {
+      if (line.read) continue;
+      const score = poemMatchScore(line.tokens, spokenTokens);
+      if (!score.ok) continue;
+      const value = score.value + (line.index === poem.current ? 0.08 : 0);
+      if (value > bestValue) {
+        best = line;
+        bestValue = value;
+      }
+    }
+    return best;
+  }
+
+  function resolveSpeechHit(hit) {
+    if (!hit) return;
+    if (state.mode === "poem") {
+      markPoemLine(hit);
+      return;
+    }
+    explodeWord(hit);
   }
 
   function nextEffect() {
@@ -6679,9 +7613,11 @@
     }
   }
 
-  function speakHelp(word) {
+  function speakHelp(target) {
     const synth = window.speechSynthesis;
     const Utterance = window.SpeechSynthesisUtterance;
+    const text = typeof target === "string" ? target : target && target.word;
+    if (!text) return;
     if (!synth || !Utterance) {
       clearFocus();
       toast(tr("help.unsupported"), "warn");
@@ -6690,9 +7626,9 @@
 
     const token = ++state.helpSpeakToken;
     state.helpSpeaking = true;
-    state.helpWord = word.word;
+    state.helpWord = text;
     // Cover the whole utterance plus the recognizer's delayed final result.
-    state.helpGuardUntil = performance.now() + 4500;
+    state.helpGuardUntil = performance.now() + Math.max(4500, text.length * 75 + 1200);
 
     // iOS routes web audio through a quieter record/playback session while
     // SpeechRecognition owns the microphone. Release the mic for the hint so
@@ -6709,7 +7645,7 @@
     updateMicUI();
 
     applyVoiceChoice();
-    const utterance = new Utterance(word.word);
+    const utterance = new Utterance(text);
     utterance.lang = "en-US";
     utterance.rate = helpRate;
     utterance.pitch = helpPitch;
@@ -6725,7 +7661,9 @@
       state.helpGuardUntil = performance.now();
       // Drop the yellow border and speaker badge together with the voice,
       // so the hint state never lingers after the word has been spoken.
-      if (state.focusedWord && state.focusedWord.word === state.helpWord) clearFocus();
+      if (state.mode !== "poem" && state.focusedWord && state.focusedWord.word === state.helpWord) {
+        clearFocus();
+      }
       updateMicUI();
       if (state.phase === "playing" && state.micEnabled && !state.listening && !state.speechStarting) {
         startSpeech();
@@ -6758,6 +7696,12 @@
 
   function triggerHelp() {
     if (state.phase !== "playing") return;
+    if (state.mode === "poem") {
+      const line = currentPoemLine() || (state.poem && state.poem.lines.find((item) => !item.read));
+      if (line) focusPoemLine(line.index, true);
+      else toast(tr("help.empty"), "warn");
+      return;
+    }
     const word = lowestFallingWord();
     if (!word) {
       toast(tr("help.empty"), "warn");
@@ -6819,6 +7763,11 @@
     if (state.phase === "playing" && state.mode === "rain") {
       for (const word of state.bag.slice(-5)) {
         if (!targets.has(word)) targets.set(word, 2);
+      }
+    }
+    if (state.mode === "poem" && state.poem) {
+      for (const line of state.poem.lines.filter((item) => !item.read).slice(0, 4)) {
+        targets.set(line.text, 4);
       }
     }
     const key = [...targets.keys()].join("\u0001");
@@ -6941,7 +7890,7 @@
             metrics.samples.push(latency);
             if (metrics.samples.length > 50) metrics.samples.shift();
           }
-          explodeWord(bestHit);
+          resolveSpeechHit(bestHit);
           return;
         }
 
@@ -7202,12 +8151,16 @@
     const hit = findMatch(value);
     if (hit) {
       els.typeInput.value = "";
-      explodeWord(hit);
+      resolveSpeechHit(hit);
     } else {
       els.typeInput.classList.remove("wrong");
       void els.typeInput.offsetWidth;
       els.typeInput.classList.add("wrong");
-      showHeard(tr("toast.notOnScreen", { word: value }));
+      if (state.mode === "poem") {
+        showHeard(tr("poem.toast.noMatch"), "book");
+      } else {
+        showHeard(tr("toast.notOnScreen", { word: value }));
+      }
       window.setTimeout(() => els.typeInput.classList.remove("wrong"), 320);
     }
   }
@@ -7393,6 +8346,73 @@
       if (card) selectPackCategory(card.dataset.categoryId);
     });
   }
+  if (els.poetryBtn) els.poetryBtn.addEventListener("click", openPoetrySheet);
+  if (els.poetryClose) els.poetryClose.addEventListener("click", closePoetrySheet);
+  if (els.poetryDone) {
+    els.poetryDone.addEventListener("click", () => {
+      const wasOver = state.phase === "over";
+      closePoetrySheet();
+      if (wasOver) goHome();
+      if (state.phase === "menu") startGame();
+    });
+  }
+  if (els.overPoetryBtn) els.overPoetryBtn.addEventListener("click", openPoetrySheet);
+  if (els.poetrySheet) {
+    els.poetrySheet.addEventListener("click", (event) => {
+      if (event.target === els.poetrySheet) closePoetrySheet();
+    });
+  }
+  if (els.poetryTabs) {
+    els.poetryTabs.addEventListener("click", (event) => {
+      const target = event.target;
+      const tab =
+        target && typeof target.closest === "function"
+          ? target.closest("[data-poetry-category]")
+          : null;
+      if (tab) setPoetryCategory(tab.dataset.poetryCategory);
+    });
+  }
+  if (els.poetryList) {
+    els.poetryList.addEventListener("click", (event) => {
+      const target = event.target;
+      const item =
+        target && typeof target.closest === "function"
+          ? target.closest("[data-poem-id]")
+          : null;
+      if (item) selectPoetryPoem(item.dataset.poemId);
+    });
+  }
+  if (els.poetrySearch) {
+    els.poetrySearch.addEventListener("input", renderPoetryList);
+  }
+  if (els.poetryShuffle) els.poetryShuffle.addEventListener("click", shufflePoetryPoem);
+  if (els.poetryImport) {
+    els.poetryImport.addEventListener("click", () => {
+      if (els.poetryFile) els.poetryFile.click();
+    });
+  }
+  if (els.poetryFile) {
+    els.poetryFile.addEventListener("change", () => {
+      importPoetryFile(els.poetryFile.files && els.poetryFile.files[0]);
+    });
+  }
+  if (els.poemLines) {
+    els.poemLines.addEventListener("click", (event) => {
+      const target = event.target;
+      const line =
+        target && typeof target.closest === "function"
+          ? target.closest("[data-line-index]")
+          : null;
+      if (!line) return;
+      focusPoemLine(Number(line.dataset.lineIndex), true);
+    });
+  }
+  if (els.poemListen) {
+    els.poemListen.addEventListener("click", () => {
+      const line = currentPoemLine() || (state.poem && state.poem.lines.find((item) => !item.read));
+      if (line) focusPoemLine(line.index, true);
+    });
+  }
   if (els.customPackChoose) {
     els.customPackChoose.addEventListener("click", () => {
       if (els.customPackFile) els.customPackFile.click();
@@ -7446,6 +8466,7 @@
     const boardOpen = els.boardSheet && !els.boardSheet.classList.contains("is-hidden");
     const packOpen = els.packSheet && !els.packSheet.classList.contains("is-hidden");
     const setupOpen = els.setupSheet && !els.setupSheet.classList.contains("is-hidden");
+    const poetryOpen = els.poetrySheet && !els.poetrySheet.classList.contains("is-hidden");
     if (event.key === "Escape" && playerOpen) {
       event.preventDefault();
       closePlayerSheet();
@@ -7456,7 +8477,12 @@
       closeBoard();
       return;
     }
-    if (playerOpen || boardOpen || packOpen || setupOpen) return;
+    if (event.key === "Escape" && poetryOpen) {
+      event.preventDefault();
+      closePoetrySheet();
+      return;
+    }
+    if (playerOpen || boardOpen || packOpen || setupOpen || poetryOpen) return;
     if (
       event.key === "Escape" &&
       els.packSheet &&
@@ -7658,6 +8684,8 @@
     if (!(state.speed in SPEED_LEVELS)) state.speed = "normal";
     if (!THEMES.includes(state.theme)) state.theme = "candy";
     if (!GAME_MODES.includes(state.mode)) state.mode = "rain";
+    loadPoetryLibrary();
+    hydrateLocalPoetry();
     applyTheme(state.theme);
     updateModeUI();
     scatterPlaySteps();

@@ -1,7 +1,7 @@
 /* PiuPiu service worker: app-shell precache + offline navigation fallback. */
 "use strict";
 
-const VERSION = "2.30.3";
+const VERSION = "2.31.0";
 const CACHE_NAME = `piupiu-v${VERSION}`;
 const CACHE_PREFIX = "piupiu-";
 const OFFLINE_URL = "./index.html";
@@ -86,24 +86,26 @@ const PRECACHE = [
   "./assets/monsters/liz-base.webp",
   "./assets/monsters/wisp.webp",
   "./assets/monsters/wisp-base.webp",
-  "./css/style.css?v=2.30.3",
-  "./css/arcade.css?v=2.30.3",
-  "./js/i18n.js?v=2.30.3",
+  "./css/style.css?v=2.31.0",
+  "./css/arcade.css?v=2.31.0",
+  "./css/poetry.css?v=2.31.0",
+  "./js/i18n.js?v=2.31.0",
+  "./js/poetry.js?v=2.31.0",
   "./js/words.js",
   "./js/lexicon.js",
   "./js/education.js",
   "./js/families.js",
   "./js/phrases.js?v=2.2.0",
   "./js/numbers.js",
-  "./js/custom-packs.js?v=2.30.3",
+  "./js/custom-packs.js?v=2.31.0",
   "./js/pets.js",
   "./js/profiles.js",
   "./js/emojis.js",
   "./js/vendor/pixi.min.js?v=2.0.1",
   "./js/vendor/matter.min.js",
-  "./js/pixi-ambient.js?v=2.30.3",
-  "./js/game.js?v=2.30.3",
-  "./js/pwa.js?v=2.30.3",
+  "./js/pixi-ambient.js?v=2.31.0",
+  "./js/game.js?v=2.31.0",
+  "./js/pwa.js?v=2.31.0",
 ];
 
 self.addEventListener("install", (event) => {

@@ -41,7 +41,7 @@ assert.match(game, /pitch: 1\.04/, "real child voices should not be over-pitched
 
 // ---------- speech integration ----------
 assert.match(game, /function applyVoiceChoice\(/, "the chosen voice should be applied to help speech");
-assert.match(game, /applyVoiceChoice\(\);\s*\n\s*const utterance = new Utterance\(word\.word\)/, "help speech should use the chosen voice");
+assert.match(game, /applyVoiceChoice\(\);\s*\n\s*const utterance = new Utterance\(text\)/, "help speech should use the chosen voice");
 assert.match(game, /utterance\.rate = helpRate/, "help speech should use the chosen rate");
 assert.match(game, /utterance\.pitch = helpPitch/, "help speech should use the chosen pitch");
 assert.match(game, /if \(helpVoice\) utterance\.voice = helpVoice/, "the selected system voice should be attached");

@@ -20,7 +20,7 @@ assert.match(html, /id="overClearedLabel"/, "the result labels should be mode-aw
 
 // ---------- mode state and flow ----------
 assert.match(game, /const MODE_KEY = "piupiu\.mode"/, "the chosen mode should be remembered");
-assert.match(game, /const GAME_MODES = \["rain", "fill", "paint"\]/, "there should be exactly three game modes");
+assert.match(game, /const GAME_MODES = \["rain", "fill", "paint", "poem"\]/, "there should be four game modes");
 assert.match(game, /const INITIAL_MODE =/, "the mode should be resolved at startup");
 assert.match(game, /mode: INITIAL_MODE/, "state should carry the selected mode");
 assert.match(game, /function updateModeUI\(/, "mode changes need a UI sync");
@@ -106,11 +106,11 @@ assert.match(game, /fill\.bonus/, "the result panel should explain the speed bon
 
 // ---------- HUD and result copy ----------
 assert.match(game, /const fill = state\.mode === "fill"/, "HUD values should branch by mode");
-assert.match(game, /board \? String\(state\.settled\.length\) : String\(state\.level\)/, "board modes should show remaining words instead of a level");
+assert.match(game, /String\(state\.settled\.length\)[\s\S]{0,120}String\(state\.level\)/, "board modes should show remaining words instead of a level");
 assert.match(game, /const total = fill \? state\.fillTotal : state\.paintTotal/, "board progress should use the active mode total");
-assert.match(game, /setIcon\(els\.stepIcon1, paint \? "palette" : fill \? "grid" : "rain"\)/, "the first step icon should follow the mode");
-assert.match(game, /setText\(els\.correctLabel, tr\(paint \? "hud\.hits" : fill \? "hud\.cleared" : "hud\.correct"\)\)/, "the correct stat should read hits or cleared in board modes");
-assert.match(game, /setText\(els\.levelLabel, tr\(fill \|\| paint \? "hud\.remaining" : "hud\.level"\)\)/, "the level label should become remaining in board modes");
+assert.match(game, /setIcon\(els\.stepIcon1, poem \? "book" : paint \? "palette" : fill \? "grid" : "rain"\)/, "the first step icon should follow the mode");
+assert.match(game, /tr\(poem \? "poem\.overLine" : paint \? "hud\.hits" : fill \? "hud\.cleared" : "hud\.correct"\)/, "the correct stat should follow the mode");
+assert.match(game, /tr\(poem \? "hud\.lines" : fill \|\| paint \? "hud\.remaining" : "hud\.level"\)/, "the level label should follow the mode");
 assert.match(game, /tr\(paint \? "paint\.overTitle" : fill \? "fill\.overTitle" : "over\.title"\)/, "the result title should match the mode");
 assert.match(game, /fill \? "fill\.again" : "over\.cta"/, "the replay button should match the mode");
 

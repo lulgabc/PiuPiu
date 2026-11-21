@@ -7,6 +7,7 @@ const root = path.join(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const html = read("index.html");
 const css = read("css/arcade.css");
+const poetry = read("css/poetry.css");
 const game = read("js/game.js");
 const sw = read("sw.js");
 const pkg = JSON.parse(read("package.json"));
@@ -25,11 +26,12 @@ assert.match(html, /class="story-hero"/, "the home hero should group the mascot 
 assert.match(html, /id="gameTitle" data-i18n="start\.heroTitle"/, "the hero should carry the game promise");
 assert.match(html, /class="home-pet"[^>]*assets\/monsters\/kitty\.webp/, "the hero should show a monster mascot");
 assert.match(html, /class="mode-option-copy"/, "each mode should keep its short hint copy");
-for (const mode of ["rain", "fill", "paint"]) {
+for (const mode of ["rain", "fill", "paint", "poem"]) {
   assert.match(html, new RegExp(`data-i18n="mode\\.${mode}Hint"`), `${mode} should have a short hint`);
 }
 assert.match(css, /\.play-steps \{\s*display: none;/, "the old three-step strip should be hidden");
-assert.match(css, /\.mode-switch \{[\s\S]{0,140}grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "modes should sit in one arcade row");
+assert.match(poetry, /\.mode-switch \{[\s\S]{0,100}grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/, "modes should form a 2×2 arcade grid on phones");
+assert.match(poetry, /@media \(min-width: 700px\)[\s\S]{0,180}repeat\(4, minmax\(0, 1fr\)\)/, "desktop should keep four modes in one row");
 assert.match(css, /\.mode-option-copy small \{\s*display: block;/, "the mode hint should stay visible under the name");
 assert.match(html, /class="mode-art"/, "each mode needs a mini arcade screen");
 assert.match(html, /class="mode-art-svg"/, "the mini scenes should be SVG");
@@ -137,11 +139,11 @@ assert.equal(translations.zh["start.heroTitle"], "读出来，消掉它");
 assert.equal(translations.zh["theme.candy"], "薄荷街机");
 assert.equal(translations.zh["theme.bubblegum"], "紫罗兰街机");
 assert.equal(translations.zh["theme.cream"], "柠檬街机");
-assert.equal(pkg.version, "2.30.3");
+assert.equal(pkg.version, "2.31.0");
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true);
 
 console.log("✓ the arcade skin loads after the base CSS and is offline-safe");
-console.log("✓ home is a dark arcade cover with a pet, three modes and one giant play button");
+console.log("✓ home is a dark arcade cover with a pet, four modes and one giant play button");
 console.log("✓ the game HUD is one capsule with neon dots and glowing word cards");
 console.log("✓ the pack picker uses chip tabs and a two-column cartridge grid");
 console.log("✓ pause, result, player, settings, board and install reuse the arcade components");

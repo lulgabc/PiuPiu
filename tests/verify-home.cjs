@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 const arcade = fs.readFileSync(path.join(root, "css/arcade.css"), "utf8");
+const poetry = fs.readFileSync(path.join(root, "css/poetry.css"), "utf8");
 const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "js/i18n.js"), "utf8");
 
@@ -16,7 +17,7 @@ assert.match(html, /class="story-hero"/, "the home should group the mascot and q
 assert.match(html, /class="home-pet"[^>]*assets\/monsters\/kitty\.webp/, "the hero should show a monster mascot");
 assert.match(html, /id="gameTitle" data-i18n="start\.heroTitle"/, "the hero should ask what to play");
 assert.match(html, /class="mode-option-copy"/, "each mode should carry a short hint");
-for (const mode of ["rain", "fill", "paint"]) {
+for (const mode of ["rain", "fill", "paint", "poem"]) {
   assert.match(html, new RegExp(`data-i18n="mode\\.${mode}Hint"`), `${mode} needs a short hint`);
 }
 assert.match(arcade, /\.play-steps \{\s*display: none;/, "the old step strip should be visually retired");
@@ -42,7 +43,8 @@ assert.doesNotMatch(html, /id="voicePopover"/, "the old voice popover should be 
 assert.match(game, /function syncPhaseClass\(/, "the page should track game phase");
 assert.match(game, /function openSetup\(/, "settings should open from the home shortcuts");
 assert.match(game, /function closeSetup\(/, "settings should close cleanly");
-assert.match(arcade, /\.mode-switch \{[\s\S]{0,140}grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "modes should share one arcade row");
+assert.match(poetry, /\.mode-switch \{[\s\S]{0,100}grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/, "four modes should form a 2×2 grid on phones");
+assert.match(poetry, /@media \(min-width: 700px\)[\s\S]{0,180}repeat\(4, minmax\(0, 1fr\)\)/, "desktop should keep four modes in one row");
 assert.match(arcade, /\.mode-option\.is-active \{[\s\S]{0,260}box-shadow:[\s\S]{0,120}0 0 24px/, "the selected mode should glow");
 assert.match(arcade, /\.mode-art \{[\s\S]{0,160}height: 72px/, "each mode needs a mini screen");
 assert.match(arcade, /\.mode-option\[data-mode="paint"\] \{[\s\S]{0,80}#ff7aa2/, "each mode needs its own accent");
@@ -85,6 +87,6 @@ for (const key of ["setup.title", "setup.done", "setup.parent", "setup.parentBut
   assert.equal(matches.length, 3, `${key} should be translated in zh / fr / en`);
 }
 
-console.log("✓ home screen leads with an arcade hero, three modes and one giant play button");
+console.log("✓ home screen leads with an arcade hero, four modes and one giant play button");
 console.log("✓ word packs, voice, install and parent notes are progressively disclosed");
 console.log("✓ menu mode hides the HUD, neon dots and input footer");
