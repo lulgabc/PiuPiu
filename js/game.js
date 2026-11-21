@@ -3213,16 +3213,172 @@
   function petGroundAt(x) {
     const fieldH = els.field.clientHeight || 480;
     let ground = fieldH - Math.max(10, Math.round(fieldH * 0.02));
-    // Paint cards are a scattered collage, not a pile: the pet stays on the
-    // floor instead of climbing to the top of the screen.
-    if (state.mode !== "paint") {
-      for (const settled of state.settled) {
-        if (x >= settled.x - 4 && x <= settled.x + settled.w + 4 && settled.y < ground) {
-          ground = Math.max(64, settled.y - 5);
-        }
+    for (const settled of state.settled) {
+      if (x >= settled.x - 4 && x <= settled.x + settled.w + 4 && settled.y < ground) {
+        ground = Math.max(64, settled.y - 5);
       }
     }
     return Math.max(64, ground);
+  }
+
+  function paintCardTop(card) {
+    return Math.max(64, card.y + 3);
+  }
+
+  function paintPickCard(p, exclude) {
+    const cards = state.settled.filter(
+      (card) => card && card.el && card.el.isConnected && card !== exclude,
+    );
+    if (!cards.length) return null;
+    const visible = cards.filter((card) => card.y >= (p.h || 80) + 10);
+    const roomy = visible.filter((card) => card.w >= 62);
+    let pool = roomy.length ? roomy : visible.length ? visible : cards;
+    const far = pool.filter((card) => Math.abs(card.x + card.w / 2 - p.x) > 52);
+    if (far.length) pool = far;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function paintStartJump(p, card) {
+    const st = p.paint;
+    const fieldW = els.field.clientWidth || 360;
+    const minX = p.drawW / 2 + 2;
+    const maxX = Math.max(minX, fieldW - p.drawW / 2 - 2);
+    const jitter = (Math.random() - 0.5) * Math.min(16, card.w * 0.24);
+    const toX = Math.max(minX, Math.min(maxX, card.x + card.w / 2 + jitter));
+    const toY = paintCardTop(card);
+    const distance = Math.hypot(toX - p.x, toY - p.ground);
+    st.card = card;
+    st.target = card;
+    st.phase = "jump";
+    st.fromX = p.x;
+    st.fromY = p.ground;
+    st.toX = toX;
+    st.toY = toY;
+    st.t = 0;
+    st.duration = REDUCED_MOTION ? 0.3 : Math.max(0.32, Math.min(0.64, 0.28 + distance / 1300));
+    st.hop = REDUCED_MOTION ? 24 : 34 + Math.min(76, distance * 0.16);
+    // Keep the peak of the arc inside the field even when jumping to a high card.
+    const headroom = Math.max(10, Math.min(p.ground, toY) - p.h - 10);
+    st.hop = Math.min(st.hop, headroom);
+    p.brain.action = "climb";
+    p.brain.time = 0;
+    p.brain.duration = st.duration;
+    p.brain.mood = "excited";
+    p.brain.lookTarget = { x: toX, y: toY };
+    p.dir = toX >= p.x ? 1 : -1;
+  }
+
+  function paintDropToFloor(p) {
+    const fieldH = els.field.clientHeight || 480;
+    const floorY = fieldH - Math.max(10, Math.round(fieldH * 0.02));
+    const st = p.paint;
+    st.card = null;
+    st.target = null;
+    st.phase = "jump";
+    st.fromX = p.x;
+    st.fromY = p.ground;
+    st.toX = p.x;
+    st.toY = floorY;
+    st.t = 0;
+    st.duration = 0.34;
+    st.hop = REDUCED_MOTION ? 14 : 22;
+    p.brain.action = "climb";
+    p.brain.time = 0;
+    p.brain.duration = st.duration;
+    p.brain.lookTarget = null;
+  }
+
+  function updatePaintPet(p, dt) {
+    const st = p.paint;
+    if (!st) return;
+    const fieldH = els.field.clientHeight || 480;
+    const floorY = fieldH - Math.max(10, Math.round(fieldH * 0.02));
+
+    if (st.phase === "jump") {
+      if (st.target && !state.settled.includes(st.target)) {
+        const next = paintPickCard(p, st.card);
+        if (next) {
+          paintStartJump(p, next);
+          return;
+        }
+        st.target = null;
+        st.fromX = p.x;
+        st.fromY = p.ground;
+        st.toX = p.x;
+        st.toY = floorY;
+        st.t = 0;
+        st.duration = 0.3;
+        st.hop = REDUCED_MOTION ? 12 : 20;
+      }
+
+      st.t += dt / Math.max(0.01, st.duration);
+      const t = Math.min(1, st.t);
+      const ease = t * t * (3 - 2 * t);
+      p.x = st.fromX + (st.toX - st.fromX) * ease;
+      p.ground = st.fromY + (st.toY - st.fromY) * ease;
+      p.hopY = -Math.sin(Math.PI * t) * st.hop;
+      p.brain.moving = true;
+      p.brain.time += dt;
+      p.brain.lookTarget = { x: st.toX, y: st.toY };
+
+      if (t >= 1) {
+        p.hopY = 0;
+        p.x = st.toX;
+        p.ground = st.toY;
+        st.card = st.target;
+        st.target = null;
+        st.phase = "rest";
+        st.timer = 0.32 + Math.random() * 0.5;
+        p.brain.action = "observe";
+        p.brain.time = 0;
+        p.brain.duration = st.timer;
+        p.brain.mood = "happy";
+        p.brain.moving = false;
+        p.brain.lookTarget = null;
+        p.landTimer = 0.18;
+        p.el.classList.remove("landed");
+        p.el.classList.add("landed");
+        if (!REDUCED_MOTION) {
+          if (p.renderer) p.renderer.spawnDust(p.drawW / 2, p.h - 4, 3);
+          playPetLand();
+        }
+      }
+      return;
+    }
+
+    st.timer -= dt;
+    p.hopY = 0;
+    p.brain.moving = false;
+    p.brain.time += dt;
+
+    if (st.card && !state.settled.includes(st.card)) {
+      st.card = null;
+      st.timer = 0;
+    }
+
+    if (st.card) {
+      const fieldW = els.field.clientWidth || 360;
+      const minX = p.drawW / 2 + 2;
+      const maxX = Math.max(minX, fieldW - p.drawW / 2 - 2);
+      const targetX = Math.max(minX, Math.min(maxX, st.card.x + st.card.w / 2));
+      p.x += (targetX - p.x) * Math.min(1, dt * 7);
+      p.ground += (paintCardTop(st.card) - p.ground) * Math.min(1, dt * 10);
+      p.brain.action = "observe";
+      p.brain.lookTarget =
+        state.pointer && performance.now() - state.pointer.at < 2600
+          ? { x: state.pointer.x, y: state.pointer.y }
+          : null;
+    } else {
+      p.ground += (floorY - p.ground) * Math.min(1, dt * 8);
+      p.brain.action = "observe";
+      p.brain.lookTarget = null;
+    }
+
+    if (st.timer > 0) return;
+    const next = paintPickCard(p, st.card);
+    if (next) paintStartJump(p, next);
+    else if (st.card) st.timer = 0.45;
+    else paintDropToFloor(p);
   }
 
   function petApply(p) {
@@ -3516,6 +3672,14 @@
       if (p.landTimer <= 0) p.el.classList.remove("landed");
     }
 
+    if (state.mode === "paint") {
+      updatePaintPet(p, dt);
+      petUpdateMotion(p, dt, p.brain.moving);
+      petApply(p);
+      if (p.renderer) p.renderer.draw(dt);
+      return;
+    }
+
     petThink(p, dt);
 
     const action = p.brain.action;
@@ -3652,6 +3816,19 @@
         pawL: 0,
         pawR: 0,
       },
+    };
+    pet.paint = {
+      card: null,
+      target: null,
+      phase: "rest",
+      timer: 0.55 + Math.random() * 0.55,
+      fromX: pet.x,
+      fromY: pet.ground,
+      toX: pet.x,
+      toY: pet.ground,
+      t: 0,
+      duration: 0.4,
+      hop: 0,
     };
     pet.renderer = createMonsterRenderer(pet, def, PET_DPR);
     if (!pet.renderer) {
@@ -3805,6 +3982,8 @@
       mood: pet.brain.mood,
       moving: Boolean(pet.brain.moving),
       squeaking: Boolean(pet.el && pet.el.classList.contains("squeaking")),
+      paintCard: pet.paint && pet.paint.card ? pet.paint.card.word : null,
+      paintPhase: pet.paint ? pet.paint.phase : null,
     };
   }
 

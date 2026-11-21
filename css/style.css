@@ -979,9 +979,14 @@ body.mode-paint .toast {
   bottom: auto;
 }
 
-/* Keep the pet visible without letting it cover a paint target. */
+/* The pet hops across the paint cards, so it sits above the words. */
 body.mode-paint .pet-layer {
-  z-index: 2;
+  z-index: 4;
+}
+
+/* Keep word cards tappable while the pet is standing on one. */
+body.mode-paint .pet-canvas {
+  pointer-events: none;
 }
 
 /* ---------- paintball mode ---------- */

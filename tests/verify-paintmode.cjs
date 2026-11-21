@@ -39,7 +39,15 @@ assert.match(paint, /boundW: Math\.ceil/, "placement should use the rotated card
 assert.match(paint, /if \(!spot\) \{\s*card\.el\.remove\(\)/, "cards that cannot fit should be dropped instead of overlapping");
 assert.match(paint, /state\.paintTotal = state\.settled\.length/, "the round should remember its target count");
 assert.doesNotMatch(paint, /attachSettledBody/, "paint cards should stay still instead of becoming physics bodies");
-assert.match(game, /if \(state\.mode !== "paint"\) \{\s*for \(const settled of state\.settled\)/, "the pet should not climb the paint collage");
+assert.match(game, /function updatePaintPet\(/, "paint mode needs its own pet controller");
+assert.match(game, /function paintPickCard\(/, "the pet should pick another word card");
+assert.match(game, /function paintStartJump\(/, "the pet should jump between cards");
+assert.match(game, /st\.phase = "jump"/, "the pet should enter a jump phase");
+assert.match(game, /st\.phase = "rest"/, "the pet should pause on a card before the next hop");
+assert.match(game, /Math\.sin\(Math\.PI \* t\) \* st\.hop/, "the hop should follow a rounded arc");
+assert.match(game, /state\.settled\.includes\(st\.card\)/, "a removed card should trigger a new hop");
+assert.match(game, /paintCardTop\(st\.card\)/, "the pet should stand on the card top edge");
+assert.match(game, /paintCard: pet\.paint/, "debug should expose the current paint card");
 
 // ---------- cards and colours ----------
 assert.match(paint, /el\.className = "word settled fill-word paint-word"/, "paint cards should reuse the candy card base");
@@ -49,7 +57,8 @@ assert.match(paint, /--fill-hue/, "every paint card should carry its own hue");
 assert.match(css, /\.paint-layer \{[\s\S]{0,120}z-index: 2/, "paint stains should sit behind the words");
 assert.match(css, /\.word\.paint-word \{/, "paint cards need their own style hook");
 assert.match(css, /body\.mode-paint \.reward-progress,[\s\S]{0,120}body\.mode-paint \.speed-tool/, "paint mode should hide rain-only controls");
-assert.match(css, /body\.mode-paint \.pet-layer \{[\s\S]{0,80}z-index: 2/, "the pet should stay behind paint words");
+assert.match(css, /body\.mode-paint \.pet-layer \{[\s\S]{0,80}z-index: 4/, "the hopping pet should sit above the paint words");
+assert.match(css, /body\.mode-paint \.pet-canvas \{[\s\S]{0,80}pointer-events: none/, "word taps should pass through the hopping pet");
 
 // ---------- paintball hit ----------
 assert.match(explode, /const paint = state\.mode === "paint"/, "explosions should branch into the paintball path");
