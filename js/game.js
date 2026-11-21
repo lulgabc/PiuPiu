@@ -5274,7 +5274,7 @@
       finished = true;
       if (token !== state.helpSpeakToken) return;
       state.helpSpeaking = false;
-      state.helpGuardUntil = performance.now() + 200;
+      state.helpGuardUntil = performance.now();
       updateMicUI();
       if (state.phase === "playing" && state.micEnabled && !state.listening && !state.speechStarting) {
         startSpeech();
