@@ -5,6 +5,7 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
+const storybook = fs.readFileSync(path.join(root, "css/storybook.css"), "utf8");
 const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
 const { translations } = require(path.join(root, "js/i18n.js"));
 
@@ -26,6 +27,16 @@ assert.match(css, /--theme-cta:/, "skins should recolor the primary action");
 assert.match(css, /html\[data-theme\] \.word \{/, "skins should restyle falling words");
 assert.match(css, /html\[data-theme\] \.panel \{/, "skins should restyle dialogs");
 assert.match(css, /html\[data-theme\] \.setup-card/, "skins should restyle the parent sheet");
+for (const theme of ["candy", "bubblegum", "cream"]) {
+  assert.match(
+    storybook,
+    new RegExp(`html\\[data-theme="${theme}"\\] \\{[\\s\\S]{0,220}--sb-paper:`),
+    `${theme} needs a paper tint`,
+  );
+}
+assert.equal(translations.zh["theme.candy"], "草莓纸");
+assert.equal(translations.zh["theme.bubblegum"], "蓝莓纸");
+assert.equal(translations.zh["theme.cream"], "薄荷纸");
 assert.match(css, /html\[data-theme\]\.is-touch \.word:not\(\.settled\)/, "touch word cards should keep the themed surface");
 
 assert.match(game, /const THEME_KEY = "piupiu\.theme"/, "the skin choice should persist");
@@ -42,7 +53,7 @@ for (const key of ["theme.title", "theme.candy", "theme.bubblegum", "theme.cream
   }
 }
 
-console.log("✓ three candy sticker skins share one theme token layer");
+console.log("✓ three paper tints share one storybook component layer");
 console.log("✓ the parent panel can switch skins live and remembers the choice");
-console.log("✓ home, HUD, field, words and dialogs all respond to the skin");
+console.log("✓ home, HUD, field, words and dialogs all respond to the paper tint");
 console.log("✓ skin labels are translated in zh / fr / en");

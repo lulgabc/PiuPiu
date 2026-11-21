@@ -34,6 +34,7 @@ assert.match(game, /"toast\.start"/, "rain mode should have its own start hint")
 // ---------- the wall ----------
 assert.match(game, /function buildFillBoard\(/, "fill mode needs a board builder");
 assert.match(game, /function drawFillWords\(/, "the board should draw random words from the active pack");
+assert.match(game, /return shuffle\(pool\.slice\(\)\)\.slice\(0, Math\.max\(1, count\)\)/, "small custom packs should not repeat a word on the board");
 assert.match(game, /const availableW = fieldW - pad \* 2/, "the wall should measure the usable field width");
 assert.match(game, /let width = el\.offsetWidth/, "card width should come from the word itself");
 assert.match(game, /while \(width > availableW && font > 13\)/, "long words should shrink to fit instead of using equal columns");

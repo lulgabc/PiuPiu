@@ -18,7 +18,7 @@ const explode = game.slice(
 
 // ---------- mode picker ----------
 assert.match(html, /data-mode="paint"[^>]*aria-pressed="false"/, "the paintball mode should be selectable");
-assert.match(html, /data-mode="paint"[\s\S]{0,140}data-i18n="mode\.paint"/, "the paintball mode needs a label");
+assert.match(html, /data-mode="paint"[\s\S]{0,260}data-i18n="mode\.paint"/, "the paintball mode needs a label");
 assert.match(html, /id="paintLayer"[^>]*aria-hidden="true"/, "paint stains need their own background layer");
 assert.match(game, /const GAME_MODES = \["rain", "fill", "paint"\]/, "there should be three game modes");
 assert.match(game, /GAME_MODES\.includes\(MODE_PARAM\)/, "the url mode should resolve through the shared list");
@@ -41,6 +41,7 @@ assert.match(paint, /state\.paintTotal = state\.settled\.length/, "the round sho
 assert.doesNotMatch(paint, /attachSettledBody/, "paint cards should stay still instead of becoming physics bodies");
 assert.match(game, /function updatePaintPet\(/, "paint mode needs its own pet controller");
 assert.match(game, /function paintPickCard\(/, "the pet should pick another word card");
+assert.match(game, /function paintPetOverlap\(/, "the pet should prefer a card with free space above it");
 assert.match(game, /function paintStartJump\(/, "the pet should jump between cards");
 assert.match(game, /st\.phase = "jump"/, "the pet should enter a jump phase");
 assert.match(game, /st\.phase = "rest"/, "the pet should pause on a card before the next hop");

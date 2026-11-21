@@ -73,7 +73,7 @@ assert.match(game, /key: "phrases"/, "game.js must expose the phrase group");
 assert.match(game, /group: category\.group \|\| "phrases"/, "game.js must register phrase categories");
 assert.match(game, /countKey/, "game.js must use the phrase count label");
 assert.match(html, /js\/phrases\.js/, "index.html must load phrases.js");
-assert.match(html, /PHaVE\/PHRASE/, "start screen should mention the phrasal banks");
+assert.match(html, /data-pack-group="phrases"[^>]*data-i18n="pack\.groupPhrases"/, "the word picker should expose the phrase group");
 
 console.log("✓ PHaVE: 150 phrasal verbs in three 50-item frequency bands");
 console.log("✓ PHRASE: 499 unique phrases in the published 1K–5K bands");

@@ -6,6 +6,7 @@ const { translations } = require("../js/i18n.js");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
+const storybook = fs.readFileSync(path.join(root, "css/storybook.css"), "utf8");
 const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
 
 // ---------- markup ----------
@@ -40,6 +41,10 @@ for (const marker of [
 }
 assert.match(css, /@media \(max-width: 520px\)[\s\S]*?reward-progress/, "missing mobile bar styles");
 assert.match(css, /prefers-reduced-motion[\s\S]*?reward-progress/, "missing reduced-motion bar styles");
+assert.match(storybook, /html\[data-theme\] \.reward-node \{[\s\S]{0,180}border: 1\.5px solid var\(--sb-ink\)/, "the storybook bar should use paper stars");
+assert.match(storybook, /html\[data-theme\] \.reward-progress-label,[\s\S]{0,140}display: none;/, "the storybook HUD should hide the bar label");
+const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
+assert.match(header, /id="rewardProgress"/, "the paper star strip should live in the top HUD");
 
 // ---------- logic ----------
 for (const fn of ["setRewardProgress", "resetRewardProgress", "advanceRewardProgress"]) {

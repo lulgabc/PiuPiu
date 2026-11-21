@@ -70,7 +70,7 @@
   const VOICE_KEY = "piupiu.voice";
   const THEME_KEY = "piupiu.theme";
   const THEMES = ["candy", "bubblegum", "cream"];
-  const THEME_COLORS = { candy: "#ffe9f3", bubblegum: "#1c1036", cream: "#f7f0e2" };
+  const THEME_COLORS = { candy: "#fbf6ea", bubblegum: "#f4effa", cream: "#f2f8f1" };
   const INTRO_KEY = "piupiu.introSeen";
   const MODE_KEY = "piupiu.mode";
   const GAME_MODES = ["rain", "fill", "paint"];
@@ -239,6 +239,9 @@
     customPackStatus: $("customPackStatus"),
     customPackList: $("customPackList"),
     customPackEmpty: $("customPackEmpty"),
+    packTabs: $("packTabs"),
+    packCategoryGrid: $("packCategoryGrid"),
+    packGroupEmpty: $("packGroupEmpty"),
     packPreviewIcon: $("packPreviewIcon"),
     packPreviewName: $("packPreviewName"),
     packPreviewMeta: $("packPreviewMeta"),
@@ -348,6 +351,7 @@
     customPackFile: null,
     customPackReading: false,
     customNotice: null,
+    packGroup: "themes",
     categoryId: "core",
     difficulty: 0,
     band: "all",
@@ -586,6 +590,134 @@
     return category.name || tr(category.nameKey || "");
   }
 
+  const PACK_GROUPS = [
+    { id: "themes", labelKey: "pack.groupThemes" },
+    { id: "education", labelKey: "pack.groupEducation" },
+    { id: "phrases", labelKey: "pack.groupPhrases" },
+    { id: "custom", labelKey: "pack.groupCustom" },
+  ];
+
+  function packGroupForCategory(category) {
+    if (!category) return "themes";
+    if (category.custom || category.group === "custom") return "custom";
+    if (category.group === "phrases") return "phrases";
+    if (category.group === "education" || category.group === "families") return "education";
+    return "themes";
+  }
+
+  function categoryTotalCount(category) {
+    if (!category) return 0;
+    if (Array.isArray(category.bands)) {
+      return category.bands.reduce((sum, band) => sum + (band.words || []).length, 0);
+    }
+    if (category.levels) {
+      return [1, 2, 3].reduce((sum, level) => sum + (category.levels[level] || []).length, 0);
+    }
+    return 0;
+  }
+
+  function renderPackTabs() {
+    if (!els.packTabs) return;
+    if (!PACK_GROUPS.some((group) => group.id === state.packGroup)) {
+      state.packGroup = "themes";
+    }
+    if (state.packGroup === "custom" && !CustomPacks) state.packGroup = "themes";
+    els.packTabs.querySelectorAll("[data-pack-group]").forEach((tab) => {
+      const active = tab.dataset.packGroup === state.packGroup;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", String(active));
+    });
+  }
+
+  function renderPackCategoryGrid() {
+    if (!els.packCategoryGrid) return;
+    const custom = state.packGroup === "custom" && CustomPacks;
+    els.packCategoryGrid.classList.toggle("is-hidden", Boolean(custom));
+    if (els.customPackSection) {
+      els.customPackSection.classList.toggle("is-hidden", !custom);
+    }
+    if (custom) {
+      els.packCategoryGrid.replaceChildren();
+      if (els.packGroupEmpty) els.packGroupEmpty.classList.add("is-hidden");
+      renderCustomPackList();
+      return;
+    }
+
+    const categories = state.categories.filter(
+      (category) => packGroupForCategory(category) === state.packGroup,
+    );
+    els.packCategoryGrid.replaceChildren();
+    if (els.packGroupEmpty) {
+      els.packGroupEmpty.classList.toggle("is-hidden", categories.length > 0);
+    }
+    for (const category of categories) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "pack-category";
+      button.dataset.categoryId = category.id;
+      button.setAttribute("role", "option");
+      const active = category.id === state.categoryId;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", String(active));
+
+      const icon = document.createElement("span");
+      icon.className = "pack-category-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = category.icon || "✦";
+      const copy = document.createElement("span");
+      copy.className = "pack-category-copy";
+      const name = document.createElement("b");
+      name.textContent = categoryName(category);
+      const meta = document.createElement("small");
+      meta.textContent = tr("pack.countShort", {
+        count: formatNumber(categoryTotalCount(category)),
+      });
+      copy.appendChild(name);
+      copy.appendChild(meta);
+      button.appendChild(icon);
+      button.appendChild(copy);
+      els.packCategoryGrid.appendChild(button);
+    }
+  }
+
+  function setPackGroup(group) {
+    if (!PACK_GROUPS.some((item) => item.id === group)) return;
+    if (group === "custom" && !CustomPacks) return;
+    state.packGroup = group;
+    renderPackTabs();
+    renderPackCategoryGrid();
+  }
+
+  function selectPackCategory(next) {
+    const category = state.categories.find((item) => item.id === next);
+    if (!category) return;
+    state.categoryId = next;
+    state.packGroup = packGroupForCategory(category);
+
+    if (Array.isArray(category.bands)) {
+      const validBand =
+        state.band === "all" || category.bands.some((band) => band.id === state.band);
+      if (!validBand) state.band = "all";
+    } else {
+      state.band = "all";
+    }
+    if (
+      category.levels &&
+      state.difficulty > 0 &&
+      !(category.levels[state.difficulty] || []).length
+    ) {
+      state.difficulty = 0;
+    }
+
+    if (els.categorySelect) els.categorySelect.value = next;
+    state.pool = getSelectedPool();
+    savePackSelection();
+    updatePackUI();
+    renderPackTabs();
+    renderPackCategoryGrid();
+    renderCustomPackList();
+  }
+
   function getSelectedCategory() {
     return state.categories.find((category) => category.id === state.categoryId) || state.categories[0];
   }
@@ -786,7 +918,13 @@
       item.className = "custom-pack-item";
       item.dataset.customPackId = pack.id;
 
-      const text = document.createElement("div");
+      const pick = document.createElement("button");
+      pick.type = "button";
+      pick.className = "custom-pack-pick";
+      pick.dataset.customPick = pack.id;
+      pick.setAttribute("aria-pressed", String(pack.id === currentPackId));
+      pick.setAttribute("aria-label", tr("custom.pickAria", { name: pack.name }));
+      const text = document.createElement("span");
       text.className = "custom-pack-item-text";
       const name = document.createElement("strong");
       name.textContent = pack.name;
@@ -800,6 +938,7 @@
         badge.textContent = tr("custom.current");
         text.appendChild(badge);
       }
+      pick.appendChild(text);
 
       const remove = document.createElement("button");
       remove.type = "button";
@@ -808,7 +947,7 @@
       remove.textContent = "✕";
       remove.title = tr("custom.delete");
       remove.setAttribute("aria-label", tr("custom.deleteAria", { name: pack.name }));
-      item.appendChild(text);
+      item.appendChild(pick);
       item.appendChild(remove);
       els.customPackList.appendChild(item);
     }
@@ -880,10 +1019,15 @@
     ) {
       state.difficulty = 0;
     }
+    if (preferredId) {
+      state.packGroup = packGroupForCategory(category);
+    }
     state.pool = getSelectedPool();
     savePackSelection();
     renderCategoryOptions();
     updatePackUI();
+    renderPackTabs();
+    renderPackCategoryGrid();
     renderCustomPackList();
     updateCustomPackUI();
   }
@@ -1018,6 +1162,14 @@
   function onCustomPackListClick(event) {
     if (!CustomPacks) return;
     const target = event.target;
+    const pick =
+      target && typeof target.closest === "function"
+        ? target.closest("[data-custom-pick]")
+        : null;
+    if (pick) {
+      selectPackCategory(`custom:${pick.dataset.customPick}`);
+      return;
+    }
     const button =
       target && typeof target.closest === "function"
         ? target.closest("[data-custom-delete]")
@@ -1039,6 +1191,7 @@
       state.categoryId = "core";
       state.difficulty = 0;
       state.band = "all";
+      state.packGroup = "themes";
     }
     refreshCustomPackCategories();
     setCustomNotice("custom.deleted", { name: pack.name }, "success");
@@ -1215,30 +1368,7 @@
   }
 
   function onCategoryChange() {
-    const next = els.categorySelect.value;
-    const category = state.categories.find((item) => item.id === next);
-    if (!category) return;
-    state.categoryId = next;
-
-    if (Array.isArray(category.bands)) {
-      const validBand =
-        state.band === "all" || category.bands.some((band) => band.id === state.band);
-      if (!validBand) state.band = "all";
-    } else {
-      state.band = "all";
-    }
-    if (
-      category.levels &&
-      state.difficulty > 0 &&
-      !(category.levels[state.difficulty] || []).length
-    ) {
-      state.difficulty = 0;
-    }
-
-    state.pool = getSelectedPool();
-    savePackSelection();
-    updatePackUI();
-    renderCustomPackList();
+    if (els.categorySelect) selectPackCategory(els.categorySelect.value);
   }
 
   function onLevelChange() {
@@ -1784,11 +1914,14 @@
     if (!els.packSheet) return;
     packOpener = els.packBtn;
     state.customNotice = null;
+    state.packGroup = packGroupForCategory(getSelectedCategory());
     if (CustomPacks) {
       refreshCustomPackCategories();
     } else {
       renderCategoryOptions();
       updatePackUI();
+      renderPackTabs();
+      renderPackCategoryGrid();
     }
     els.packSheet.classList.remove("is-hidden");
     els.packSheet.setAttribute("aria-hidden", "false");
@@ -2038,20 +2171,7 @@
     const short = source.filter((word) => word.length <= 14);
     const pool = short.length >= Math.min(count, 8) ? short : source;
     if (!pool.length) return [];
-    let bag = shuffle(pool.slice());
-    const picked = [];
-    while (picked.length < count) {
-      if (!bag.length) bag = shuffle(pool.slice());
-      let word = bag.pop();
-      if (picked.length && word === picked[picked.length - 1] && bag.length) {
-        const alt = bag.pop();
-        bag.push(word);
-        word = alt;
-      }
-      picked.push(word);
-      if (picked.length > count * 2) break;
-    }
-    return picked;
+    return shuffle(pool.slice()).slice(0, Math.max(1, count));
   }
 
   const FILL_HUES = [338, 12, 28, 46, 63, 155, 172, 192, 212, 268, 292, 318];
@@ -3614,6 +3734,24 @@
     return Math.max(64, card.y + 3);
   }
 
+  function paintPetOverlap(p, card) {
+    const centerX = card.x + card.w / 2;
+    const halfW = (p.drawW || p.w || 70) * 0.46;
+    const height = (p.h || 80) * 1.02;
+    const left = centerX - halfW;
+    const right = centerX + halfW;
+    const top = card.y - height;
+    const bottom = card.y - 2;
+    let overlap = 0;
+    for (const other of state.settled) {
+      if (other === card) continue;
+      const ox = Math.min(right, other.x + other.w) - Math.max(left, other.x);
+      const oy = Math.min(bottom, other.y + other.h) - Math.max(top, other.y);
+      if (ox > 0 && oy > 0) overlap += ox * oy;
+    }
+    return overlap;
+  }
+
   function paintPickCard(p, exclude) {
     const cards = state.settled.filter(
       (card) => card && card.el && card.el.isConnected && card !== exclude,
@@ -3624,7 +3762,12 @@
     let pool = roomy.length ? roomy : visible.length ? visible : cards;
     const far = pool.filter((card) => Math.abs(card.x + card.w / 2 - p.x) > 52);
     if (far.length) pool = far;
-    return pool[Math.floor(Math.random() * pool.length)];
+    // Prefer a card with free paper above it, so the pet does not cover a
+    // neighbouring word while it rests.
+    const scored = pool.map((card) => ({ card, overlap: paintPetOverlap(p, card) }));
+    const least = Math.min(...scored.map((item) => item.overlap));
+    const clear = scored.filter((item) => item.overlap <= least + 420);
+    return clear[Math.floor(Math.random() * clear.length)].card;
   }
 
   function paintStartJump(p, card) {
@@ -5201,6 +5344,8 @@
     syncPlayerFormMode();
     renderCategoryOptions();
     updatePackUI();
+    renderPackTabs();
+    renderPackCategoryGrid();
     renderCustomPackList();
     updateCustomPackUI();
     updateSpeedUI();
@@ -7138,6 +7283,26 @@
   if (els.packBtn) els.packBtn.addEventListener("click", openPack);
   if (els.packClose) els.packClose.addEventListener("click", closePack);
   if (els.packDone) els.packDone.addEventListener("click", closePack);
+  if (els.packTabs) {
+    els.packTabs.addEventListener("click", (event) => {
+      const target = event.target;
+      const tab =
+        target && typeof target.closest === "function"
+          ? target.closest("[data-pack-group]")
+          : null;
+      if (tab) setPackGroup(tab.dataset.packGroup);
+    });
+  }
+  if (els.packCategoryGrid) {
+    els.packCategoryGrid.addEventListener("click", (event) => {
+      const target = event.target;
+      const card =
+        target && typeof target.closest === "function"
+          ? target.closest("[data-category-id]")
+          : null;
+      if (card) selectPackCategory(card.dataset.categoryId);
+    });
+  }
   if (els.customPackChoose) {
     els.customPackChoose.addEventListener("click", () => {
       if (els.customPackFile) els.customPackFile.click();
@@ -7408,6 +7573,9 @@
     scatterPlaySteps();
     renderCategoryOptions();
     updatePackUI();
+    state.packGroup = packGroupForCategory(getSelectedCategory());
+    renderPackTabs();
+    renderPackCategoryGrid();
     if (CustomPacks) {
       renderCustomPackList();
       updateCustomPackUI();
