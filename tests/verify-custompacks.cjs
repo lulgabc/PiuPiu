@@ -6,7 +6,8 @@ const root = path.join(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const html = read("index.html");
 const css = read("css/style.css");
-const game = read("js/game.js");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const custom = read("js/custom-packs.js");
 const { translations } = require("../js/i18n.js");
 
@@ -135,11 +136,11 @@ assert.match(game, /const CustomPacks =/, "game code should read the custom pack
 assert.match(game, /group: "custom"/, "custom packs should be a category group");
 assert.match(game, /id: `custom:\$\{pack\.id\}`/, "custom packs should become categories");
 assert.match(game, /function createCustomPackFromFile/, "file import should have its own action");
-assert.match(game, /new window\.FileReader/, "files should be read locally with FileReader");
+assert.match(game, /FileReader|file\.text\(/, "files should be read locally");
 assert.match(game, /CustomPacks\.parseText/, "uploaded text should be parsed automatically");
 assert.match(game, /CustomPacks\.create/, "parsed words should be saved as a pack");
 assert.match(game, /CustomPacks\.remove/, "packs should be deletable");
-assert.match(game, /custom\.deleteConfirm/, "deletion should ask for confirmation");
+assert.match(game, /armOrConfirmDelete|custom\.confirmDelete/, "deletion should use 2-step inline confirmation");
 assert.match(game, /refreshCustomPackCategories/, "the picker should refresh after create/delete");
 assert.match(game, /state\.categoryId = "core"/, "deleting the active pack should fall back safely");
 assert.match(game, /MAX_FILE_BYTES/, "uploads should have a size limit");

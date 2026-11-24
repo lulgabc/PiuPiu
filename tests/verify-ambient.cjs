@@ -5,7 +5,8 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "js/pixi-ambient.js"), "utf8");
 const gameHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
-const gameJs = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const gameJs = readModularGameSource();
 const demoHtml = fs.readFileSync(path.join(root, "pixi-demo.html"), "utf8");
 const gameCss = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 const demoCss = fs.readFileSync(path.join(root, "css/pixi-demo.css"), "utf8");
@@ -65,8 +66,8 @@ assert.doesNotMatch(source, /\p{Extended_Pictographic}/u, "the ambient engine mu
 
 // ---------- game wiring ----------
 assert.match(gameHtml, /id="pixiAmbient"/, "game is missing the Pixi ambient mount");
-assert.match(gameHtml, /js\/vendor\/pixi\.min\.js/, "game does not load vendored PixiJS");
-assert.match(gameHtml, /js\/pixi-ambient\.js/, "game does not load the ambient engine");
+assert.match(gameJs, /js\/vendor\/pixi\.min\.js/, "game lazy loader must reference vendored PixiJS");
+assert.match(gameJs, /js\/pixi-ambient\.js/, "game lazy loader must reference the ambient engine");
 assert.doesNotMatch(gameHtml, /js\/ambient\.js/, "game must not load the old ambient.js");
 assert.doesNotMatch(gameHtml, /ambientLayer|weatherLayer|season-wash/, "old ambient markup is still present");
 assert.ok(!fs.existsSync(path.join(root, "js/ambient.js")), "old ambient.js still exists");

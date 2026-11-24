@@ -7,7 +7,8 @@ const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 const arcade = fs.readFileSync(path.join(root, "css/arcade.css"), "utf8");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 
 // ---------- markup ----------
 for (const id of ["rewardProgress", "rewardTrack", "rewardCount"]) {
@@ -41,7 +42,7 @@ for (const marker of [
 }
 assert.match(css, /@media \(max-width: 520px\)[\s\S]*?reward-progress/, "missing mobile bar styles");
 assert.match(css, /prefers-reduced-motion[\s\S]*?reward-progress/, "missing reduced-motion bar styles");
-assert.match(arcade, /html\[data-theme\] \.reward-node \{[\s\S]{0,180}border: 0;[\s\S]{0,160}background: #263252;/, "the arcade bar should use neon dots");
+assert.match(arcade, /html\[data-theme\] \.reward-node \{[\s\S]{0,180}border: 0;[\s\S]{0,160}background: var\(--arc-/, "the arcade bar should use neon dots");
 assert.match(arcade, /html\[data-theme\] \.reward-node\.is-lit \{[\s\S]{0,120}background: var\(--arc-accent\)/, "lit dots should use the active arcade accent");
 assert.match(arcade, /html\[data-theme\] \.reward-progress-label,[\s\S]{0,140}display: none;/, "the arcade HUD should hide the bar label");
 const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
@@ -52,7 +53,7 @@ for (const fn of ["setRewardProgress", "resetRewardProgress", "advanceRewardProg
   assert.match(game, new RegExp(`function ${fn}\\(`), `missing ${fn}()`);
 }
 assert.match(game, /state\.cleared % 5/, "bar should derive its cycle from the correct count");
-assert.match(game, /advanceRewardProgress\(\);/, "correct answers should advance the bar");
+assert.match(game, /callHook\("advanceRewardProgress"\)|advanceRewardProgress\(\)/, "correct answers should advance the bar");
 assert.match(game, /rewardProgress\.style\.setProperty\("--p"/, "bar should update the fill variable");
 assert.match(game, /is-ready/, "bar should expose a ready state");
 assert.match(game, /is-tick/, "bar should pulse on each correct answer");

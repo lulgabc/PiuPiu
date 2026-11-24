@@ -1,0 +1,815 @@
+/* ================================================================== */
+/* PiuPiu M2/M3 Theme isolation, Native <dialog>, A11y & New Controls */
+/* ================================================================== */
+
+/* --- Focus-visible ring across all interactive controls --- */
+html[data-theme] :is(button, select, input, textarea, summary, a, [role="button"], [role="tab"], [role="radio"], [tabindex]):focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--arc-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* Keep Parent Settings accessible during gameplay (T2-F10-05) */
+html[data-theme] body.phase-playing .setup-tool {
+  display: inline-flex !important;
+}
+
+/* Make falling & settled Rain word cards directly tappable (F12),
+   and clip #field without creating a scroll container so focus()/scrollIntoView()
+   never shift absolute/transformed word cards mid-click. */
+html[data-theme] body.phase-playing #field,
+html[data-theme] body.phase-playing .field {
+  overflow: clip !important;
+}
+
+html[data-theme] .word-layer .word {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* --- Native <dialog> modal sheets (all 7 sheets) --- */
+html[data-theme] dialog.native-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(100vw, 560px);
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 20px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--arc-ink);
+  overflow: visible;
+  z-index: 95;
+}
+
+html[data-theme] dialog.native-dialog:not([open]) {
+  display: none;
+}
+
+html[data-theme] dialog.native-dialog[open] {
+  display: grid;
+  place-items: center;
+}
+
+html[data-theme] dialog.native-dialog::backdrop {
+  background: var(--theme-overlay, rgba(4, 8, 20, 0.72));
+  backdrop-filter: blur(4px);
+}
+
+html[data-theme] dialog.native-dialog > div {
+  width: 100%;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* --- Strict theme surface isolation (bubblegum, cream, daylight) --- */
+html[data-theme="bubblegum"] #field,
+html[data-theme="bubblegum"] .field {
+  background:
+    radial-gradient(70% 60% at 48% 40%, rgba(180, 156, 255, 0.14), transparent 70%),
+    #160d2b;
+}
+
+html[data-theme="cream"] #field,
+html[data-theme="cream"] .field {
+  background:
+    radial-gradient(70% 60% at 48% 40%, rgba(255, 209, 102, 0.12), transparent 70%),
+    #18170f;
+}
+
+html[data-theme="daylight"] {
+  --theme-input: #ffffff;
+  --theme-input-ink: #18202c;
+  --theme-settled-bg: #f3efe4;
+  --theme-settled-ink: #18202c;
+  --theme-overlay: rgba(24, 32, 44, 0.42);
+  --theme-active-ink: #ffffff;
+  --theme-cta-ink: #ffffff;
+}
+
+html[data-theme="daylight"],
+html[data-theme="daylight"] body {
+  background: #f7f4ec;
+  color: #18202c;
+}
+
+html[data-theme="daylight"] #app {
+  background: transparent;
+  color: #18202c;
+}
+
+html[data-theme="daylight"] #field,
+html[data-theme="daylight"] .field {
+  background: #fffdf8;
+  border-color: rgba(24, 32, 44, 0.16);
+  box-shadow: inset 0 0 32px rgba(24, 32, 44, 0.05);
+}
+
+html[data-theme="daylight"] .field-grid {
+  background-image:
+    linear-gradient(rgba(29, 111, 138, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 111, 138, 0.07) 1px, transparent 1px);
+}
+
+html[data-theme="daylight"] .field-floor {
+  background: linear-gradient(180deg, transparent, rgba(24, 32, 44, 0.08));
+}
+
+html[data-theme="daylight"] .topbar,
+html[data-theme="daylight"] .hud,
+html[data-theme="daylight"] .panel,
+html[data-theme="daylight"] .install-card,
+html[data-theme="daylight"] .player-card,
+html[data-theme="daylight"] .board-card,
+html[data-theme="daylight"] .pack-card,
+html[data-theme="daylight"] .poetry-card,
+html[data-theme="daylight"] .setup-card,
+html[data-theme="daylight"] .pet-card-sheet,
+html[data-theme="daylight"] .controls {
+  background: #ffffff;
+  color: #18202c;
+  border-color: rgba(24, 32, 44, 0.18);
+  box-shadow: 0 10px 28px rgba(24, 32, 44, 0.1);
+}
+
+html[data-theme="daylight"] .start-panel {
+  background: #fffdf8;
+  color: #18202c;
+}
+
+html[data-theme="daylight"] .primary-btn,
+html[data-theme="daylight"] .start-cta {
+  background: linear-gradient(135deg, #1d6f8a, #155970);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(29, 111, 138, 0.28);
+}
+
+html[data-theme="daylight"] .ghost-btn,
+html[data-theme="daylight"] .icon-btn,
+html[data-theme="daylight"] .lang-select,
+html[data-theme="daylight"] .pack-pill,
+html[data-theme="daylight"] .player-pill,
+html[data-theme="daylight"] .home-settings,
+html[data-theme="daylight"] .home-install,
+html[data-theme="daylight"] .mode-option,
+html[data-theme="daylight"] .pack-tab,
+html[data-theme="daylight"] .pack-category,
+html[data-theme="daylight"] .diff-btn,
+html[data-theme="daylight"] .theme-choice,
+html[data-theme="daylight"] .over-board-link,
+html[data-theme="daylight"] .poetry-tab,
+html[data-theme="daylight"] .poetry-item,
+html[data-theme="daylight"] .poetry-shuffle,
+html[data-theme="daylight"] .poetry-import-btn,
+html[data-theme="daylight"] .voice-preview,
+html[data-theme="daylight"] .close-btn {
+  background: #f4f0e6;
+  color: #18202c;
+  border-color: rgba(24, 32, 44, 0.22);
+}
+
+html[data-theme="daylight"] input,
+html[data-theme="daylight"] select,
+html[data-theme="daylight"] textarea {
+  background: #ffffff;
+  color: #18202c;
+  border-color: rgba(24, 32, 44, 0.28);
+}
+
+html[data-theme="daylight"] .word,
+html[data-theme="daylight"] .word.settled,
+html[data-theme="daylight"] .word.fill-word,
+html[data-theme="daylight"] .word.paint-word {
+  background: #ffffff;
+  background-image: none;
+  color: #18202c;
+  border: 2px solid #1d6f8a;
+  box-shadow: 0 3px 10px rgba(24, 32, 44, 0.12);
+}
+
+html[data-theme="daylight"] .word .word-text,
+html[data-theme="daylight"] .fill-word .word-text,
+html[data-theme="daylight"] .paint-word .word-text {
+  color: #18202c;
+  text-shadow: none;
+}
+
+html[data-theme="daylight"] .poem-stage {
+  background: #fffdf8;
+  color: #18202c;
+  border-color: rgba(24, 32, 44, 0.18);
+}
+
+html[data-theme="daylight"] .poem-line {
+  background: #f4f0e6;
+  color: #18202c;
+  border-color: rgba(24, 32, 44, 0.16);
+}
+
+html[data-theme="daylight"] .poem-line.is-current {
+  background: #e6f4f8;
+  color: #102a38;
+  border-color: #1d6f8a;
+}
+
+html[data-theme="daylight"] .poem-line.is-read {
+  background: #eaf7ee;
+  color: #14532d;
+}
+
+html[data-theme="daylight"] .poem-title,
+html[data-theme="daylight"] .poem-author,
+html[data-theme="daylight"] .poem-hint,
+html[data-theme="daylight"] .poem-progress,
+html[data-theme="daylight"] .poem-category {
+  color: #18202c;
+}
+
+html[data-theme] .theme-swatch-daylight {
+  background: #f7f4ec;
+  border-color: #1d6f8a;
+}
+
+html[data-theme] .theme-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* --- Home quick-switch chips & Guest rename banner (F11) --- */
+.home-player-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.home-player-chips.is-hidden {
+  display: none;
+}
+
+.home-player-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--arc-line-strong);
+  background: var(--arc-panel);
+  color: var(--arc-ink);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home-player-chip.is-active {
+  border-color: var(--arc-accent);
+  background: color-mix(in srgb, var(--arc-accent) 18%, var(--arc-panel));
+}
+
+.guest-rename-banner {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--arc-line-strong);
+  background: var(--arc-panel-2);
+}
+
+.guest-rename-banner.is-hidden {
+  display: none;
+}
+
+.guest-rename-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--arc-ink);
+}
+
+.guest-rename-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.guest-rename-input {
+  flex: 1 1 150px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  border: 1px solid var(--arc-line-strong);
+  background: var(--theme-input);
+  color: var(--theme-input-ink);
+}
+
+.guest-rename-save {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  margin: 0 !important;
+  width: auto !important;
+}
+
+/* --- Settlement actions & clickable missed chips (F12) --- */
+.over-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.over-actions .over-board-link {
+  margin: 0;
+}
+
+.missed-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.missed-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--arc-line-strong);
+  background: var(--arc-panel-2);
+  color: var(--arc-ink);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* --- Pet Collection Dialog (F10 + F13) --- */
+.pet-card-sheet {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid var(--arc-line-strong);
+  background: var(--arc-panel);
+  color: var(--arc-ink);
+  box-shadow: var(--arc-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pet-head h2 {
+  margin: 0;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pet-sheet-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--arc-accent);
+  margin-left: auto;
+}
+
+.pet-detail-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--arc-accent);
+  background: var(--arc-panel-2);
+}
+
+.pet-detail-preview.is-hidden {
+  display: none;
+}
+
+.pet-detail-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  max-height: 52dvh;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.pet-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 76px;
+  padding: 8px 6px;
+  border-radius: 14px;
+  border: 1px solid var(--arc-line-strong);
+  background: var(--arc-panel-2);
+  color: var(--arc-ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pet-card.is-locked .pet-card-img {
+  filter: brightness(0) opacity(0.32);
+}
+
+.pet-card.is-previewing,
+.pet-card.is-active {
+  border-color: var(--arc-accent);
+  transform: scale(1.04);
+}
+
+/* --- Pack Search & 12-word preview (F17) --- */
+.pack-search-row {
+  margin: 8px 0;
+}
+
+.pack-search {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--arc-line-strong);
+  background: var(--theme-input);
+  color: var(--theme-input-ink);
+  box-sizing: border-box;
+}
+
+.pack-word-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.pack-word-preview:empty {
+  display: none;
+}
+
+.pack-word-chip {
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--arc-line);
+  background: var(--arc-panel-2);
+  color: var(--arc-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* --- Parent Settings Advanced <details> (F12 + F17) --- */
+.setup-advanced {
+  border: 1px solid var(--arc-line);
+  border-radius: 14px;
+  padding: 8px 12px;
+}
+
+.setup-advanced-summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--arc-ink);
+}
+
+.setup-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* --- Poetry listen-all & real-time word highlight (F15) --- */
+.poem-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.poem-word.is-spoken,
+.poem-word.is-matched {
+  color: var(--arc-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- Mic equalizer & no-speech guidance (F16) --- */
+.mic-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.mic-bar {
+  display: block;
+  width: 3px;
+  height: calc(4px + var(--mic-level, 0.15) * 10px);
+  border-radius: 2px;
+  background: currentColor;
+  transition: height 80ms linear;
+}
+
+.mic-btn.is-speaking .mic-bar {
+  height: 13px;
+}
+
+.mic-tip {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--arc-highlight);
+  text-align: center;
+}
+
+.mic-tip.is-hidden {
+  display: none;
+}
+
+/* --- 2-step delete armed state (F10) --- */
+button[data-confirm-armed="true"],
+button.is-armed {
+  background: var(--arc-coral) !important;
+  color: #ffffff !important;
+  border-color: var(--arc-coral) !important;
+  font-size: 12px !important;
+  font-weight: 800;
+  padding: 0 10px !important;
+  width: auto !important;
+}
+
+/* --- Player row actions spacing & editable player name --- */
+html[data-theme] .player-form.is-editing .player-name-input {
+  display: block !important;
+}
+
+.player-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* --- A11y Geometry: >=16px inputs, >=44px hit areas, >=10px text, zero overflow --- */
+html,
+body,
+#app {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+html[data-theme] input:not([type="file"]):not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+html[data-theme] select,
+html[data-theme] textarea {
+  font-size: 16px !important;
+}
+
+html[data-theme] button:not(:disabled),
+html[data-theme] [role="button"],
+html[data-theme] [role="tab"],
+html[data-theme] [role="radio"],
+html[data-theme] summary,
+html[data-theme] select,
+html[data-theme] .icon-btn,
+html[data-theme] .lang-select,
+html[data-theme] .pack-pill,
+html[data-theme] .player-pill,
+html[data-theme] .pack-tab,
+html[data-theme] .diff-btn,
+html[data-theme] .poem-line,
+html[data-theme] .pack-category,
+html[data-theme] .theme-choice,
+html[data-theme] .avatar-choice,
+html[data-theme] [data-edit-player],
+html[data-theme] [data-delete-player],
+html[data-theme] [data-delete-pack],
+html[data-theme] .close-btn,
+html[data-theme] [id$="Close"],
+html[data-theme] .home-settings,
+html[data-theme] .home-install,
+html[data-theme] .start-cta {
+  min-width: 46px;
+  min-height: 46px;
+  height: auto;
+  box-sizing: border-box;
+}
+
+html[data-theme] .lang-select {
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 10px !important;
+}
+
+/* Keep micro-text >= 10px everywhere across all viewports & modes */
+html[data-theme] .mode-option-copy > span {
+  font-size: 12px !important;
+}
+
+html[data-theme] .mode-option-copy small,
+html[data-theme] .mode-index,
+html[data-theme] .stat-label,
+html[data-theme] .theme-choice-name,
+html[data-theme] .custom-pack-current,
+html[data-theme] .gauge-label,
+html[data-theme] .reward-progress-label,
+html[data-theme] .reward-progress-count,
+html[data-theme] .speed-tool-label,
+html[data-theme] .poem-line-index,
+html[data-theme] .poem-category,
+html[data-theme] #poemCategoryName,
+html[data-theme] #poemProgress,
+html[data-theme] .poem-progress,
+html[data-theme] .poem-author,
+html[data-theme] #poemAuthor,
+html[data-theme] .poem-hint,
+html[data-theme] .poem-combo,
+html[data-theme] .poetry-note,
+html[data-theme] .poetry-count,
+html[data-theme] .poetry-item-author,
+html[data-theme] .poetry-item-meta,
+html[data-theme] .pack-count,
+html[data-theme] .pack-category small,
+html[data-theme] .pack-preview-text span,
+html[data-theme] .board-row-meta,
+html[data-theme] .player-option-meta,
+html[data-theme] .foot-hint,
+html[data-theme] .start-tagline,
+html[data-theme] .tagline,
+html[data-theme] .best,
+html[data-theme] #bestLine,
+html[data-theme] #bestLineValue,
+html[data-theme] .eyebrow,
+html[data-theme] .record,
+html[data-theme] .session-total,
+html[data-theme] .missed-title,
+html[data-theme] .fill-bonus,
+html[data-theme] .install-note,
+html[data-theme] .player-subtitle,
+html[data-theme] .board-subtitle,
+html[data-theme] .custom-pack-hint,
+html[data-theme] .custom-pack-quota,
+html[data-theme] .custom-pack-status,
+html[data-theme] .custom-pack-field-label,
+html[data-theme] .custom-pack-item-text strong,
+html[data-theme] .custom-pack-item-text span,
+html[data-theme] .player-option-current,
+html[data-theme] #playerFormTitle,
+html[data-theme] .player-form h3,
+html[data-theme] .board-me,
+html[data-theme] .board-rank,
+html[data-theme] .pack-tab,
+html[data-theme] .pack-category b,
+html[data-theme] .pack-section-title,
+html[data-theme] .pack-preview-text strong,
+html[data-theme] .diff-btn,
+html[data-theme] .setup-section h3,
+html[data-theme] .setup-card h3,
+html[data-theme] .poetry-import span,
+html[data-theme] .poetry-import-btn,
+html[data-theme] .poetry-tab,
+html[data-theme] .poetry-shuffle,
+html[data-theme] .poetry-item-title,
+html[data-theme] .poetry-item-done,
+html[data-theme] .poetry-status,
+html[data-theme] .poetry-preview-text span,
+html[data-theme] .poetry-preview-text strong,
+html[data-theme] .poetry-preview-badge,
+html[data-theme] #poetryPreviewMeta,
+html[data-theme] .pet-card-name,
+html[data-theme] .pet-sheet-count,
+html[data-theme] .home-best,
+html[data-theme] .poem-result-category,
+html[data-theme] .poem-result-author,
+html[data-theme] .setup-note {
+  font-size: 12px !important;
+}
+
+html[data-theme] .stat strong,
+html[data-theme] #combo,
+html[data-theme] #score,
+html[data-theme] #correct,
+html[data-theme] #level,
+html[data-theme] #pile,
+html[data-theme] #time,
+html[data-theme] #micLabel,
+html[data-theme] #toast,
+html[data-theme] .toast,
+html[data-theme] #heard,
+html[data-theme] .heard,
+html[data-theme] #praise,
+html[data-theme] .praise,
+html[data-theme] .pack-pill,
+html[data-theme] .player-pill,
+html[data-theme] .home-settings,
+html[data-theme] .home-install {
+  font-size: 13px !important;
+}
+
+/* Prevent topbar / HUD / pills / home-meta overflow and sibling overlap on narrow phones */
+html[data-theme] .topbar {
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+
+html[data-theme] .hud {
+  flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
+}
+
+html[data-theme] .hud .stat {
+  min-width: 0;
+}
+
+html[data-theme] .tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+html[data-theme] .story-pills,
+html[data-theme] .home-meta,
+html[data-theme] .pack-tabs,
+html[data-theme] .diff-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+html[data-theme] .pack-pill,
+html[data-theme] .player-pill {
+  max-width: 100%;
+}
+
+html[data-theme] .controls {
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+
+html[data-theme] .type-form {
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-theme] #typeInput {
+  min-width: 0;
+}
+
+/* --- Strict prefers-reduced-motion compliance (T2-F07-04) --- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] .brand-mark,
+  html[data-theme] .reward-node,
+  html[data-theme] .primary-btn,
+  html[data-theme] .start-mascot,
+  html[data-theme] .mode-option,
+  html[data-theme] .mode-art-svg,
+  html[data-theme] .mic-bar {
+    animation: none !important;
+    transition-duration: 0s !important;
+  }
+}

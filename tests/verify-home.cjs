@@ -7,7 +7,8 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 const arcade = fs.readFileSync(path.join(root, "css/arcade.css"), "utf8");
 const poetry = fs.readFileSync(path.join(root, "css/poetry.css"), "utf8");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const i18n = fs.readFileSync(path.join(root, "js/i18n.js"), "utf8");
 
 // ---------- child-first home ----------
@@ -28,8 +29,8 @@ assert.match(html, /id="installBtn" class="home-install/, "install should remain
 assert.match(html, /id="bestLine" class="best home-best"/, "the best score should be compact");
 
 // ---------- settings drawer ----------
-assert.match(html, /id="setupSheet"[^>]*role="dialog"/, "settings should be a dialog");
-assert.match(html, /id="packSheet"[^>]*role="dialog"/, "word packs need their own picker dialog");
+assert.match(html, /<dialog id="setupSheet"/, "settings should be a native <dialog>");
+assert.match(html, /<dialog id="packSheet"/, "word packs need their own native <dialog>");
 assert.match(html, /id="packPreviewIcon"/, "the picker should preview the chosen pack");
 assert.match(html, /id="packDone"/, "the picker needs a done control");
 assert.ok(!html.includes('id="setupPackSection"'), "the parent sheet should no longer mix in word packs");

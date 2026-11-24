@@ -4,7 +4,8 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const ambient = fs.readFileSync(path.join(root, "js/pixi-ambient.js"), "utf8");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 

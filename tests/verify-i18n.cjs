@@ -38,7 +38,8 @@ for (const key of base) {
 }
 
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-const game = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 
 const htmlKeys = [
   ...html.matchAll(/data-i18n(?:-placeholder|-title|-aria)?="([^"]+)"/g),

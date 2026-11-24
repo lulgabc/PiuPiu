@@ -6,7 +6,11 @@
 :root {
   color-scheme: dark;
   --arc-bg: #0a1024;
+  --arc-bg-mid: #0d1430;
   --arc-bg-deep: #090e20;
+  --arc-bg-glow: #1d2b50;
+  --arc-field-bg: #0b1228;
+  --arc-track-bg: #263252;
   --arc-panel: #141d36;
   --arc-panel-2: #1b2648;
   --arc-ink: #f6f8ff;
@@ -17,7 +21,7 @@
   --arc-lav: #b49cff;
   --arc-line: rgba(255, 255, 255, 0.1);
   --arc-line-strong: rgba(255, 255, 255, 0.18);
-  --arc-glow: 0 0 26px rgba(92, 242, 214, 0.2);
+  --arc-glow: 0 0 26px color-mix(in srgb, var(--arc-accent, #5cf2d6) 20%, transparent);
   --arc-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   --arc-shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.28);
   --arc-radius: 16px;
@@ -30,9 +34,9 @@
   --sb-ink-soft: var(--arc-muted);
   --sb-line: var(--arc-line);
   --sb-line-soft: rgba(255, 255, 255, 0.06);
-  --sb-accent: var(--arc-mint);
+  --sb-accent: var(--arc-accent, var(--arc-mint));
   --sb-accent-ink: #071923;
-  --sb-accent-soft: rgba(92, 242, 214, 0.12);
+  --sb-accent-soft: color-mix(in srgb, var(--arc-accent, #5cf2d6) 12%, transparent);
   --sb-accent-2: var(--arc-coral);
   --sb-highlight: var(--arc-lemon);
   --sb-blue: var(--arc-lav);
@@ -46,6 +50,11 @@
 
 html[data-theme="candy"] {
   --arc-bg: #0a1024;
+  --arc-bg-mid: #0d1430;
+  --arc-bg-deep: #090e20;
+  --arc-bg-glow: #1d2b50;
+  --arc-field-bg: #0b1228;
+  --arc-track-bg: #263252;
   --arc-panel: #141d36;
   --arc-panel-2: #1b2648;
   --arc-accent: #5cf2d6;
@@ -58,6 +67,11 @@ html[data-theme="candy"] {
 
 html[data-theme="bubblegum"] {
   --arc-bg: #120a24;
+  --arc-bg-mid: #1a0f33;
+  --arc-bg-deep: #0e071c;
+  --arc-bg-glow: #321a5c;
+  --arc-field-bg: #160d2b;
+  --arc-track-bg: #352159;
   --arc-panel: #1c1238;
   --arc-panel-2: #271a4c;
   --arc-accent: #b49cff;
@@ -69,15 +83,44 @@ html[data-theme="bubblegum"] {
 }
 
 html[data-theme="cream"] {
-  --arc-bg: #0c1414;
-  --arc-panel: #14201f;
-  --arc-panel-2: #1d2d2b;
+  --arc-bg: #14140d;
+  --arc-bg-mid: #1d1c12;
+  --arc-bg-deep: #0f0f09;
+  --arc-bg-glow: #383319;
+  --arc-field-bg: #18170f;
+  --arc-track-bg: #3b3822;
+  --arc-panel: #222014;
+  --arc-panel-2: #2d2b1c;
   --arc-accent: #ffd166;
-  --arc-accent-2: #5cf2d6;
+  --arc-accent-2: #ff9f43;
   --arc-highlight: #ff6b8a;
   --arc-cta-a: #ffd166;
   --arc-cta-b: #ffe29a;
-  --arc-cta-c: #5cf2d6;
+  --arc-cta-c: #ff9f43;
+}
+
+html[data-theme="daylight"] {
+  color-scheme: light;
+  --arc-bg: #f7f4ec;
+  --arc-bg-mid: #f1ede2;
+  --arc-bg-deep: #eae4d6;
+  --arc-bg-glow: #fff8e6;
+  --arc-field-bg: #fffdf8;
+  --arc-track-bg: #d9d3c4;
+  --arc-panel: #ffffff;
+  --arc-panel-2: #f4f0e6;
+  --arc-ink: #18202c;
+  --arc-muted: #4b5563;
+  --arc-accent: #1d6f8a;
+  --arc-accent-2: #d94862;
+  --arc-highlight: #b45309;
+  --arc-cta-a: #1d6f8a;
+  --arc-cta-b: #2589a8;
+  --arc-cta-c: #155970;
+  --arc-line: rgba(24, 32, 44, 0.14);
+  --arc-line-strong: rgba(24, 32, 44, 0.24);
+  --arc-shadow: 0 8px 24px rgba(24, 32, 44, 0.1);
+  --arc-shadow-sm: 0 3px 10px rgba(24, 32, 44, 0.08);
 }
 
 html[data-theme] {
@@ -1989,9 +2032,8 @@ html[data-theme] .setup-tool {
 html[data-theme],
 html[data-theme] body {
   background:
-    radial-gradient(80% 45% at 50% 0%, #1d2b50, transparent 70%),
-    linear-gradient(180deg, var(--arc-bg), #0d1430 66%, var(--arc-bg-deep));
-  background-attachment: fixed;
+    radial-gradient(80% 45% at 50% 0%, var(--arc-bg-glow), transparent 70%),
+    linear-gradient(180deg, var(--arc-bg), var(--arc-bg-mid) 66%, var(--arc-bg-deep));
   color: var(--arc-ink);
 }
 
@@ -2182,7 +2224,7 @@ html[data-theme] .reward-node {
   height: 7px;
   border: 0;
   border-radius: 50%;
-  background: #263252;
+  background: var(--arc-track-bg);
   color: transparent;
   font-size: 0;
   box-shadow: none;
@@ -2190,7 +2232,7 @@ html[data-theme] .reward-node {
 
 html[data-theme] .reward-node.is-lit {
   background: var(--arc-accent);
-  box-shadow: 0 0 8px rgba(92, 242, 214, 0.7);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--arc-accent) 70%, transparent);
 }
 
 html[data-theme] .reward-progress.is-ready .reward-node {
@@ -2277,7 +2319,7 @@ html[data-theme] .start-mascot::before {
   border-radius: 50%;
   background: radial-gradient(circle at 50% 42%, rgba(180, 156, 255, 0.16), transparent 68%);
   box-shadow:
-    0 0 42px rgba(92, 242, 214, 0.13),
+    0 0 42px color-mix(in srgb, var(--arc-accent) 13%, transparent),
     inset 0 0 32px rgba(180, 156, 255, 0.14);
 }
 
@@ -2382,7 +2424,7 @@ html[data-theme] .mode-option.is-active {
   border-color: color-mix(in srgb, var(--arc-accent) 65%, transparent);
   background: color-mix(in srgb, var(--arc-accent) 10%, transparent);
   color: var(--arc-accent);
-  box-shadow: 0 0 18px rgba(92, 242, 214, 0.1);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--arc-accent) 10%, transparent);
 }
 
 html[data-theme] .mode-option.is-active::after {
@@ -2404,7 +2446,7 @@ html[data-theme] .start-cta {
   font-size: 19px;
   font-weight: 900;
   letter-spacing: -0.02em;
-  box-shadow: 0 0 26px rgba(92, 242, 214, 0.2);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--arc-accent) 20%, transparent);
 }
 
 html[data-theme] .start-cta::after {
@@ -2422,7 +2464,7 @@ html[data-theme] .start-cta::after {
 html[data-theme] .start-cta:hover:not(:disabled) {
   transform: none;
   filter: brightness(1.04);
-  box-shadow: 0 0 32px rgba(92, 242, 214, 0.28);
+  box-shadow: 0 0 32px color-mix(in srgb, var(--arc-accent) 28%, transparent);
 }
 
 html[data-theme] .story-pills {
@@ -2498,11 +2540,11 @@ html[data-theme] .home-settings:hover {
 
 html[data-theme] .field {
   margin: 10px 8px 0;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--arc-line);
   border-radius: 20px;
   background:
-    radial-gradient(70% 60% at 48% 40%, rgba(180, 156, 255, 0.1), transparent 70%),
-    #0b1228;
+    radial-gradient(70% 60% at 48% 40%, color-mix(in srgb, var(--arc-accent) 10%, transparent), transparent 70%),
+    var(--arc-field-bg);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
@@ -2510,8 +2552,8 @@ html[data-theme] .field {
 html[data-theme] .field-grid {
   opacity: 1;
   background-image:
-    linear-gradient(rgba(92, 242, 214, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(92, 242, 214, 0.035) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--arc-accent) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--arc-accent) 5%, transparent) 1px, transparent 1px);
   background-size: 34px 34px;
 }
 
@@ -2530,7 +2572,7 @@ html[data-theme] .danger-line {
 }
 
 html[data-theme] .gauge-track {
-  background: #263252;
+  background: var(--arc-track-bg);
 }
 
 html[data-theme] .gauge-fill {
@@ -2587,8 +2629,8 @@ html[data-theme] .word.focused {
   outline: 2px solid var(--arc-accent);
   outline-offset: 2px;
   box-shadow:
-    0 0 0 4px rgba(92, 242, 214, 0.16),
-    0 0 24px rgba(92, 242, 214, 0.28);
+    0 0 0 4px color-mix(in srgb, var(--arc-accent) 16%, transparent),
+    0 0 24px color-mix(in srgb, var(--arc-accent) 28%, transparent);
   filter: none;
 }
 
@@ -2657,8 +2699,8 @@ html[data-theme] .mic-btn {
 html[data-theme] .mic-dot {
   background: var(--arc-accent);
   box-shadow:
-    0 0 0 4px rgba(92, 242, 214, 0.12),
-    0 0 10px rgba(92, 242, 214, 0.6);
+    0 0 0 4px color-mix(in srgb, var(--arc-accent) 12%, transparent),
+    0 0 10px color-mix(in srgb, var(--arc-accent) 60%, transparent);
 }
 
 html[data-theme] .type-form {
@@ -2696,13 +2738,13 @@ html[data-theme] .primary-btn {
   color: #071923;
   font-size: 15px;
   font-weight: 900;
-  box-shadow: 0 0 24px rgba(92, 242, 214, 0.16);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--arc-accent) 16%, transparent);
 }
 
 html[data-theme] .primary-btn:hover:not(:disabled) {
   transform: none;
   filter: brightness(1.04);
-  box-shadow: 0 0 30px rgba(92, 242, 214, 0.24);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--arc-accent) 24%, transparent);
 }
 
 html[data-theme] .ghost-btn {
@@ -2910,7 +2952,7 @@ html[data-theme] .pack-category {
 html[data-theme] .pack-category.is-active {
   border-color: color-mix(in srgb, var(--arc-accent) 65%, transparent);
   background: color-mix(in srgb, var(--arc-accent) 10%, transparent);
-  box-shadow: 0 0 16px rgba(92, 242, 214, 0.1);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--arc-accent) 10%, transparent);
 }
 
 html[data-theme] .pack-category.is-active::after {
@@ -3059,7 +3101,7 @@ html[data-theme] .board-row-avatar {
 
 html[data-theme] .avatar-choice.is-selected {
   border-color: var(--arc-accent);
-  box-shadow: 0 0 0 3px rgba(92, 242, 214, 0.16);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--arc-accent) 16%, transparent);
 }
 
 html[data-theme] .player-option-name,
@@ -3077,7 +3119,7 @@ html[data-theme] .board-row-total {
 html[data-theme] .player-option-current,
 html[data-theme] .board-row-current {
   border-radius: 999px;
-  background: rgba(92, 242, 214, 0.12);
+  background: color-mix(in srgb, var(--arc-accent) 12%, transparent);
   color: var(--arc-accent);
 }
 
@@ -3148,7 +3190,7 @@ html[data-theme] .theme-choice {
 html[data-theme] .theme-choice.is-active {
   border-color: var(--arc-accent);
   background: color-mix(in srgb, var(--arc-accent) 10%, transparent);
-  box-shadow: 0 0 16px rgba(92, 242, 214, 0.12);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--arc-accent) 12%, transparent);
 }
 
 html[data-theme] .theme-swatch {
@@ -3273,13 +3315,13 @@ html[data-theme] .install-note {
   }
 }
 
-/* Keep the dark field from inheriting the paper board border. */
+/* Keep the field themed via semantic surface tokens. */
 html[data-theme] #field {
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--arc-line);
   border-radius: 20px;
   background:
-    radial-gradient(70% 60% at 48% 40%, rgba(180, 156, 255, 0.1), transparent 70%),
-    #0b1228;
+    radial-gradient(70% 60% at 48% 40%, color-mix(in srgb, var(--arc-accent) 10%, transparent), transparent 70%),
+    var(--arc-field-bg);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.25);
 }
 
@@ -3294,8 +3336,8 @@ html[data-theme] .field-grid {
   display: block;
   opacity: 1;
   background-image:
-    linear-gradient(rgba(92, 242, 214, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(92, 242, 214, 0.035) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--arc-accent) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--arc-accent) 5%, transparent) 1px, transparent 1px);
   background-size: 34px 34px;
 }
 
@@ -3352,7 +3394,7 @@ html[data-theme] .custom-pack-item-text span {
 html[data-theme] .custom-pack-current {
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgba(92, 242, 214, 0.12);
+  background: color-mix(in srgb, var(--arc-accent) 12%, transparent);
   color: var(--arc-accent);
   font-size: 7px;
   font-style: normal;
@@ -3981,7 +4023,7 @@ html[data-theme] .mode-art .paint-ball {
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--mode-a) 60%, transparent));
 }
 
-html[data-theme] .mode-art .paint-splat {
+html[data-theme] .mode-art .mode-paint-splat {
   fill: color-mix(in srgb, var(--mode-a) 62%, #0d1530);
   stroke: var(--mode-b);
   stroke-width: 1.2;
@@ -4003,7 +4045,7 @@ html[data-theme] .mode-option.is-active[data-mode="fill"] .grid-tile.pop {
   transform-origin: center;
 }
 
-html[data-theme] .mode-option.is-active[data-mode="paint"] .paint-splat {
+html[data-theme] .mode-option.is-active[data-mode="paint"] .mode-paint-splat {
   animation: modeSplat 3s ease-in-out infinite;
   transform-box: fill-box;
   transform-origin: center;
@@ -4111,7 +4153,7 @@ html[data-theme] .mode-option.is-active[data-mode="paint"] .paint-splat {
   html[data-theme] .mode-option.is-active .mode-led,
   html[data-theme] .mode-option.is-active .rain-tile,
   html[data-theme] .mode-option.is-active .grid-tile.pop,
-  html[data-theme] .mode-option.is-active .paint-splat {
+  html[data-theme] .mode-option.is-active .mode-paint-splat {
     animation: none;
   }
 
@@ -4163,7 +4205,7 @@ html[data-theme] .mode-art .grid-tile.pop {
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--mode-a) 65%, transparent));
 }
 
-html[data-theme] .mode-art .paint-splat {
+html[data-theme] .mode-art .mode-paint-splat {
   fill: color-mix(in srgb, var(--mode-a) 84%, #0d1530);
   stroke: color-mix(in srgb, var(--mode-b) 85%, #fff);
   stroke-width: 1.5;

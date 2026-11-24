@@ -6,7 +6,8 @@ const root = path.join(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const html = read("index.html");
 const css = read("css/arcade.css");
-const game = read("js/game.js");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const i18n = read("js/i18n.js");
 
 // ---------- inline SVG sprite ----------
@@ -62,7 +63,7 @@ for (const icon of [
 }
 
 // ---------- static icon slots ----------
-for (const icon of ["spark", "rain", "volume", "settings", "pause"]) {
+for (const icon of ["spark", "volume", "settings", "pause"]) {
   assert.match(html, new RegExp(`<use href="#ui-${icon}">`), `missing static icon use: ${icon}`);
 }
 assert.equal((html.match(/class="reward-node"/g) || []).length, 5, "progress dots should be empty decorative spans");

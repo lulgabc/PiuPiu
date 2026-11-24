@@ -6,7 +6,8 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const html = read("index.html");
-const game = read("js/game.js");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const css = read("css/poetry.css");
 const arcade = read("css/arcade.css");
 const sw = read("sw.js");
@@ -53,7 +54,7 @@ assert.match(read("tools/extract-poems.py"), /PyMuPDF|import fitz/, "the extract
 assert.match(read("tools/extract-poems.py"), /CATEGORY_META/, "the extractor should classify poems by the book categories");
 assert.match(read("tools/extract-poems.py"), /JS_OUT|js\/poetry\.js/, "the extractor should write the public data file");
 assert.equal(game.includes("data/poetry.local.json"), false, "the game should not depend on a private local JSON file");
-assert.match(sw, /"\.\/js\/poetry\.js\?v=/ , "the full library should be precached for offline use");
+assert.match(sw, /\/js\/poetry\.js/, "the full library should be cached in SW data bucket for offline use");
 
 // ---------- entry points and markup ----------
 assert.match(html, /data-mode="poem"/, "home needs the poetry mode card");
@@ -69,14 +70,10 @@ assert.match(html, /id="poemListen"/, "the poem needs a listen control");
 assert.match(html, /id="poemResult"/, "the result needs a poem card");
 assert.match(html, /id="overPoetryBtn"/, "the result should return to the poetry library");
 assert.match(html, /css\/poetry\.css\?v=[\d.]+/, "the poetry stylesheet should load");
-assert.match(html, /js\/poetry\.js\?v=[\d.]+/, "the demo poetry library should load");
+assert.match(game, /js\/poetry\.js/, "the poetry library should be lazy-loaded via loader.js");
 assert.ok(
   html.indexOf("css/arcade.css") < html.indexOf("css/poetry.css"),
   "the poetry layer should load after the arcade skin",
-);
-assert.ok(
-  html.indexOf("js/poetry.js") < html.indexOf("js/game.js"),
-  "the poetry data should load before the game",
 );
 
 // ---------- game wiring ----------
@@ -95,7 +92,7 @@ assert.match(game, /function loadPoetryLibrary\(/, "the library loader is missin
 assert.match(game, /function importPoetryFile\(/, "the library importer is missing");
 assert.match(game, /function renderPoetryLibrary\(/, "the library UI renderer is missing");
 assert.match(game, /markPoetryCompleted\(poem\.poem\.id\)/, "completed poems should be remembered");
-assert.match(game, /state\.score \+= 10 \+ Math\.min\(10, Math\.max\(0, state\.combo - 1\)\)/, "each line should award points");
+assert.match(game, /const points = 10 \+ Math\.min\(10, Math\.max\(0, state\.combo - 1\)\);[\s\S]{0,60}state\.score \+= points;/, "each line should award points");
 assert.match(game, /state\.mode === "poem"\) return findPoemMatch/, "speech matching should branch into poems");
 assert.match(game, /resolveSpeechHit\(bestHit\)/, "speech results should route to the poem line handler");
 assert.match(game, /body\.classList\.toggle\("mode-poem", poem\)/, "the page should track poem mode");
@@ -151,9 +148,9 @@ for (const key of [
   }
 }
 
-assert.equal(pkg.version, "2.32.1");
+assert.equal(pkg.version, "2.33.0");
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true);
-assert.ok(sw.includes("./css/poetry.css") && sw.includes("./js/poetry.js"), "poetry assets should be offline-safe");
+assert.ok(sw.includes("./css/poetry.css") && sw.includes("/js/poetry.js"), "poetry assets should be offline-safe");
 
 console.log("✓ all 153 authorized poems are bundled with eight categories and 2034 lines");
 console.log("✓ home has a fourth poetry mode, library sheet and poem stage");

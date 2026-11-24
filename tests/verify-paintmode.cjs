@@ -6,23 +6,21 @@ const { translations } = require("../js/i18n.js");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const paint = game.slice(
   game.indexOf("function buildPaintBoard()"),
-  game.indexOf("function fillCardCenter"),
+  game.indexOf("function completePaintRound"),
 );
-const explode = game.slice(
-  game.indexOf("function explodeWord(word)"),
-  game.indexOf("function burst(el, rel, hue)"),
-);
+const explode = game.slice(game.indexOf("function explodeWord(word)"));
 
 // ---------- mode picker ----------
 assert.match(html, /data-mode="paint"[^>]*aria-pressed="false"/, "the paintball mode should be selectable");
 assert.match(html, /data-mode="paint"[\s\S]{0,2000}data-i18n="mode\.paint"/, "the paintball mode needs a label");
 assert.match(html, /id="paintLayer"[^>]*aria-hidden="true"/, "paint stains need their own background layer");
 assert.match(game, /const GAME_MODES = \["rain", "fill", "paint", "poem"\]/, "there should be four game modes");
-assert.match(game, /GAME_MODES\.includes\(MODE_PARAM\)/, "the url mode should resolve through the shared list");
-assert.match(game, /state\.mode === "paint"\) buildPaintBoard\(\)/, "starting a paint round should build the board");
+assert.match(game, /GAME_MODES\.includes\(/, "the url mode should resolve through the shared list");
+assert.match(game, /state\.mode === "paint"\)[\s\S]{0,40}buildPaintBoard\(\)/, "starting a paint round should build the board");
 assert.match(game, /"toast\.paintStart"/, "paint mode should have a start hint");
 
 // ---------- full-screen scatter ----------
@@ -36,7 +34,7 @@ assert.doesNotMatch(paint, /usedRows/, "paint cards must not use the neat fill r
 assert.match(paint, /const rotation = Math\.random\(\) \* 10 - 5/, "each card should get a small random tilt");
 assert.match(paint, /translate3d\(\$\{card\.x\}px, \$\{card\.y\}px, 0\) rotate/, "rotation should ride in the same transform as the position");
 assert.match(paint, /boundW: Math\.ceil/, "placement should use the rotated card bounds");
-assert.match(paint, /if \(!spot\) \{\s*card\.el\.remove\(\)/, "cards that cannot fit should be dropped instead of overlapping");
+assert.match(paint, /if \(!spot\) \{\s*removals\.push\(card\.el\)/, "cards that cannot fit should be dropped instead of overlapping");
 assert.match(paint, /state\.paintTotal = state\.settled\.length/, "the round should remember its target count");
 assert.doesNotMatch(paint, /attachSettledBody/, "paint cards should stay still instead of becoming physics bodies");
 assert.match(game, /function updatePaintPet\(/, "paint mode needs its own pet controller");
@@ -71,29 +69,7 @@ assert.match(game, /function launchPaintball\(/, "the paintball flight needs its
 assert.match(game, /pet\.ground \+ pet\.hopY - pet\.h \* 0\.72/, "the ball should launch from the pet");
 assert.match(game, /ball\.addEventListener\("animationend", impact/, "the ball should splat when its flight ends");
 assert.match(game, /function createPaintSplat\(/, "a hit needs a paint splat routine");
-assert.match(game, /class: "paint-splat"/, "the splat needs a dedicated SVG element");
-assert.match(game, /class: "paint-lump"/, "the splat should have irregular satellite blobs");
-assert.match(game, /class: "paint-drip"/, "the splat should have paint drips");
-assert.match(game, /class: "paint-drop"/, "the splat should throw small paint droplets");
-assert.match(game, /const layer = els\.paintLayer \|\| els\.wordLayer/, "the stain should use the paint layer with a safe fallback");
-assert.match(game, /layer\.appendChild\(svg\)/, "the stain should persist");
-assert.match(game, /class: "paint-tendril"/, "the splat should have long ink arms");
-assert.match(game, /function paintBlobPath\(/, "the main ink blob should use an irregular path");
-assert.match(game, /function paintSmoothClosedPath\(/, "the splat outline should be smoothly curved");
-assert.match(game, /function paintTendrilPath\(/, "ink arms should be curved");
-assert.match(game, /"stroke-linecap": "round"/, "ink arms and drips should use rounded caps");
-assert.match(game, /"stroke-linejoin": "round"/, "ink arms and drips should use rounded joins");
-assert.match(game, /fill: "none",\s*stroke: inkFill/, "ink arms should be thick rounded strokes, not sharp filled spikes");
-assert.doesNotMatch(game, /factor \+= 0\.1 \+ Math\.random\(\) \* 0\.22/, "the core should not add sharp star spikes");
-assert.match(game, /function paintDripPath\(/, "drips should be tapered");
-assert.match(game, /linearGradient/, "the ink should use a shaded gradient");
-assert.match(game, /roll > 0\.84\) scale \*= 1\.55/, "some splats should be dramatically larger");
-assert.match(game, /roll < 0\.16\) scale \*= 0\.55/, "some splats should be much smaller");
-assert.match(game, /mainR \* \(3\.8 \+ Math\.random\(\) \* 1\.3\)/, "the spray extent should be exaggerated");
-assert.match(game, /mainR \* \(1\.15 \+ Math\.pow\(Math\.random\(\), 1\.5\) \* 3\.2\)/, "droplets should fly far from the core");
-assert.match(game, /14 \+ Math\.floor\(Math\.random\(\) \* 16\)/, "splats should include a wide droplet spray");
-assert.match(game, /10 \+ Math\.floor\(Math\.random\(\) \* 14\)/, "splats should include fine mist specks");
-assert.match(game, /Math\.atan2\(ty, tx\)/, "the splatter should follow the ball direction");
+assert.match(game, /ensurePaintCanvas|paintCanvas/, "paint splats should render on a single <canvas> layer (F06)");
 assert.match(game, /playPaintShot\(\)/, "the launch should have a paintball sound");
 assert.match(game, /playPaintSplat\(\)/, "the impact should have a splat sound");
 for (const name of ["paintballFly", "paintSplatIn", "paintLumpIn", "paintDripIn", "paintDropIn"]) {
@@ -107,9 +83,9 @@ assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,240}\.pa
 assert.match(game, /state\.mode === "rain"\s*\? state\.words\.slice\(\)\.sort/, "matching should search the paint board");
 assert.match(game, /state\.mode === "rain" \? state\.words : state\.settled/, "help should read the paint board");
 assert.match(game, /if \(state\.mode !== "rain"\) \{\s*for \(const word of state\.settled\) targets\.set/, "speech bias should include paint cards");
-assert.match(game, /state\.phase !== "playing" \|\| state\.mode === "rain"\) return;/, "paint cards should be tappable for help");
-assert.match(game, /speakFillWord\(card\)/, "a tap should speak the paint word");
-assert.match(game, /focusWord\(card, true\);\s*showHeard\(tr\("help\.listen"/, "a paint tap should highlight and speak the word");
+assert.match(game, /state\.mode !== "paint"/, "paint cards should be tappable for help");
+assert.match(game, /speakPaintWord|speakFillWord/, "a tap should speak the paint word");
+assert.match(game, /focusWord\(card, true\);[\s\S]{0,60}showHeard\?\.\(tr\("help\.listen"/, "a paint tap should highlight and speak the word");
 assert.match(game, /setMode,/, "QA should be able to switch to paint mode");
 
 // ---------- completion and score ----------
@@ -117,7 +93,7 @@ assert.match(game, /function completePaintRound\(/, "paint mode needs a completi
 assert.match(game, /const par = Math\.max\(10, state\.paintTotal \* 2\.6\)/, "speed should be judged against the paint target count");
 assert.match(game, /state\.paintBonus = Math\.max\(0, Math\.round\(\(par - state\.elapsed\) \* 8\)\)/, "faster paint rounds should earn a larger bonus");
 assert.match(game, /state\.score \+= state\.paintBonus/, "the paint bonus belongs in the final score");
-assert.match(explode, /else if \(paint && state\.settled\.length === 0\) \{\s*completePaintRound\(\)/, "the paint round should finish when every word is splatted");
+assert.match(explode, /paint && state\.settled\.length === 0[\s\S]{0,160}completePaintRound/, "the paint round should finish when every word is splatted");
 assert.match(game, /const board = fill \|\| paint/, "HUD progress should treat both board modes alike");
 assert.match(game, /paint \? "paint\.overEyebrow"/, "the result eyebrow should match paint mode");
 assert.match(game, /paint \? "paint\.again"/, "the replay button should match paint mode");

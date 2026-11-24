@@ -3,7 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { translations } = require("../js/i18n.js");
-const game = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
 const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
 const arcade = fs.readFileSync(path.join(__dirname, "../css/arcade.css"), "utf8");
@@ -26,20 +27,20 @@ assert.match(game, /function finishMeteor\(\)/, "the meteor needs an impact rout
 assert.match(game, /function sweepMeteorSettled\(meteor\)/, "the meteor should sweep settled words on contact");
 assert.match(game, /meteor\.cleared \+= 1/, "each touched frozen word should be counted");
 assert.match(game, /state\.settled\.splice\(index, 1\)/, "only touched settled cards should leave the field");
-assert.match(game, /toast\(count \? tr\("meteor\.clear", \{ count \}\) : tr\("meteor\.empty"\)\)/, "the sweep should report how many frozen words were touched");
-assert.match(game, /y <= DANGER_Y && !state\.meteor/, "the meteor window should protect the pile until the sweep lands");
+assert.match(game, /callHook\("toast", count \? tr\("meteor\.clear", \{ count \}\) : tr\("meteor\.empty"\)\)/, "the sweep should report how many frozen words were touched");
+assert.match(game, /(?:finalY|y) <= DANGER_Y && !state\.meteor/, "the meteor window should protect the pile until the sweep lands");
 assert.match(game, /function cancelMeteor\(\)/, "pausing/ending/resetting must be able to cancel the meteor");
-assert.match(game, /state\.phase = "over";\s*syncPhaseClass\(\);\s*cancelMeteor\(\);/, "the meteor should stop when the round ends");
+assert.match(game, /state\.phase = "over";[\s\S]{0,120}cancelMeteor\(\);/, "the meteor should stop when the round ends");
 assert.match(game, /function resetGame\(\) \{[\s\S]*?cancelMeteor\(\);/, "a new round should cancel any leftover meteor");
 assert.match(css, /\.meteor \{/, "the meteor needs a visual");
 assert.match(css, /@keyframes meteorGlow/, "the meteor needs a glow animation");
 
 // ---------- falling speed ----------
-assert.match(game, /const SPEED_KEY = "piupiu\.speed"/, "the speed choice should persist");
+assert.match(game, /speed:\s*"piupiu\.speed"/, "the speed choice should persist");
 assert.match(game, /const SPEED_LEVELS = \{ normal: 1, fast: 1\.6, turbo: 2\.3 \}/, "the three speeds should be clearly different");
 assert.match(game, /const baseSpeed = fieldH \/ fallSeconds;/, "each word should remember its base falling speed");
 assert.match(game, /const speed = baseSpeed \* \(SPEED_LEVELS\[state\.speed\] \|\| 1\)/, "new words should use the chosen speed");
-assert.match(game, /localStorage\.setItem\(SPEED_KEY, key\)/, "the speed should be remembered");
+assert.match(game, /saveSpeed\(state\.speed\)|setSpeed\(/, "the speed should be remembered");
 assert.match(game, /function cycleSpeed\(\)/, "the gameplay speed control should cycle through the three speeds");
 assert.match(game, /baseSpeed/, "falling words should remember their base speed");
 assert.match(game, /function applyFallingSpeed\(previous, next\)/, "changing speed should rescale words already in flight");

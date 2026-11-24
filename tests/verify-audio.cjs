@@ -3,7 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "js/i18n.js"), "utf8");
@@ -15,7 +16,7 @@ assert.match(game, /function soundOut\(ctx\)/, "audio nodes should connect throu
 assert.match(game, /master\.gain\.value = 1/, "the master volume should be at full scale");
 assert.match(game, /const AUDIO_BOOST = TOUCH_DEVICE \|\| IS_IOS \? 1\.8 : 1/, "touch devices should get a louder effect bus");
 assert.match(game, /volume \* AUDIO_BOOST/, "tone/noise gains should use the mobile boost");
-assert.match(game, /navigator\.audioSession/, "iOS audio-session intent should be declared");
+assert.match(game, /nav\.audioSession/, "iOS audio-session intent should be declared");
 assert.match(game, /setAudioSession\("play-and-record"\)/, "recognition should request speaker playback");
 assert.match(game, /setAudioSession\("playback"\)/, "releasing the microphone should restore media volume");
 
@@ -56,7 +57,7 @@ assert.match(game, /golden-badge/);
 assert.match(game, /word\.golden = false/);
 assert.match(game, /const points = Math\.round\(basePoints \* multiplier\) \+ \(golden \? 25 : 0\)/);
 assert.match(game, /playGolden\(\)/);
-assert.match(game, /showPraise\("easter\.golden"\)/);
+assert.match(game, /callHook\("showPraise", "easter\.golden"\)/);
 assert.match(css, /\.word\.golden:not\(\.settled\):not\(\.miss\)/);
 assert.match(css, /\.golden-badge \{/);
 assert.match(css, /@keyframes goldenTwinkle/);

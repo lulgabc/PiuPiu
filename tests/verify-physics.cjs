@@ -3,7 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
@@ -11,22 +12,18 @@ const matter = fs.readFileSync(path.join(root, "js/vendor/matter.min.js"), "utf8
 
 assert.ok(matter.includes("matter-js 0.20.0"), "Matter.js should be vendored for offline use");
 assert.match(matter, /License MIT/, "the vendored physics engine should keep its MIT header");
-assert.match(html, /js\/vendor\/matter\.min\.js/, "index.html must load Matter.js");
-assert.ok(
-  html.indexOf("js/vendor/matter.min.js") < html.indexOf("js/game.js"),
-  "Matter.js must load before the game",
-);
-assert.match(sw, /\.\/js\/vendor\/matter\.min\.js/, "the service worker must precache Matter.js");
+assert.match(game, /js\/vendor\/matter\.min\.js/, "lazy loader must reference Matter.js");
+assert.match(sw, /\/js\/vendor\//, "the service worker must cache vendored static assets");
 
-assert.match(game, /window\.Matter && window\.Matter\.Engine/, "the game should feature-detect Matter.js");
+assert.match(game, /g\.Matter && g\.Matter\.Engine/, "the game should feature-detect Matter.js");
 assert.match(game, /function ensurePhysics\(\)/, "physics should be created lazily");
 assert.match(game, /function destroyPhysics\(\)/, "physics must be disposed between rounds");
-assert.match(game, /Physics\.Engine\.update\(state\.physics\.engine, 1000 \/ 60\)/, "physics should step at 60 Hz");
+assert.match(game, /Matter\.Engine\.update\(state\.physics\.engine, deltaMs\)/, "physics should step cleanly");
 assert.match(game, /engine\.positionIterations = 10/, "stacking needs enough solver iterations");
 assert.match(game, /enableSleeping: true/, "sleeping bodies keep the iPad cool");
-assert.match(game, /Physics\.Bodies\.rectangle\(/, "settled cards should become rigid bodies");
+assert.match(game, /Matter\.Bodies\.rectangle\(/, "settled cards should become rigid bodies");
 assert.match(game, /frictionStatic: 1\.1/, "friction should keep piles stackable");
-assert.match(game, /Physics\.Composite\.add\(physics\.engine\.world, body\)/, "settled cards should enter the physics world");
+assert.match(game, /Matter\.Composite\.add\(physics\.engine\.world, body\)/, "settled cards should enter the physics world");
 assert.match(game, /attachSettledBody\(settled\)/, "settling a word should attach a physics body");
 assert.match(game, /body\.bounds\.min\.x/, "DOM rendering should follow physics bounds");
 assert.match(game, /rotate\(\$\{body\.angle\}rad\)/, "DOM cards should follow body rotation");

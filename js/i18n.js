@@ -308,7 +308,33 @@
       "theme.candy": "薄荷街机",
       "theme.bubblegum": "紫罗兰街机",
       "theme.cream": "柠檬街机",
+      "theme.daylight": "护眼浅色",
       "theme.set": "界面主题：{theme}",
+      "player.guestName": "小玩家",
+      "player.renameTitle": "给你的小玩家起个名字吧",
+      "player.renamePlaceholder": "输入名字",
+      "player.renameSave": "保存名字",
+      "player.confirmDelete": "再点确认",
+      "custom.confirmDelete": "再点确认",
+      "over.practiceMissed": "专项练错词",
+      "poem.nextPoem": "下一首诗",
+      "poem.listenAll": "听整首诗",
+      "poem.stopListenAll": "停止朗读",
+      "pet.collection": "图鉴",
+      "pet.collectionTitle": "小怪兽图鉴",
+      "pet.close": "关闭小怪兽图鉴",
+      "pet.locked": "玩更多局来遇见它",
+      "pet.unlockedCount": "已遇见 {count} / 35",
+      "pack.searchPlaceholder": "搜索词库…",
+      "pack.searchAria": "搜索词库",
+      "pack.missedTitle": "错词复习本",
+      "pack.masteredShort": "已掌握 {mastered}/{total}",
+      "setup.advanced": "高级与数据备份",
+      "setup.backupExport": "导出备份 JSON",
+      "setup.backupImport": "导入备份 JSON",
+      "setup.backupSuccess": "备份已恢复！",
+      "setup.backupError": "备份文件格式无效。",
+      "mic.noSpeechTip": "靠近麦克风大声读出来，或者在下方输入单词。",
       "pet.name.mouse": "小老鼠",
       "pet.name.cat": "小猫",
       "pet.name.dog": "小狗",
@@ -832,7 +858,33 @@
       "theme.candy": "Arcade menthe",
       "theme.bubblegum": "Arcade violette",
       "theme.cream": "Arcade citron",
+      "theme.daylight": "Jour doux",
       "theme.set": "Thème : {theme}",
+      "player.guestName": "Invité",
+      "player.renameTitle": "Donne un prénom à ton joueur",
+      "player.renamePlaceholder": "Ton prénom",
+      "player.renameSave": "Enregistrer",
+      "player.confirmDelete": "Confirmer ?",
+      "custom.confirmDelete": "Confirmer ?",
+      "over.practiceMissed": "Revoir ces mots",
+      "poem.nextPoem": "Poème suivant",
+      "poem.listenAll": "Écouter tout le poème",
+      "poem.stopListenAll": "Arrêter l'écoute",
+      "pet.collection": "Album",
+      "pet.collectionTitle": "Album des monstres",
+      "pet.close": "Fermer l'album",
+      "pet.locked": "Joue encore pour le rencontrer",
+      "pet.unlockedCount": "{count} / 35 rencontrés",
+      "pack.searchPlaceholder": "Chercher une liste…",
+      "pack.searchAria": "Chercher une liste",
+      "pack.missedTitle": "Mots à revoir",
+      "pack.masteredShort": "{mastered}/{total} maîtrisés",
+      "setup.advanced": "Avancé et sauvegarde",
+      "setup.backupExport": "Exporter JSON",
+      "setup.backupImport": "Importer JSON",
+      "setup.backupSuccess": "Sauvegarde restaurée !",
+      "setup.backupError": "Fichier de sauvegarde invalide.",
+      "mic.noSpeechTip": "Parle près du micro ou tape le mot ci-dessous.",
       "pet.name.mouse": "Souris",
       "pet.name.cat": "Chat",
       "pet.name.dog": "Chien",
@@ -1358,7 +1410,33 @@
       "theme.candy": "Mint arcade",
       "theme.bubblegum": "Violet arcade",
       "theme.cream": "Lemon arcade",
+      "theme.daylight": "Daylight",
       "theme.set": "Theme: {theme}",
+      "player.guestName": "Player",
+      "player.renameTitle": "Name your player profile",
+      "player.renamePlaceholder": "Enter a name",
+      "player.renameSave": "Save name",
+      "player.confirmDelete": "Confirm?",
+      "custom.confirmDelete": "Confirm?",
+      "over.practiceMissed": "Practice missed words",
+      "poem.nextPoem": "Next poem",
+      "poem.listenAll": "Listen to full poem",
+      "poem.stopListenAll": "Stop listening",
+      "pet.collection": "Pets",
+      "pet.collectionTitle": "Monster collection",
+      "pet.close": "Close monster collection",
+      "pet.locked": "Play more rounds to meet this pet",
+      "pet.unlockedCount": "{count} / 35 discovered",
+      "pack.searchPlaceholder": "Search word packs…",
+      "pack.searchAria": "Search word packs",
+      "pack.missedTitle": "Missed words",
+      "pack.masteredShort": "{mastered}/{total} mastered",
+      "setup.advanced": "Advanced & Backup",
+      "setup.backupExport": "Export backup JSON",
+      "setup.backupImport": "Import backup JSON",
+      "setup.backupSuccess": "Backup restored!",
+      "setup.backupError": "Invalid backup file.",
+      "mic.noSpeechTip": "Speak closer to the mic, or type the word below.",
       "pet.name.mouse": "Mouse",
       "pet.name.cat": "Cat",
       "pet.name.dog": "Dog",
@@ -1593,19 +1671,10 @@
 
   function detectLanguage() {
     try {
-      const saved = normalize(global.localStorage && global.localStorage.getItem(STORAGE_KEY));
-      if (saved) return saved;
+      const raw = global.localStorage && global.localStorage.getItem(STORAGE_KEY);
+      if (raw) return normalize(raw) || "zh";
     } catch {
       /* localStorage may be blocked */
-    }
-
-    if (typeof navigator !== "undefined") {
-      const languages = Array.isArray(navigator.languages) ? navigator.languages.slice() : [];
-      if (navigator.language) languages.push(navigator.language);
-      for (const candidate of languages) {
-        const code = normalize(candidate);
-        if (code) return code;
-      }
     }
 
     return "zh";

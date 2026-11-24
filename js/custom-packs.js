@@ -69,7 +69,7 @@
     return String(value == null ? "" : value)
       .toLowerCase()
       .replace(/[’‘]/g, "'")
-      .replace(/[^a-z' -]/g, " ")
+      .replace(/[^a-z0-9' -]/g, " ")
       .replace(/\s+/g, " ")
       .trim()
       .replace(/^['-]+|['-]+$/g, "");

@@ -5,7 +5,8 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");
 const pets = require(path.join(root, "js/pets.js"));
 const { translations } = require(path.join(root, "js/i18n.js"));
@@ -60,18 +61,18 @@ assert.ok(seen.size >= 30, "random() should reach most of the 35-pet roster");
 
 // ---------- one random pet, no selection ----------
 assert.match(html, /<div id="petLayer" class="pet-layer" aria-hidden="true"><\/div>/, "the field needs a pet layer");
-assert.doesNotMatch(html, /id="petBtn"/, "players must not choose pets from home");
-assert.doesNotMatch(html, /id="petSheet"/, "there should be no pet warehouse dialog");
+assert.match(html, /id="petCollectionBtn"/, "home needs the 35-pet encounter collection button (F13)");
+assert.match(html, /<dialog id="petSheet"/, "35-pet collection needs a native <dialog> sheet (F13)");
 assert.match(html, /js\/pets\.js/, "index.html must load the pet catalog");
 assert.match(sw, /\.\/js\/pets\.js/, "the service worker must precache pets.js");
 
 // ---------- renderer ----------
-assert.match(game, /const Pets = window\.PiuPets/, "game.js should use the shared pet catalog");
+assert.match(game, /PiuPets/, "game should use the shared pet catalog");
 assert.match(game, /function randomPetDef\(\)/, "each round should draw a random pet");
 assert.match(game, /Pets\.random\(state\.lastPetId\)/, "the draw should avoid an immediate repeat");
-assert.match(game, /state\.lastPetId = def\.id/, "the previous pet should be remembered");
+assert.match(game, /state\.lastPetId = /, "the previous pet should be remembered");
 assert.match(game, /const PET_SCALE = 1\.5;/, "the jelly pet should have a large readable body");
-assert.match(game, /const PET_DPR = Math\.min\(2,/, "the canvas must cap device pixel ratio");
+assert.match(game, /const PET_DPR =[\s\S]{0,60}Math\.min\(2,/, "the canvas must cap device pixel ratio");
 assert.match(game, /function createMonsterRenderer\(/, "the game needs the jelly monster renderer");
 assert.match(game, /function makeBandPatch\(/, "the renderer should build feathered face patches");
 assert.match(game, /image\.src = def\.image;/, "the renderer should load the final sticker");
@@ -108,7 +109,7 @@ assert.match(game, /const def = forcedDef \|\| randomPetDef\(\);/, "the pet shou
 assert.match(game, /function introducePet\(pet\)/, "the new pet should introduce itself");
 assert.match(game, /bubble\.textContent = tr\(`pet\.name\.\$\{pet\.id\}`\)/, "the intro should show the pet name");
 assert.match(game, /resetGame\(\);\s*resetPets\(\);/, "startGame should spawn a fresh random pet");
-assert.match(game, /clearPets\(\);\s*updateHUD\(true\);/, "resetGame should clear the old pet");
+assert.match(game, /clearPets\(\);[\s\S]{0,60}updateHUD\(true\);/, "resetGame should clear the old pet");
 assert.match(game, /function updatePets\(dt\)/, "the pet needs a frame update");
 assert.match(game, /for \(const pet of state\.pets\) updatePet\(pet, dt\)/, "the active pet should animate");
 assert.match(game, /petStartle\(word\.x \+ word\.w \/ 2\)/, "a falling word should startle the pet");

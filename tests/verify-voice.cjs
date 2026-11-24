@@ -3,7 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "js/i18n.js"), "utf8");
 
@@ -16,7 +17,7 @@ assert.match(html, /id="packBtn"[^>]*aria-controls="packSheet"/, "the pack pill 
 assert.match(html, /id="setupBtn"[^>]*aria-controls="setupSheet"/, "the parent button should open settings");
 
 // ---------- voice catalogue ----------
-assert.match(game, /const VOICE_KEY = "piupiu\.voice"/, "the voice choice should persist");
+assert.match(game, /voice:\s*"piupiu\.voice"/, "the voice choice should persist");
 assert.match(game, /let voiceCatalog = \[\]/, "system voices should be cached");
 assert.match(game, /function refreshVoiceCatalog\(/, "system voices should be loaded dynamically");
 assert.match(game, /onvoiceschanged = refreshVoiceCatalog/, "late system voices should be picked up");
@@ -41,13 +42,13 @@ assert.match(game, /pitch: 1\.04/, "real child voices should not be over-pitched
 
 // ---------- speech integration ----------
 assert.match(game, /function applyVoiceChoice\(/, "the chosen voice should be applied to help speech");
-assert.match(game, /applyVoiceChoice\(\);\s*\n\s*const utterance = new Utterance\(text\)/, "help speech should use the chosen voice");
+assert.match(game, /applyVoiceChoice\(\);[\s\S]{0,600}const utterance = new Utterance\(text\)/, "help speech should use the chosen voice");
 assert.match(game, /utterance\.rate = helpRate/, "help speech should use the chosen rate");
 assert.match(game, /utterance\.pitch = helpPitch/, "help speech should use the chosen pitch");
 assert.match(game, /if \(helpVoice\) utterance\.voice = helpVoice/, "the selected system voice should be attached");
 assert.match(game, /function previewVoice\(/, "the picker should preview the current voice");
 assert.match(game, /"voice\.sample"/, "preview should speak a localized sample");
-assert.match(game, /localStorage\.setItem\(VOICE_KEY, state\.voiceChoice\)/, "voice changes should be remembered");
+assert.match(game, /setVoice\(state\.voiceChoice\)/, "voice changes should be remembered");
 
 // ---------- settings behaviour ----------
 assert.match(game, /function openSetup\(/, "settings should open from the home screen");

@@ -72,7 +72,7 @@ assert.match(pwa, /\.register\("\.\/sw\.js"/, "the service worker should be regi
 assert.match(pwa, /scope: "\.\/"/, "the service worker should control the whole app");
 assert.match(pwa, /updateViaCache: "none"/, "the service worker should not be HTTP-cached");
 assert.match(pwa, /piupiu:langchange/, "the install dialog should follow language changes");
-assert.match(pwa, /event\.key !== "Escape"/, "Escape should close the install dialog");
+assert.match(pwa, /installSheet\.tagName === "DIALOG"/, "install sheet uses native <dialog> Escape & close handling");
 assert.match(pwa, /event\.target === installSheet/, "clicking the backdrop should close the install dialog");
 assert.match(pwa, /if \(standalone\) \{\s*hideInstallButton\(\)/, "standalone launches should hide the shortcut");
 assert.match(pwa, /install\.ios1/, "iOS steps should be rendered");
@@ -80,10 +80,10 @@ assert.match(pwa, /__PIU_PWA__/, "debug install hooks should be available with ?
 
 // ---------- service worker ----------
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true, "the cache version should match package.json");
-assert.match(sw, /const PRECACHE = \[/, "the app shell should be precached");
+assert.match(sw, /const SHELL_PRECACHE = \[/, "the app shell should be precached");
 assert.match(sw, /self\.skipWaiting\(\)/, "updates should activate promptly");
 assert.match(sw, /self\.clients\.claim\(\)/, "the worker should control the first page");
-assert.match(sw, /key\.startsWith\(CACHE_PREFIX\)/, "old app caches should be removed");
+assert.match(sw, /key\.startsWith\(SHELL_PREFIX\)/, "old app caches should be removed");
 assert.match(sw, /request\.mode === "navigate"/, "navigation should have an offline fallback");
 assert.match(sw, /const isShell = url\.pathname === OFFLINE_PATH/, "only the app shell should replace the offline page");
 assert.match(sw, /OFFLINE_URL/, "the shell should be the offline fallback");
@@ -91,7 +91,7 @@ assert.match(sw, /url\.origin !== self\.location\.origin/, "cross-origin request
 assert.match(sw, /request\.method !== "GET"/, "only reads should be intercepted");
 assert.match(sw, /response\.type === "basic"/, "only same-origin responses should be cached");
 
-const precacheBlock = sw.slice(sw.indexOf("const PRECACHE"), sw.indexOf("];", sw.indexOf("const PRECACHE")));
+const precacheBlock = sw.slice(sw.indexOf("const SHELL_PRECACHE"), sw.indexOf("];", sw.indexOf("const SHELL_PRECACHE")));
 const precache = [...precacheBlock.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
 assert.ok(precache.includes("./"), "the start URL should be precached");
 assert.ok(precache.includes("./index.html"), "the offline shell should be precached");
@@ -102,10 +102,11 @@ function normalize(url) {
 
 const indexAssets = [...index.matchAll(/(?:src|href)="([^"]+)"/g)]
   .map((match) => match[1])
-  .filter((url) => !/^(?:data:|https?:|#)/.test(url));
+  .filter((url) => !/^(?:data:|https?:|#|assets\/monsters\/)/.test(url));
 for (const asset of indexAssets) {
   assert.ok(precache.includes(normalize(asset)), `precache is missing ${asset}`);
 }
+assert.match(sw, /\/assets\/monsters\//, "monster images should be cached in STATIC_CACHE");
 for (const icon of manifest.icons) {
   assert.ok(precache.includes(normalize(icon.src)), `precache is missing ${icon.src}`);
 }

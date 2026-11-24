@@ -6,7 +6,8 @@ const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 const arcade = fs.readFileSync(path.join(root, "css/arcade.css"), "utf8");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const { translations } = require(path.join(root, "js/i18n.js"));
 
 assert.match(html, /<html lang="zh-CN" data-theme="candy">/, "candy should be the default skin");
@@ -14,8 +15,9 @@ assert.match(html, /localStorage\.getItem\("piupiu\.theme"\)/, "the saved skin s
 assert.match(html, /data-theme-choice="candy"/, "the parent panel needs a candy choice");
 assert.match(html, /data-theme-choice="bubblegum"/, "the parent panel needs a bubblegum choice");
 assert.match(html, /data-theme-choice="cream"/, "the parent panel needs a cream choice");
+assert.match(html, /data-theme-choice="daylight"/, "the parent panel needs a daylight eye-care choice (F07)");
 assert.match(html, /id="themeGroup"[^>]*role="radiogroup"/, "skins should be a radio group");
-assert.equal((html.match(/data-theme-choice=/g) || []).length, 3, "there should be exactly three skins");
+assert.equal((html.match(/data-theme-choice=/g) || []).length, 4, "there should be four themes including daylight");
 
 for (const theme of ["candy", "bubblegum", "cream"]) {
   assert.match(css, new RegExp(`html\\[data-theme="${theme}"\\]`), `${theme} needs its own theme variables`);
@@ -41,17 +43,17 @@ for (const theme of ["candy", "bubblegum", "cream"]) {
 }
 assert.match(arcade, /--arc-bg: #0a1024/, "mint arcade should use the deep navy field");
 assert.match(arcade, /--arc-bg: #120a24/, "violet arcade should use the violet field");
-assert.match(arcade, /--arc-bg: #0c1414/, "lemon arcade should use the green-black field");
+assert.match(arcade, /--arc-bg: #14140d/, "lemon arcade should use the warm dark field");
 assert.equal(translations.zh["theme.candy"], "薄荷街机");
 assert.equal(translations.zh["theme.bubblegum"], "紫罗兰街机");
 assert.equal(translations.zh["theme.cream"], "柠檬街机");
 assert.match(css, /html\[data-theme\]\.is-touch \.word:not\(\.settled\)/, "touch word cards should keep the themed surface");
 
-assert.match(game, /const THEME_KEY = "piupiu\.theme"/, "the skin choice should persist");
-assert.match(game, /const THEMES = \["candy", "bubblegum", "cream"\]/, "three skins are required");
+assert.match(game, /theme:\s*"piupiu\.theme"/, "the skin choice should persist");
+assert.match(game, /const THEMES = \["candy", "bubblegum", "cream", "daylight"\]/, "four themes are required");
 assert.match(game, /function applyTheme\(key\)/, "skin changes should apply live");
 assert.match(game, /document\.documentElement\.dataset\.theme = theme/, "skin changes should update the root theme");
-assert.match(game, /localStorage\.setItem\(THEME_KEY, key\)/, "the skin choice should be remembered");
+assert.match(game, /saveTheme\(key\)/, "the skin choice should be remembered");
 assert.match(game, /data-theme-choice/, "skin buttons should be wired");
 assert.match(game, /theme-choice/, "the skin selector should be visual");
 

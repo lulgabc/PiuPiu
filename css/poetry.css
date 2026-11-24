@@ -75,9 +75,7 @@ html[data-theme] .poetry-pill-icon .ui-icon {
   height: 12px;
 }
 
-html[data-theme] body.mode-poem #packBtn {
-  display: none;
-}
+/* Keep word-pack pill accessible across modes while showing the poetry pill in poem mode. */
 
 html[data-theme] body.mode-poem .speed-tool,
 html[data-theme] body.mode-poem .reward-progress,

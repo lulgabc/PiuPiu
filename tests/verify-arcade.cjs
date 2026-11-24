@@ -8,7 +8,8 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const html = read("index.html");
 const css = read("css/arcade.css");
 const poetry = read("css/poetry.css");
-const game = read("js/game.js");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const sw = read("sw.js");
 const pkg = JSON.parse(read("package.json"));
 
@@ -49,10 +50,10 @@ assert.match(header, /id="rewardProgress"/, "the progress dots should live insid
 assert.match(header, /id="pauseBtn"/, "pause should stay in the HUD");
 assert.match(header, /id="setupBtn"[^>]*setup-tool/, "parents should reach settings from the quiet top-right gear");
 assert.match(css, /\.correct-stat,[\s\S]{0,80}\.pile-stat,[\s\S]{0,80}\.time-stat \{\s*display: none;/, "the HUD should drop duplicate stats");
-assert.match(css, /\.reward-node \{[\s\S]{0,160}border: 0;[\s\S]{0,120}background: #263252;/, "the reward bar should become neon dots");
+assert.match(css, /\.reward-node \{[\s\S]{0,160}border: 0;[\s\S]{0,120}background: var\(--arc-/, "the reward bar should become neon dots");
 assert.match(css, /\.reward-node\.is-lit \{[\s\S]{0,120}background: var\(--arc-accent\)/, "lit dots should use the active arcade accent");
 assert.match(css, /\.word \{[\s\S]{0,160}border: 1px solid hsl\(var\(--card-hue\)/, "words should become neon-outlined cards");
-assert.match(css, /\.field \{[\s\S]{0,260}#0b1228/, "the game board should be a dark focus field");
+assert.match(css, /\.field \{[\s\S]{0,260}var\(--arc-/, "the game board should be a dark focus field");
 assert.match(css, /body\.phase-paused \.topbar,[\s\S]{0,220}body\.phase-over \.controls/, "pause/result should hide duplicate chrome");
 assert.match(css, /body\.phase-playing \.setup-tool/, "the parent gear should leave the play HUD");
 assert.match(css, /\.start-panel\.hidden \{[\s\S]{0,80}display: none !important/, "pause/result must be able to replace the arcade start cover");
@@ -64,7 +65,7 @@ for (const group of ["themes", "education", "phrases", "custom"]) {
   assert.match(html, new RegExp(`data-pack-group="${group}"`), `missing pack tab: ${group}`);
 }
 assert.match(html, /id="packCategoryGrid" class="pack-category-grid" role="listbox"/, "categories should be a cartridge grid");
-assert.match(html, /id="categorySelect"[^>]*is-hidden/, "the old native category select should be visually retired");
+assert.equal(html.includes('id="categorySelect"'), false, "the old native category select should be removed (F09)");
 assert.match(html, /id="packGroupEmpty"/, "an empty pack group needs a short message");
 assert.match(css, /\.pack-tab\.is-active \{/, "tab chips need an active state");
 assert.match(css, /\.pack-category-grid \{[\s\S]{0,140}repeat\(2, minmax\(0, 1fr\)\)/, "categories should use a two-column cartridge grid");
@@ -109,7 +110,7 @@ for (const marker of [
 assert.match(css, /html\[data-theme="bubblegum"\]/, "the violet arcade tint is required");
 assert.match(css, /html\[data-theme="cream"\]/, "the lemon arcade tint is required");
 assert.match(css, /--arc-bg: #120a24/, "the violet arcade needs a dark field");
-assert.match(css, /--arc-bg: #0c1414/, "the lemon arcade needs a dark field");
+assert.match(css, /--arc-bg: #14140d/, "the lemon arcade needs a dark field");
 assert.match(css, /\.theme-choice\.is-active \{[\s\S]{0,180}border-color: var\(--arc-accent\)/, "the active theme card should glow");
 assert.match(css, /\.theme-swatch-candy \{\s*background: #0a1024;/, "theme swatches should preview the dark fields");
 assert.match(css, /\.setup-section \{[\s\S]{0,100}background: rgba\(255, 255, 255, 0\.035\)/, "parent settings should use a dark card");
@@ -139,7 +140,7 @@ assert.equal(translations.zh["start.heroTitle"], "读出来，消掉它");
 assert.equal(translations.zh["theme.candy"], "薄荷街机");
 assert.equal(translations.zh["theme.bubblegum"], "紫罗兰街机");
 assert.equal(translations.zh["theme.cream"], "柠檬街机");
-assert.equal(pkg.version, "2.32.1");
+assert.equal(pkg.version, "2.33.0");
 assert.equal(sw.includes(`const VERSION = "${pkg.version}"`), true);
 
 console.log("✓ the arcade skin loads after the base CSS and is offline-safe");

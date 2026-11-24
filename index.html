@@ -8,9 +8,9 @@
     (function () {
       try {
         var saved = localStorage.getItem("piupiu.theme");
-        if (saved === "candy" || saved === "bubblegum" || saved === "cream") {
+        if (saved === "candy" || saved === "bubblegum" || saved === "cream" || saved === "daylight") {
           document.documentElement.dataset.theme = saved;
-          var colors = { candy: "#0a1024", bubblegum: "#120a24", cream: "#0c1414" };
+          var colors = { candy: "#0a1024", bubblegum: "#120a24", cream: "#14140d", daylight: "#f7f4ec" };
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute("content", colors[saved]);
         }
@@ -45,9 +45,10 @@
       document.documentElement.classList.add("is-touch");
     }
   </script>
-  <link rel="stylesheet" href="css/style.css?v=2.32.1">
-  <link rel="stylesheet" href="css/arcade.css?v=2.32.1">
-  <link rel="stylesheet" href="css/poetry.css?v=2.32.1">
+  <link rel="stylesheet" href="css/style.css?v=2.33.0">
+  <link rel="stylesheet" href="css/arcade.css?v=2.33.0">
+  <link rel="stylesheet" href="css/poetry.css?v=2.33.0">
+  <link rel="stylesheet" href="css/theme-a11y.css?v=2.33.0">
 </head>
 <body class="phase-menu">
   <svg id="ui-sprite" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;overflow:hidden">
@@ -324,7 +325,6 @@
 
 
     <main id="field" class="field">
-      <div class="field-stars" aria-hidden="true"></div>
       <div class="field-grid" aria-hidden="true"></div>
       <div class="field-floor" aria-hidden="true"></div>
       <div id="pixiAmbient" class="pixi-ambient" aria-hidden="true"></div>
@@ -349,9 +349,14 @@
             <span id="poemCategoryName"></span>
           </span>
           <span id="poemProgress" class="poem-progress">0 / 0</span>
-          <button id="poemListen" class="poem-listen" type="button" aria-label="听这一句" data-i18n-aria="poem.listen" title="听这一句" data-i18n-title="poem.listen">
-            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-volume"></use></svg>
-          </button>
+          <div class="poem-head-actions">
+            <button id="poemListenAll" class="poem-listen poem-listen-all" type="button" aria-pressed="false" aria-label="听整首诗" data-i18n-aria="poem.listenAll" title="听整首诗" data-i18n-title="poem.listenAll">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-play"></use></svg>
+            </button>
+            <button id="poemListen" class="poem-listen" type="button" aria-label="听这一句" data-i18n-aria="poem.listen" title="听这一句" data-i18n-title="poem.listen">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-volume"></use></svg>
+            </button>
+          </div>
         </header>
         <h2 id="poemTitle" class="poem-title"></h2>
         <p id="poemAuthor" class="poem-author"></p>
@@ -377,24 +382,12 @@
           <div id="startMascot" class="start-mascot" aria-hidden="true">
             <img class="home-pet" src="assets/monsters/kitty.webp" alt="" width="126" height="126" draggable="false" />
             <span class="mascot-spark" aria-hidden="true"><svg class="ui-icon" focusable="false"><use href="#ui-spark"></use></svg></span>
-            <span class="mascot-face">
-              <span class="mascot-eye left"></span>
-              <span class="mascot-eye right"></span>
-              <span class="mascot-mouth"></span>
-              <span class="mascot-cheek left"></span>
-              <span class="mascot-cheek right"></span>
-            </span>
           </div>
           <p id="secretNote" class="secret-note" data-i18n="easter.secret" role="status" aria-live="polite" aria-hidden="true">你发现了星星的秘密！</p>
 
           <h1 id="gameTitle" data-i18n="start.heroTitle">今天玩什么？</h1>
           <p class="tagline start-tagline" data-i18n="start.tagline">读出来，就会消失</p>
 
-          </div>
-          <div id="playSteps" class="play-steps">
-            <div class="play-step"><span id="stepIcon1" class="play-icon" aria-hidden="true"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-rain"></use></svg></span><span id="stepLabel1" class="play-label" data-i18n="start.step1">落下来</span></div>
-            <div class="play-step"><span class="play-icon" aria-hidden="true"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-mic"></use></svg></span><span id="stepLabel2" class="play-label" data-i18n="start.step2">大声读</span></div>
-            <div class="play-step"><span class="play-icon" aria-hidden="true"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-burst"></use></svg></span><span id="stepLabel3" class="play-label" data-i18n="start.step3">爆炸</span></div>
           </div>
 
           <div id="modeSwitch" class="mode-switch" role="group" aria-label="游戏方式" data-i18n-aria="mode.aria">
@@ -443,7 +436,7 @@
                 <svg class="mode-art-svg" viewBox="0 0 120 76" focusable="false">
                   <path class="paint-trail" d="M34 24c12-4 24 2 30 10"/>
                   <circle class="paint-ball" cx="32" cy="23" r="5"/>
-                  <g class="paint-splat">
+                  <g class="mode-paint-splat">
                     <circle cx="78" cy="43" r="15"/>
                     <circle cx="62" cy="36" r="7"/>
                     <circle cx="92" cy="33" r="7"/>
@@ -501,8 +494,14 @@
             </button>
           </div>
 
+          <div id="homePlayerChips" class="home-player-chips is-hidden" role="group" aria-label="切换玩家" data-i18n-aria="player.title"></div>
+
           <div class="home-meta">
             <p id="bestLine" class="best home-best"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-trophy"></use></svg><span id="bestLineValue">0</span></p>
+            <button id="petCollectionBtn" class="home-settings home-pets" type="button" aria-haspopup="dialog" aria-controls="petSheet" aria-label="小怪兽图鉴" data-i18n-aria="pet.collectionTitle">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-paw"></use></svg>
+              <span id="petCollectionCount">0/35</span>
+            </button>
             <button id="installBtn" class="home-install is-hidden" type="button" data-i18n-title="install.cta" data-i18n-aria="install.cta" title="安装到手机" aria-label="安装到手机">
               <span data-i18n="install.short">安装</span>
             </button>
@@ -540,19 +539,38 @@
 
           <p id="fillBonusLine" class="fill-bonus is-hidden"></p>
 
+          <div id="guestRenameBanner" class="guest-rename-banner is-hidden">
+            <p class="guest-rename-title" data-i18n="player.renameTitle">给你的小玩家起个名字吧</p>
+            <form id="guestRenameForm" class="guest-rename-form" autocomplete="off">
+              <input id="guestRenameInput" class="guest-rename-input" type="text" maxlength="12" autocomplete="off"
+                     placeholder="输入名字" data-i18n-placeholder="player.renamePlaceholder"
+                     aria-label="名字" data-i18n-aria="player.nameAria">
+              <button id="guestRenameSave" class="primary-btn guest-rename-save" type="submit" data-i18n="player.renameSave">保存名字</button>
+            </form>
+          </div>
+
           <p id="missedTitle" class="missed-title" data-i18n="over.missedTitle">这些词再练一练</p>
           <div id="missedList" class="missed-list"></div>
           <p id="recordLine" class="record"></p>
           <p id="sessionTotal" class="session-total" aria-live="polite"></p>
-          <button id="overBoardBtn" class="over-board-link" type="button">
-            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-medal"></use></svg>
-            <span data-i18n="board.title">积分排行</span>
-          </button>
-
-          <button id="overPoetryBtn" class="over-board-link poem-result-link is-hidden" type="button" aria-haspopup="dialog" aria-controls="poetrySheet">
-            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-book"></use></svg>
-            <span data-i18n="poem.backToLibrary">诗集</span>
-          </button>
+          <div class="over-actions">
+            <button id="practiceMissedBtn" class="over-board-link is-hidden" type="button">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-spark"></use></svg>
+              <span data-i18n="over.practiceMissed">专项练错词</span>
+            </button>
+            <button id="overNextPoemBtn" class="over-board-link poem-result-link is-hidden" type="button">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-play"></use></svg>
+              <span data-i18n="poem.nextPoem">下一首诗</span>
+            </button>
+            <button id="overBoardBtn" class="over-board-link" type="button">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-medal"></use></svg>
+              <span data-i18n="board.title">积分排行</span>
+            </button>
+            <button id="overPoetryBtn" class="over-board-link poem-result-link is-hidden" type="button" aria-haspopup="dialog" aria-controls="poetrySheet">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-book"></use></svg>
+              <span data-i18n="poem.backToLibrary">诗集</span>
+            </button>
+          </div>
 
           <button id="restartBtn" class="primary-btn" type="button" data-i18n="over.cta">再来一局</button>
           <button id="homeBtn" class="ghost-btn" type="button" data-i18n="over.home">回到主页</button>
@@ -564,6 +582,7 @@
       <button id="micBtn" class="mic-btn" type="button" aria-pressed="false" title="麦克风开关"
               data-i18n-title="mic.toggle">
         <span class="mic-dot" aria-hidden="true"></span>
+        <span class="mic-eq" aria-hidden="true"><i class="mic-bar"></i><i class="mic-bar"></i><i class="mic-bar"></i></span>
         <span id="micLabel" data-i18n="mic.ready">语音就绪</span>
       </button>
 
@@ -574,28 +593,29 @@
         <button type="submit" class="send-btn" data-i18n="footer.send">发射</button>
       </form>
 
+      <p id="micTip" class="mic-tip is-hidden" role="status" aria-live="polite" data-i18n="mic.noSpeechTip">靠近麦克风大声读出来，或者在下方输入单词。</p>
       <p class="foot-hint" data-i18n="footer.hint">读出单词或短语 · 空格/点击听提示</p>
     </footer>
   </div>
 
-  <div id="installSheet" class="install-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="installTitle" aria-hidden="true">
+  <dialog id="installSheet" class="install-sheet native-dialog" aria-labelledby="installTitle">
     <div class="install-card" role="document">
       <div class="install-head">
         <span class="install-badge" aria-hidden="true"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-install"></use></svg></span>
         <h2 id="installTitle" data-i18n="install.title">安装 PiuPiu</h2>
-        <button id="installClose" class="install-close" type="button" aria-label="关闭安装说明" data-i18n-aria="install.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
+        <button id="installClose" class="install-close close-btn" type="button" aria-label="关闭安装说明" data-i18n-aria="install.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
       </div>
       <div id="installBody" class="install-body"></div>
       <p class="install-note" data-i18n="install.note">安装后可全屏打开，并支持离线游玩。</p>
       <button id="installDone" class="primary-btn install-done" type="button" data-i18n="install.done">知道了</button>
     </div>
-  </div>
+  </dialog>
 
-  <div id="playerSheet" class="player-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="playerTitle" aria-hidden="true">
+  <dialog id="playerSheet" class="player-sheet native-dialog" aria-labelledby="playerTitle">
     <div class="player-card" role="document">
       <div class="player-head">
         <h2 id="playerTitle" data-i18n="player.title">选择玩家</h2>
-        <button id="playerClose" class="player-close" type="button" aria-label="关闭玩家选择" data-i18n-aria="player.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
+        <button id="playerClose" class="player-close close-btn" type="button" aria-label="关闭玩家选择" data-i18n-aria="player.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
       </div>
       <p class="player-subtitle" data-i18n="player.subtitle">积分只保存在这台设备上。</p>
 
@@ -619,26 +639,26 @@
 
       <button id="playerDone" class="ghost-btn player-done" type="button" data-i18n="setup.done">完成</button>
     </div>
-  </div>
+  </dialog>
 
-  <div id="boardSheet" class="board-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="boardTitle" aria-hidden="true">
+  <dialog id="boardSheet" class="board-sheet native-dialog" aria-labelledby="boardTitle">
     <div class="board-card" role="document">
       <div class="board-head">
         <h2 id="boardTitle"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-trophy"></use></svg> <span data-i18n="board.title">积分排行</span></h2>
-        <button id="boardClose" class="board-close" type="button" aria-label="关闭积分排行" data-i18n-aria="board.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
+        <button id="boardClose" class="board-close close-btn" type="button" aria-label="关闭积分排行" data-i18n-aria="board.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
       </div>
       <p class="board-subtitle" data-i18n="board.subtitle">这台设备上的玩家总积分。</p>
       <ol id="boardList" class="board-list"></ol>
       <p id="boardEmpty" class="board-empty" data-i18n="board.empty">还没有玩家，先创建一个吧。</p>
       <button id="boardDone" class="primary-btn board-done" type="button" data-i18n="setup.done">完成</button>
     </div>
-  </div>
+  </dialog>
 
-  <div id="packSheet" class="pack-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="packTitle" aria-hidden="true">
+  <dialog id="packSheet" class="pack-sheet native-dialog" aria-labelledby="packTitle">
     <div class="pack-card" role="document">
       <div class="pack-head">
         <h2 id="packTitle" data-i18n="pack.sheetTitle">选择词库</h2>
-        <button id="packClose" class="pack-close" type="button" aria-label="关闭词库选择" data-i18n-aria="pack.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
+        <button id="packClose" class="pack-close close-btn" type="button" aria-label="关闭词库选择" data-i18n-aria="pack.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
       </div>
 
       <div class="pack-preview">
@@ -650,6 +670,14 @@
         <span id="packCount" class="pack-count" aria-live="polite">500 个单词</span>
       </div>
 
+      <div id="packWordPreview" class="pack-word-preview" aria-label="词库预览"></div>
+
+      <div class="pack-search-row">
+        <input id="packSearch" class="pack-search" type="search" autocomplete="off" spellcheck="false"
+               placeholder="搜索词库…" data-i18n-placeholder="pack.searchPlaceholder"
+               aria-label="搜索词库" data-i18n-aria="pack.searchAria" />
+      </div>
+
       <div id="packTabs" class="pack-tabs" role="tablist" aria-label="词库分组" data-i18n-aria="pack.tabsAria">
         <button class="pack-tab is-active" type="button" role="tab" aria-selected="true" data-pack-group="themes" data-i18n="pack.groupThemes">主题</button>
         <button class="pack-tab" type="button" role="tab" aria-selected="false" data-pack-group="education" data-i18n="pack.groupEducation">阅读</button>
@@ -659,10 +687,6 @@
 
       <div id="packCategoryGrid" class="pack-category-grid" role="listbox" aria-label="类别" data-i18n-aria="pack.category"></div>
       <p id="packGroupEmpty" class="pack-group-empty is-hidden" data-i18n="pack.emptyGroup">这里还没有词库。</p>
-
-      <select id="categorySelect" class="pack-select is-hidden" aria-label="类别" aria-hidden="true" tabindex="-1" data-i18n-aria="pack.category">
-        <option value="core" data-i18n="cat.core">综合词库</option>
-      </select>
 
       <section id="customPackSection" class="custom-pack-section is-hidden" aria-labelledby="customPackTitle">
         <div class="custom-pack-head">
@@ -695,14 +719,13 @@
 
       <button id="packDone" class="primary-btn pack-done" type="button" data-i18n="setup.done">完成</button>
     </div>
-  </div>
+  </dialog>
 
-
-  <div id="poetrySheet" class="poetry-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="poetryTitle" aria-hidden="true">
+  <dialog id="poetrySheet" class="poetry-sheet native-dialog" aria-labelledby="poetryTitle">
     <div class="poetry-card" role="document">
       <div class="poetry-head">
         <h2 id="poetryTitle" data-i18n="poem.libraryTitle">诗集</h2>
-        <button id="poetryClose" class="poetry-close" type="button" aria-label="关闭诗集" data-i18n-aria="poem.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
+        <button id="poetryClose" class="poetry-close close-btn" type="button" aria-label="关闭诗集" data-i18n-aria="poem.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
       </div>
 
       <div class="poetry-preview">
@@ -728,25 +751,29 @@
       <div id="poetryList" class="poetry-list" role="listbox" aria-label="诗歌列表" data-i18n-aria="poem.listAria"></div>
       <p id="poetryEmpty" class="poetry-empty is-hidden" data-i18n="poem.empty">这个分类还没有诗。</p>
 
-      <div class="poetry-import">
-        <button id="poetryImport" class="poetry-import-btn" type="button" aria-label="导入完整诗集" data-i18n-aria="poem.importAria">
-          <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-file"></use></svg>
-          <span data-i18n="poem.import">导入完整诗集</span>
-        </button>
-        <input id="poetryFile" class="poetry-file" type="file" accept=".json,application/json" />
-        <span id="poetryStatus" class="poetry-status" role="status" aria-live="polite"></span>
-      </div>
-
       <p id="poetryNote" class="poetry-note" data-i18n="poem.libraryNote">示例诗集包含公版和原创短诗；完整诗集可导入并保存在本机。</p>
       <button id="poetryDone" class="primary-btn poetry-done" type="button" data-i18n="poem.readSelected">读这一首</button>
     </div>
-  </div>
+  </dialog>
 
-  <div id="setupSheet" class="setup-sheet is-hidden" role="dialog" aria-modal="true" aria-labelledby="setupTitle" aria-hidden="true">
+  <dialog id="petSheet" class="pet-sheet native-dialog" aria-labelledby="petSheetTitle">
+    <div class="pet-card-sheet" role="document">
+      <div class="pet-head">
+        <h2 id="petSheetTitle"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-paw"></use></svg> <span data-i18n="pet.collectionTitle">小怪兽图鉴</span></h2>
+        <span id="petCount" class="pet-sheet-count">0 / 35</span>
+        <button id="petClose" class="pet-close close-btn" type="button" aria-label="关闭小怪兽图鉴" data-i18n-aria="pet.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
+      </div>
+      <div id="petDetailPreview" class="pet-detail-preview is-hidden" aria-live="polite"></div>
+      <div id="petGrid" class="pet-grid" role="list"></div>
+      <button id="petDone" class="primary-btn pet-done" type="button" data-i18n="setup.done">完成</button>
+    </div>
+  </dialog>
+
+  <dialog id="setupSheet" class="setup-sheet native-dialog" aria-labelledby="setupTitle">
     <div class="setup-card" role="document">
       <div class="setup-head">
         <h2 id="setupTitle" data-i18n="setup.title">家长设置</h2>
-        <button id="setupClose" class="setup-close" type="button" aria-label="关闭设置" data-i18n-aria="setup.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
+        <button id="setupClose" class="setup-close close-btn" type="button" aria-label="关闭设置" data-i18n-aria="setup.close"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-close"></use></svg></button>
       </div>
 
       <section id="setupThemeSection" class="setup-section">
@@ -754,15 +781,19 @@
         <div id="themeGroup" class="theme-group" role="radiogroup" aria-label="界面主题" data-i18n-aria="theme.title">
           <button type="button" class="theme-choice is-active" data-theme-choice="candy" role="radio" aria-checked="true">
             <span class="theme-swatch theme-swatch-candy" aria-hidden="true"></span>
-            <span class="theme-choice-name" data-i18n="theme.candy">糖果贴纸</span>
+            <span class="theme-choice-name" data-i18n="theme.candy">薄荷街机</span>
           </button>
           <button type="button" class="theme-choice" data-theme-choice="bubblegum" role="radio" aria-checked="false">
             <span class="theme-swatch theme-swatch-bubblegum" aria-hidden="true"></span>
-            <span class="theme-choice-name" data-i18n="theme.bubblegum">泡泡糖街机</span>
+            <span class="theme-choice-name" data-i18n="theme.bubblegum">紫罗兰街机</span>
           </button>
           <button type="button" class="theme-choice" data-theme-choice="cream" role="radio" aria-checked="false">
             <span class="theme-swatch theme-swatch-cream" aria-hidden="true"></span>
-            <span class="theme-choice-name" data-i18n="theme.cream">奶油汽水</span>
+            <span class="theme-choice-name" data-i18n="theme.cream">柠檬街机</span>
+          </button>
+          <button type="button" class="theme-choice" data-theme-choice="daylight" role="radio" aria-checked="false">
+            <span class="theme-swatch theme-swatch-daylight" aria-hidden="true"></span>
+            <span class="theme-choice-name" data-i18n="theme.daylight">护眼浅色</span>
           </button>
         </div>
       </section>
@@ -782,27 +813,41 @@
         <p class="setup-note setup-hint"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-volume"></use></svg><span data-i18n="help.hint">空格 / 点击屏幕：听最下面的单词或短语。</span></p>
       </section>
 
+      <details id="setupAdvanced" class="setup-section setup-advanced">
+        <summary class="setup-advanced-summary" data-i18n="setup.advanced">高级与数据备份</summary>
+        <div class="setup-advanced-body">
+          <div class="poetry-import">
+            <button id="poetryImport" class="poetry-import-btn" type="button" aria-label="导入其他诗集" data-i18n-aria="poem.importAria">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#ui-file"></use></svg>
+              <span data-i18n="poem.import">导入其他诗集</span>
+            </button>
+            <input id="poetryFile" class="poetry-file" type="file" accept=".json,application/json" />
+            <span id="poetryStatus" class="poetry-status" role="status" aria-live="polite"></span>
+          </div>
+          <div class="backup-actions">
+            <button id="backupExportBtn" class="poetry-import-btn" type="button" data-i18n="setup.backupExport">导出备份 JSON</button>
+            <button id="backupImportBtn" class="poetry-import-btn" type="button" data-i18n="setup.backupImport">导入备份 JSON</button>
+            <input id="backupFile" class="poetry-file" type="file" accept=".json,application/json" />
+            <span id="backupStatus" class="poetry-status" role="status" aria-live="polite"></span>
+          </div>
+        </div>
+      </details>
+
       <button id="setupDone" class="primary-btn setup-done" type="button" data-i18n="setup.done">完成</button>
     </div>
-  </div>
+  </dialog>
 
 
-  <script src="js/i18n.js?v=2.32.1"></script>
+  <script src="js/i18n.js?v=2.33.0"></script>
   <script src="js/words.js"></script>
   <script src="js/lexicon.js"></script>
-  <script src="js/education.js"></script>
-  <script src="js/families.js"></script>
   <script src="js/phrases.js?v=2.2.0"></script>
   <script src="js/numbers.js"></script>
-  <script src="js/custom-packs.js?v=2.32.1"></script>
+  <script src="js/custom-packs.js?v=2.33.0"></script>
   <script src="js/pets.js"></script>
   <script src="js/profiles.js"></script>
   <script src="js/emojis.js"></script>
-  <script src="js/vendor/pixi.min.js?v=2.0.1"></script>
-  <script src="js/vendor/matter.min.js"></script>
-  <script src="js/pixi-ambient.js?v=2.32.1"></script>
-  <script src="js/poetry.js?v=2.32.1"></script>
-  <script src="js/game.js?v=2.32.1"></script>
-  <script src="js/pwa.js?v=2.32.1"></script>
+  <script type="module" src="js/main.js?v=2.33.0"></script>
+  <script src="js/pwa.js?v=2.33.0"></script>
 </body>
 </html>

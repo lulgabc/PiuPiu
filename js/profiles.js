@@ -61,6 +61,7 @@
       rounds: cleanNumber(raw.rounds),
       createdAt: cleanNumber(raw.createdAt) || Date.now(),
       updatedAt: cleanNumber(raw.updatedAt) || Date.now(),
+      ...(raw.isGuest ? { isGuest: true } : {}),
     };
   }
 
@@ -139,6 +140,7 @@
       rounds: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      ...(options.isGuest ? { isGuest: true } : {}),
     };
     list.push(profile);
     return { profile };

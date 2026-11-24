@@ -130,12 +130,20 @@
   let booted = false;
   let bootStarted = false;
   let desiredRunning = IS_DEMO;
+  let contextLost = false;
+
+  function syncRunningAttr() {
+    if (stageEl) {
+      stageEl.dataset.running = String(booted && desiredRunning && !contextLost);
+    }
+  }
 
   function ensureBoot() {
     if (bootStarted) return;
     bootStarted = true;
     boot().catch((error) => {
-      console.error("PiuPiu Pixi ambient failed:", error);
+      console.warn("PiuPiu Pixi ambient unavailable:", error);
+      syncRunningAttr();
       if (IS_DEMO) {
         stageEl.innerHTML =
           '<div style="position:absolute;inset:0;display:grid;place-items:center;color:#93a0c0;font-size:13px">PixiJS 初始化失败，请刷新重试</div>';
@@ -147,28 +155,38 @@
 
   function setRunning(run) {
     const next = Boolean(run);
-    if (next === desiredRunning) return;
+    if (next === desiredRunning) {
+      syncRunningAttr();
+      return;
+    }
     desiredRunning = next;
     if (next) ensureBoot();
-    if (!booted) return;
+    if (!booted || contextLost) {
+      syncRunningAttr();
+      return;
+    }
     if (desiredRunning) {
       app.ticker.start();
     } else {
       app.renderer.render(app.stage);
       app.ticker.stop();
     }
+    syncRunningAttr();
   }
 
   const publicApi = {
     setRunning,
+    isRunning: () => booted && desiredRunning && !contextLost,
     get running() {
-      return booted && desiredRunning;
+      return booted && desiredRunning && !contextLost;
     },
     get lowPower() {
       return LOW_POWER;
     },
   };
   window.PiuAmbient = publicApi;
+  window.PiuPixiAmbient = publicApi;
+  syncRunningAttr();
 
   function seasonForMonth() {
     const month = new Date().getMonth();
@@ -460,6 +478,15 @@
       }
       ctx.putImageData(img, 0, 0);
     });
+  }
+
+  function destroyTextures() {
+    for (const key of Object.keys(TEX)) {
+      if (TEX[key] && typeof TEX[key].destroy === "function") {
+        TEX[key].destroy(true);
+      }
+      delete TEX[key];
+    }
   }
 
   /* --------------------------- backgrounds -------------------------- */
@@ -2184,14 +2211,14 @@
   }
 
   function handleRoundStart() {
-    if (IS_DEMO || REDUCED) return;
+    if (IS_DEMO || REDUCED || !booted || contextLost) return;
     roundsStarted += 1;
     if (roundsStarted === 1) return;
     switchScene(pickSceneForRound(), true);
   }
 
   function switchScene(key, instant) {
-    if (!SCENES[key] || key === currentKey) return;
+    if (!SCENES[key] || key === currentKey || contextLost) return;
     for (const scene of alive.slice()) {
       if (scene !== current && scene.container.alpha <= 0.01) retireScene(scene);
     }
@@ -2224,11 +2251,13 @@
     scheduleAuto();
   }
 
-  function rebuild() {
-    const nextW = app.screen.width;
-    const nextH = app.screen.height;
-    if (Math.abs(nextW - W) < 3 && Math.abs(nextH - H) < 3) return;
-    const key = currentKey || "spring";
+  function rebuild(force = false) {
+    if (!booted || contextLost) return;
+    const nextW = app.screen.width || stageEl.clientWidth || W;
+    const nextH = app.screen.height || stageEl.clientHeight || H;
+    if (!nextW || !nextH) return;
+    if (force !== true && Math.abs(nextW - W) < 3 && Math.abs(nextH - H) < 3) return;
+    const key = currentKey || (IS_DEMO ? "spring" : seasonForMonth());
     W = nextW;
     H = nextH;
 
@@ -2299,7 +2328,7 @@
 
   function scheduleAuto() {
     window.clearTimeout(autoTimer);
-    if (!IS_DEMO || !autoOn || REDUCED) return;
+    if (!IS_DEMO || !autoOn || REDUCED || contextLost) return;
     autoTimer = window.setTimeout(() => {
       const index = ORDER.indexOf(currentKey);
       switchScene(ORDER[(index + 1) % ORDER.length], false);
@@ -2367,6 +2396,39 @@
       app.renderer.render(app.stage);
       app.ticker.stop();
     }
+    syncRunningAttr();
+
+    app.canvas.addEventListener(
+      "webglcontextlost",
+      (event) => {
+        event.preventDefault();
+        contextLost = true;
+        app.ticker.stop();
+        window.clearTimeout(autoTimer);
+        syncRunningAttr();
+      },
+      false,
+    );
+
+    app.canvas.addEventListener(
+      "webglcontextrestored",
+      () => {
+        contextLost = false;
+        destroyTextures();
+        buildTextures();
+        if (grain) grain.texture = TEX.grain;
+        if (vignette) vignette.texture = TEX.vignette;
+        rebuild(true);
+        if (desiredRunning && !document.hidden) {
+          app.ticker.start();
+          scheduleAuto();
+        } else if (!document.hidden) {
+          app.renderer.render(app.stage);
+        }
+        syncRunningAttr();
+      },
+      false,
+    );
 
     if (DEBUG) {
       if (IS_DEMO) {
@@ -2394,17 +2456,19 @@
       }
     });
 
-    window.addEventListener("resize", debounce(220, rebuild));
+    window.addEventListener("resize", debounce(220, () => rebuild(false)));
     if (typeof ResizeObserver !== "undefined") {
-      new ResizeObserver(debounce(220, rebuild)).observe(stageEl);
+      new ResizeObserver(debounce(220, () => rebuild(false))).observe(stageEl);
     }
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         app.ticker.stop();
         window.clearTimeout(autoTimer);
       } else if (desiredRunning) {
-        app.ticker.start();
-        scheduleAuto();
+        if (!contextLost) {
+          app.ticker.start();
+          scheduleAuto();
+        }
       }
     });
   }

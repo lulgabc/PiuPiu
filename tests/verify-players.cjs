@@ -12,7 +12,8 @@ global.localStorage = {
 
 const profiles = require("../js/profiles.js");
 const { translations } = require("../js/i18n.js");
-const game = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
 const sw = fs.readFileSync(path.join(__dirname, "../sw.js"), "utf8");
 
@@ -118,13 +119,12 @@ for (const key of [
   }
 }
 
-assert.match(game, /window\.PiuProfiles/, "game.js must use the profile store");
+assert.match(game, /PiuProfiles/, "game must use the profile store");
 assert.match(game, /addProfilePoints\(points\)/, "each cleared word adds to the player total");
 assert.match(game, /Profiles\.addPoints\(state\.profiles, profile\.id, points, 1\)/, "profile points are recorded");
 assert.match(game, /finishProfileRound\(\)/, "round best and count are recorded at the end");
 assert.match(game, /state\.roundRecorded = true/, "a new round should arm score recording");
-assert.match(game, /Profiles && !currentProfile\(\)/, "start should require a player");
-assert.match(game, /player\.need/, "the missing-player message should be translated");
+assert.match(game, /ensureGuestProfile|!currentProfile\(\)/, "start should ensure a player or auto-create guest (F11)");
 assert.match(game, /playerSheet|boardSheet/, "player and board sheets should be wired");
 assert.match(game, /function startAvatarEdit/, "existing players should be able to change their avatar");
 assert.match(game, /function saveAvatarEdit/, "avatar edits should be saved");

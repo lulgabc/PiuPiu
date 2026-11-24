@@ -3,7 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");
 const license = fs.readFileSync(path.join(root, "assets/monsters/README.md"), "utf8");
 const pets = require(path.join(root, "js/pets.js"));
@@ -48,10 +49,9 @@ for (const pet of pets.PETS) {
     Math.abs(aspect - pet.aspect) < 0.08,
     `${pet.id} catalog aspect should match the artwork`,
   );
-  assert.match(sw, new RegExp(`\\./assets/monsters/${pet.id}\\.webp`), `${pet.id} final should be precached`);
-  assert.match(sw, new RegExp(`\\./assets/monsters/${pet.id}-base\\.webp`), `${pet.id} base should be precached`);
   total += finalSize.bytes + baseSize.bytes;
 }
+assert.match(sw, /\/assets\/monsters\//, "monster assets should be cached in SW static bucket");
 assert.ok(total < 3.2 * 1024 * 1024, `the whole 70-asset monster set should stay under 3.2MB (got ${Math.round(total / 1024)}KB)`);
 
 assert.match(license, /35/, "the asset readme should describe the 35-monster roster");

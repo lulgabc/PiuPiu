@@ -2,7 +2,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const game = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 
 // ---------- Web Speech API tuning ----------
 assert.match(game, /maxAlternatives\s*=\s*5/, "recognition should request five alternatives");
@@ -42,14 +43,14 @@ assert.match(game, /getSpeechStats/, "debug latency stats should be exposed");
 assert.match(game, /p50/);
 assert.match(game, /p95/);
 assert.match(game, /state\.speechNoSpeech \? 260 : 90/, "recognition should restart quickly after a normal end");
-assert.match(game, /}, delay\);/, "recognition restart delay should be applied");
+assert.match(game, /Math\.max\(delay, guardWait\)/, "recognition restart delay should respect echo guard");
 const helpBody = game.slice(game.indexOf("function speakHelp(target)"), game.indexOf("function triggerHelp()"));
 assert.match(helpBody, /const releaseMic = IS_IOS && state\.micEnabled/, "iOS keeps its audio-route handling");
 assert.match(helpBody, /if \(state\.micEnabled\) stopSpeech\(\)/, "all platforms should mute the mic while the hint speaks");
-assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\) \+ Math\.max\(4500, text\.length \* 75 \+ 1200\)/, "the hint should hold a safety guard while speaking");
-assert.match(helpBody, /state\.helpGuardUntil = performance\.now\(\);/, "recognition should open immediately when the hint ends");
+assert.match(helpBody, /speakTimeoutMs/, "the hint should compute a dynamic timeout from text length and rate (F02)");
+assert.match(helpBody, /state\.helpGuardUntil = nowMs\(\) \+ tailMs/, "recognition should open with a short post-TTS echo guard tail (F02)");
 assert.match(helpBody, /const delay = IS_IOS \? \(releaseMic \? 150 : wasSpeaking \? 60 : 0\) : 0/, "iOS should wait for the audio route/cancel to settle");
-assert.match(helpBody, /window\.setTimeout\(startSpeak, delay\)/, "the delayed iOS utterance should still start");
+assert.match(helpBody, /setTimeout\(startSpeak, delay\)/, "the delayed iOS utterance should still start");
 assert.match(helpBody, /focusedWord\.word === state\.helpWord/, "the hint highlight should clear when TTS ends");
 assert.match(helpBody, /clearFocus\(\);/, "the hint highlight should clear when TTS ends");
 assert.match(game, /function focusWord\(word, hold = false\)/, "focus should support a held help state");
@@ -57,7 +58,7 @@ assert.match(game, /focusWord\(word, true\)/, "help speech should hold focus unt
 assert.match(game, /focusWord\(card, true\)/, "tap-to-speak cards should hold focus until the utterance ends");
 assert.match(game, /if \(state\.helpSpeaking \|\| now < state\.helpGuardUntil\) return;/, "TTS results and their tail should be ignored");
 assert.match(game, /const formCache = new Map\(\)/, "word forms should be cached between interim results");
-assert.match(game, /}, 4000\);/, "a stuck TTS should release after a bounded fallback");
+assert.match(game, /armFallback\(speakTimeoutMs\)/, "a stuck TTS should release after dynamic fallback timeout");
 assert.match(game, /speechNoSpeech/, "no-speech restarts should back off");
 assert.match(game, /InvalidStateError/, "start races should be retried");
 assert.match(game, /speechStartRetries/, "start retries should be capped");

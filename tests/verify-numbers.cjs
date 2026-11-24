@@ -5,7 +5,8 @@ const path = require("node:path");
 const numbers = require("../js/numbers.js");
 const { wordsFor, NUMBER_WORDS } = numbers;
 const { translations } = require("../js/i18n.js");
-const game = fs.readFileSync(path.join(__dirname, "../js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
 const sw = fs.readFileSync(path.join(__dirname, "../sw.js"), "utf8");
 
@@ -85,9 +86,9 @@ assert.equal(wordsFor(21), "twenty-one");
 assert.equal(wordsFor(40), "forty");
 assert.equal(wordsFor(100), "one hundred");
 
-assert.match(game, /window\.PIU_NUMBERS/, "game.js must read the number bank");
-assert.match(game, /window\.PIU_NUMBER_WORDS/, "game.js must read the digit-to-word map");
-assert.match(game, /NUMBER_WORDS\[token\] \|\| token/, "spoken digits should become number words");
+assert.match(game, /PIU_NUMBERS/, "game must read the number bank");
+assert.match(game, /PIU_NUMBER_WORDS/, "game must read the digit-to-word map");
+assert.match(game, /Object\.hasOwn\(map, token\) \? map\[token\] : token/, "spoken digits should become number words");
 assert.match(game, /base\.replace\(\/-\/g, " "\)/, "hyphenated numbers should match spoken spaces");
 assert.match(game, /base === "one hundred"/, "100 should accept “a hundred”");
 assert.match(

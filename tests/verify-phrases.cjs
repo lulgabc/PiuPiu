@@ -5,7 +5,8 @@ const phrases = require("../js/phrases.js");
 const { translations } = require("../js/i18n.js");
 
 const root = path.join(__dirname, "..");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 
 const LANGS = ["zh", "fr", "en"];

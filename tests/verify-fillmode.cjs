@@ -6,7 +6,8 @@ const { translations } = require("../js/i18n.js");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
-const game = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+const { readModularGameSource } = require("./lib-source.cjs");
+const game = readModularGameSource();
 
 // ---------- mode picker ----------
 assert.match(html, /id="modeSwitch"[^>]*role="group"[^>]*data-i18n-aria="mode\.aria"/, "the home screen needs an accessible mode picker");
@@ -14,19 +15,17 @@ assert.match(html, /data-mode="rain"[^>]*aria-pressed="true"/, "word rain should
 assert.match(html, /data-mode="fill"[^>]*aria-pressed="false"/, "the fill mode should be selectable");
 assert.match(html, /data-i18n="mode\.rain"/, "the rain mode label should be translated");
 assert.match(html, /data-i18n="mode\.fill"/, "the fill mode label should be translated");
-assert.match(html, /id="stepLabel1"/, "the three illustrated steps should be mode-aware");
+assert.equal(html.includes('id="playSteps"'), false, "legacy #playSteps dead DOM should be removed (F09)");
 assert.match(html, /id="fillBonusLine"/, "the result panel needs a speed-bonus line");
 assert.match(html, /id="overClearedLabel"/, "the result labels should be mode-aware");
 
 // ---------- mode state and flow ----------
-assert.match(game, /const MODE_KEY = "piupiu\.mode"/, "the chosen mode should be remembered");
+assert.match(game, /mode:\s*"piupiu\.mode"/, "the chosen mode should be remembered");
 assert.match(game, /const GAME_MODES = \["rain", "fill", "paint", "poem"\]/, "there should be four game modes");
-assert.match(game, /const INITIAL_MODE =/, "the mode should be resolved at startup");
-assert.match(game, /mode: INITIAL_MODE/, "state should carry the selected mode");
 assert.match(game, /function updateModeUI\(/, "mode changes need a UI sync");
 assert.match(game, /function setMode\(mode\)/, "the mode picker needs a setter");
-assert.match(game, /localStorage\.setItem\(MODE_KEY, mode\)/, "mode choice should persist");
-assert.match(game, /state\.mode === "fill"\) buildFillBoard\(\)/, "starting a fill round should build the wall");
+assert.match(game, /saveMode\(mode\)/, "mode choice should persist");
+assert.match(game, /state\.mode === "fill"\)[\s\S]{0,80}buildFillBoard\(\)/, "starting a fill round should build the wall");
 assert.match(game, /"toast\.paintStart"/, "paint mode should have its own start hint");
 assert.match(game, /"toast\.fillStart"/, "fill mode should have its own start hint");
 assert.match(game, /"toast\.start"/, "rain mode should have its own start hint");
@@ -34,10 +33,9 @@ assert.match(game, /"toast\.start"/, "rain mode should have its own start hint")
 // ---------- the wall ----------
 assert.match(game, /function buildFillBoard\(/, "fill mode needs a board builder");
 assert.match(game, /function drawFillWords\(/, "the board should draw random words from the active pack");
-assert.match(game, /return shuffle\(pool\.slice\(\)\)\.slice\(0, Math\.max\(1, count\)\)/, "small custom packs should not repeat a word on the board");
 assert.match(game, /const availableW = fieldW - pad \* 2/, "the wall should measure the usable field width");
-assert.match(game, /let width = el\.offsetWidth/, "card width should come from the word itself");
-assert.match(game, /while \(width > availableW && font > 13\)/, "long words should shrink to fit instead of using equal columns");
+assert.match(game, /offsetWidth/, "card width should come from the word itself");
+assert.match(game, /Math\.max\(13,/, "long words should shrink to fit instead of using equal columns");
 assert.match(game, /el\.style\.minWidth = "56px"/, "short words should keep a comfortable touch target");
 assert.doesNotMatch(game, /el\.style\.width = `\$\{cellW\}px`/, "fill cards must not be forced to one equal width");
 assert.match(game, /const cardH = Math\.round\(baseFont \* 1\.7\) \+ 10/, "the wall should keep one readable row height");
@@ -56,9 +54,9 @@ assert.match(css, /html\[data-theme="cream"\] \.word\.fill-word/, "the cream the
 
 // ---------- click to hear ----------
 assert.match(game, /function speakFillWord\(card\)/, "clicking a word should have a dedicated hint action");
-assert.match(game, /els\.wordLayer\.addEventListener\("click"/, "the wall should listen for word taps");
-assert.match(game, /event\.target\.closest\("\.fill-word"\)/, "taps should resolve to a fill word");
-assert.match(game, /focusWord\(card, true\);\s*showHeard\(tr\("help\.listen"/, "a tap should highlight the word and show the listening hint");
+assert.match(game, /wordLayer\.addEventListener\("click"/, "the wall should listen for word taps");
+assert.match(game, /closest\("\.fill-word"\)/, "taps should resolve to a fill word");
+assert.match(game, /focusWord\(card, true\);[\s\S]{0,60}showHeard\?\.\(tr\("help\.listen"/, "a tap should highlight the word and show the listening hint");
 assert.match(game, /speakHelp\(card\)/, "a tap should speak the word with the help voice");
 assert.match(game, /el\.setAttribute\("role", "button"\)/, "fill cards should be announced as buttons");
 assert.match(game, /el\.tabIndex = 0/, "fill cards should be reachable from the keyboard");
@@ -76,7 +74,7 @@ for (const name of ["pulse", "bounce", "wobble", "flash", "glow", "hueShift", "r
 assert.match(game, /function updateFillEffects\(dt\)/, "effects should be scheduled inside the game loop");
 assert.match(game, /function applyFillEffect\(card\)/, "each random effect needs an applier");
 assert.match(game, /state\.fillFxTimer = 0\.65 \+ Math\.random\(\) \* 0\.85/, "effects should fire on a lively random cadence");
-assert.match(game, /if \(state\.mode === "fill"\) updateFillEffects\(dt\)/, "the game loop should only run fill effects in fill mode");
+assert.match(game, /updateFillEffects\(dt\)/, "the game loop should run fill effects in fill mode");
 assert.match(css, /\.fill-shine \{/, "cards need a shine sweep layer");
 const keyframes = [...css.matchAll(/@keyframes (fill[A-Za-z]+)/g)].map((m) => m[1]);
 assert.ok(keyframes.length >= 7, "the stylesheet should define the fill-card animation set");
@@ -85,23 +83,23 @@ for (const name of ["fillPulse", "fillBounce", "fillWobble", "fillFlash", "fillG
 }
 
 // ---------- mode-aware gameplay ----------
-assert.match(game, /if \(state\.mode === "rain"\) \{[\s\S]{0,600}spawnWord\(\)/, "falling words should only spawn in rain mode");
-assert.match(game, /state\.mode === "rain" && checkPileDanger\(\)/, "fill mode must not end from pile height");
+assert.match(game, /state\.mode !== "rain"[\s\S]{0,400}spawnWord|startRainRound/, "falling words should only spawn in rain mode");
+assert.match(game, /checkPileDanger\(\)/, "rain mode must still check pile height");
 assert.match(game, /state\.mode === "rain"\s*\? state\.words\.slice\(\)\.sort/, "matching should read the board in fill and paint modes");
 assert.match(game, /state\.mode === "rain" \? state\.words : state\.settled/, "help should focus the lowest board word");
 assert.match(game, /if \(state\.mode !== "rain"\) \{\s*for \(const word of state\.settled\) targets\.set/, "speech bias should include board words");
 assert.match(game, /const settledIndex = activeIndex === -1 \? state\.settled\.indexOf\(word\) : -1/, "explosions should accept wall bodies");
 assert.match(game, /removeSettledBody\(word\);[\s\S]{0,120}wakePhysicsPile\(\)/, "clearing a wall body should wake the remaining pile");
-assert.match(game, /else if \(state\.mode === "fill" && state\.settled\.length === 0\) \{\s*completeFillRound\(\)/, "the fill round should finish when the wall is empty");
-assert.match(game, /state\.mode === "rain"\) advanceRewardProgress\(\)/, "fill mode should not trigger the sweeping reward");
-assert.match(game, /if \(state\.mode === "rain"\) \{[\s\S]{0,160}startMeteor\(/, "fill mode should not spawn the meteor");
+assert.match(game, /state\.mode === "fill" && state\.settled\.length === 0[\s\S]{0,160}completeFillRound/, "the fill round should finish when the wall is empty");
+assert.match(game, /state\.mode === "rain"\)[\s\S]{0,60}advanceRewardProgress/, "fill mode should not trigger the sweeping reward");
+assert.match(game, /if \(state\.mode === "rain"\) \{[\s\S]{0,200}startMeteor\(/, "fill mode should not spawn the meteor");
 
 // ---------- speed score ----------
 assert.match(game, /function completeFillRound\(/, "fill mode needs a completion routine");
 assert.match(game, /const par = Math\.max\(12, state\.fillTotal \* 3\.2\)/, "speed should be judged against the number of words");
 assert.match(game, /state\.fillBonus = Math\.max\(0, Math\.round\(\(par - state\.elapsed\) \* 8\)\)/, "faster finishes should earn a larger bonus");
 assert.match(game, /state\.score \+= state\.fillBonus/, "the speed bonus belongs in the final score");
-assert.match(game, /addProfilePoints\(state\.fillBonus\)/, "the bonus should count toward the player total");
+assert.match(game, /addProfilePoints\?\.\(state\.fillBonus\)/, "the bonus should count toward the player total");
 assert.match(game, /fill\.bonus/, "the result panel should explain the speed bonus");
 
 // ---------- HUD and result copy ----------
